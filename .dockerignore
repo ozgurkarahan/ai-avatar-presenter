@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Claude / Copilot
+.claude/
+.copilot-instructions.md
+
+# Azure
+.azure/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/venv/
+
+# Node
+demos/frontend/node_modules/
+
+# Environment files (secrets)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Data (local uploads)
+demos/backend/data/
+
+# Docs
+docs/
+
+# Test files
+demos/backend/test_upload.pptx

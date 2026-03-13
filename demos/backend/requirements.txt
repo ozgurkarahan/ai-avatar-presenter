@@ -1,0 +1,14 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+gunicorn>=22.0.0
+python-pptx>=1.0.2
+openai>=1.50.0
+requests>=2.32.0
+python-multipart>=0.0.9
+pydantic>=2.9.0
+azure-identity>=1.17.0
+python-dotenv>=1.0.1
+numpy>=2.0.0
+Pillow>=10.0.0
+pdf2image>=1.16.0
+websockets>=12.0

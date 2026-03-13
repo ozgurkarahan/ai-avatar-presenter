@@ -1,0 +1,14 @@
+name: ai-presenter
+metadata:
+  template: ai-presenter@0.0.1
+services:
+  backend:
+    project: ./demos/backend
+    host: containerapp
+    language: py
+    docker:
+      path: ./Dockerfile
+      context: .
+infra:
+  provider: bicep
+  path: ./infra
