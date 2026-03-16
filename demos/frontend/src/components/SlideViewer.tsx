@@ -181,6 +181,7 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
         </div>
         <div style={styles.nav}>
           <button
+            type="button"
             style={{ ...styles.navBtn, ...(currentSlide === 0 ? styles.navBtnDisabled : {}) }}
             disabled={currentSlide === 0}
             onClick={() => onSlideChange(currentSlide - 1)}
@@ -191,6 +192,7 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
             {currentSlide + 1} / {presentation.slide_count}
           </span>
           <button
+            type="button"
             style={{ ...styles.navBtn, ...(currentSlide >= presentation.slide_count - 1 ? styles.navBtnDisabled : {}) }}
             disabled={currentSlide >= presentation.slide_count - 1}
             onClick={() => onSlideChange(currentSlide + 1)}
@@ -203,6 +205,7 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
       {slide.image_url ? (
         <div style={styles.slideImageContainer}>
           <img
+            key={slide.image_url}
             src={slide.image_url}
             alt={slide.title || `Slide ${currentSlide + 1}`}
             style={styles.slideImage}

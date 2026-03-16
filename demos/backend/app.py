@@ -390,4 +390,8 @@ if os.path.isdir(STATIC_DIR):
         file_path = os.path.join(STATIC_DIR, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        # Prevent Teams from caching the SPA shell
+        return FileResponse(
+            os.path.join(STATIC_DIR, "index.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
