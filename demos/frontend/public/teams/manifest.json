@@ -1,0 +1,46 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "packageName": "com.stacme.ai-presenter",
+  "developer": {
+    "name": "Acme",
+    "websiteUrl": "https://www.acme.com",
+    "privacyUrl": "https://www.acme.com",
+    "termsOfUseUrl": "https://www.acme.com"
+  },
+  "name": {
+    "short": "AI Presenter",
+    "full": "AI Presenter — Avatar Presentation Assistant"
+  },
+  "description": {
+    "short": "AI-powered avatar presentation assistant with multilingual TTS",
+    "full": "Upload PowerPoint presentations and deliver them through an AI avatar with multilingual text-to-speech narration, guided slide playback, and slide-specific Q&A for presenters and meeting participants."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#003366",
+  "staticTabs": [
+    {
+      "entityId": "presenter",
+      "name": "Presenter",
+      "contentUrl": "https://{{TEAMS_APP_HOSTNAME}}",
+      "websiteUrl": "https://{{TEAMS_APP_HOSTNAME}}",
+      "scopes": [
+        "personal",
+        "team",
+        "groupChat"
+      ]
+    }
+  ],
+  "validDomains": [
+    "{{TEAMS_APP_HOSTNAME}}"
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ]
+}

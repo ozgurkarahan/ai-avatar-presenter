@@ -57,6 +57,28 @@ app.add_middleware(
 )
 
 
+# Allow Teams to iframe the app by setting permissive CSP/frame headers
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+
+class TeamsIframeMiddleware(BaseHTTPMiddleware):
+    """Allow Microsoft Teams to embed the app in an iframe."""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        response.headers["Content-Security-Policy"] = (
+            "frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com "
+            "https://*.office.com https://*.microsoft.com"
+        )
+        response.headers.pop("X-Frame-Options", None)
+        return response
+
+
+app.add_middleware(TeamsIframeMiddleware)
+
+
 # --- Request/Response Models ---
 
 
