@@ -3,7 +3,6 @@
   "manifestVersion": "1.17",
   "version": "1.0.0",
   "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "packageName": "com.stgobain.ai-presenter",
   "developer": {
     "name": "Saint-Gobain",
     "websiteUrl": "https://www.saint-gobain.com",
@@ -12,7 +11,7 @@
   },
   "name": {
     "short": "AI Presenter",
-    "full": "AI Presenter — Avatar Presentation Assistant"
+    "full": "AI Presenter - Avatar Presentation Assistant"
   },
   "description": {
     "short": "AI-powered avatar presentation assistant with multilingual TTS",
@@ -30,17 +29,11 @@
       "contentUrl": "https://{{TEAMS_APP_HOSTNAME}}",
       "websiteUrl": "https://{{TEAMS_APP_HOSTNAME}}",
       "scopes": [
-        "personal",
-        "team",
-        "groupChat"
+        "personal"
       ]
     }
   ],
   "validDomains": [
     "{{TEAMS_APP_HOSTNAME}}"
-  ],
-  "permissions": [
-    "identity",
-    "messageTeamMembers"
   ]
 }
