@@ -18,6 +18,7 @@
 - **🎥 Real-Time Streaming** — Avatar delivered via WebRTC for low-latency video/audio
 - **🖼️ Slide Rendering** — High-quality PNG generation from PPTX via LibreOffice headless + Poppler
 - **🚀 One-Click Deployment** — Deploy to Azure Container Apps with `azd up`
+- **📎 Teams Integration** — Embed the app as a Microsoft Teams Static Tab with theme support (dark/light/contrast)
 
 ---
 
@@ -59,6 +60,7 @@
 | **Vector Search**| In-memory numpy cosine similarity                           |
 | **Auth**         | Azure AD / Managed Identity (`DefaultAzureCredential`)      |
 | **Infra**        | Azure Container Apps, Bicep IaC, Azure Developer CLI (`azd`)|
+| **Teams**        | `@microsoft/teams-js` SDK, Static Tab manifest (v1.17)      |
 | **Containerization** | Docker (multi-stage build)                              |
 
 ---
@@ -194,6 +196,29 @@ The Bicep templates in `infra/` provision:
 
 > Configure deployment parameters in `infra/main.parameters.json` before running `azd up`.
 
+For parallel deployments (e.g., copilot instance), see [docs/deploy-copilot.md](docs/deploy-copilot.md).
+
+---
+
+## 📎 Teams Integration
+
+The app can be embedded in Microsoft Teams as a **Static Tab**:
+
+```powershell
+# Package the Teams app (after deploying to Azure)
+.\scripts\package-teams-app.ps1 -Hostname "<your-container-app-fqdn>"
+```
+
+Then sideload `teams-app-package.zip` in Teams:
+1. Open **Teams → Apps → Manage your apps → Upload an app**
+2. Select **Upload a custom app** and choose the generated `.zip`
+3. The app appears as a personal tab — "AI Presenter"
+
+**Teams features:**
+- Automatic theme adaptation (light, dark, high-contrast)
+- Compact layout optimized for Teams tab viewport
+- CSP headers configured for Teams iframe embedding
+
 ---
 
 ## 📡 API Reference
@@ -246,19 +271,26 @@ ai-presenter/
 │       │   │   ├── LanguageSelector.tsx # Language picker
 │       │   │   └── QaChat.tsx          # Q&A chat interface
 │       │   └── services/
-│       │       └── api.ts       # API client
+│       │       ├── api.ts       # API client
+│       │       └── teams.ts     # Teams SDK integration helpers
+│       ├── public/
+│       │   └── teams/           # Teams app manifest & icons
 │       ├── package.json
 │       └── vite.config.ts
 ├── infra/                        # Azure Bicep IaC
 │   ├── main.bicep               # Main template
 │   ├── main.parameters.json     # Deployment parameters
+│   ├── main.parameters.copilot.json  # Copilot instance parameters
 │   └── modules/
 │       ├── containerapp.bicep   # Container App definition
 │       ├── existing-ai.bicep    # AI service references
 │       └── roles.bicep          # RBAC role assignments
+├── scripts/
+│   └── package-teams-app.ps1    # Teams app packaging script
 ├── docs/                         # Documentation
 │   ├── architecture.md
 │   ├── deep-dive-azure.md
+│   ├── deploy-copilot.md        # Copilot instance deployment guide
 │   ├── feasibility.md
 │   └── teams-integration.md
 ├── Dockerfile                    # Multi-stage Docker build
@@ -278,6 +310,8 @@ Detailed technical documentation is available in the [`docs/`](docs/) directory:
 |----------|-------------|
 | [Architecture](docs/architecture.md) | Component architecture, data flows, API contract, deployment topology |
 | [Deep Dive: Azure Deployment](docs/deep-dive-azure.md) | Full technical walkthrough — infrastructure, Bicep modules, security, CI/CD |
+| [Teams Integration](docs/teams-integration.md) | Feasibility analysis and architecture options for Teams embedding |
+| [Deploy Copilot Instance](docs/deploy-copilot.md) | Guide for deploying a parallel "copilot" instance to Azure |
 
 ---
 

@@ -46,3 +46,6 @@ demos/backend/test_upload.pptx
 
 # Azure
 .azure/
+
+# Teams build artifact
+teams-app-package.zip
