@@ -270,6 +270,19 @@ ai-presenter/
 
 ---
 
+## 📚 Documentation
+
+Detailed technical documentation is available in the [`docs/`](docs/) directory:
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/architecture.md) | Component architecture, data flows, API contract, deployment topology |
+| [Deep Dive: Azure Deployment](docs/deep-dive-azure.md) | Full technical walkthrough — infrastructure, Bicep modules, security, CI/CD |
+| [Feasibility Assessment](docs/feasibility.md) | Use case feasibility analysis, Azure services mapping, cost estimates |
+| [Teams Integration (V2)](docs/teams-integration.md) | Analysis of Microsoft Teams integration approaches (ACS, Bot Framework, Virtual Camera) |
+
+---
+
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
