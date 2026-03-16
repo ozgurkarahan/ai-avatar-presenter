@@ -72,7 +72,8 @@ class TeamsIframeMiddleware(BaseHTTPMiddleware):
             "frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com "
             "https://*.office.com https://*.microsoft.com"
         )
-        response.headers.pop("X-Frame-Options", None)
+        if "X-Frame-Options" in response.headers:
+            del response.headers["X-Frame-Options"]
         return response
 
 
