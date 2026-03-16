@@ -25,6 +25,7 @@ AI Presenter: AI-powered avatar presentation assistant that reads PowerPoint spe
 | Poppler (pdf2image) | PDF → PNG conversion for individual slide images |
 | python-pptx | Extract slide text, titles, speaker notes |
 | FastAPI + Uvicorn | Backend REST API + WebSocket proxy |
+| **Teams SDK** | `@microsoft/teams-js` — context detection, theme adaptation    |
 | React 19 + Vite 8 | Frontend SPA with slide viewer, avatar panel, Q&A chat |
 
 ## Key Paths
@@ -38,6 +39,9 @@ AI Presenter: AI-powered avatar presentation assistant that reads PowerPoint spe
 | `demos/frontend/` | React frontend — slide viewer, avatar panel, Q&A chat |
 | `demos/frontend/src/components/SlideViewer.tsx` | Slide display (images when available, text fallback) |
 | `demos/frontend/src/components/AvatarPanel.tsx` | WebRTC avatar video/audio panel |
+| `demos/frontend/src/services/teams.ts` | Microsoft Teams SDK integration helpers |
+| `demos/frontend/public/teams/` | Teams app manifest and icons |
+| `scripts/package-teams-app.ps1` | Package Teams app for sideloading |
 | `docs/` | Architecture docs, feasibility analysis, Teams integration |
 | `run-local.ps1` | One-command local dev startup (backend + frontend) |
 | `.copilot-instructions.md` | Technical context for Copilot assistance |
@@ -49,4 +53,4 @@ AI Presenter: AI-powered avatar presentation assistant that reads PowerPoint spe
 - [x] PoC demo: PPT upload → slide image rendering → avatar presents with TTS
 - [x] Multilingual TTS demonstration (EN/FR/ES via GPT-4.1 translation)
 - [x] Slide Q&A demonstration (in-memory numpy RAG)
-- [ ] Teams integration feasibility analysis (V2)
+- [x] Teams integration — Static Tab (iframe embed) with Teams SDK theme support

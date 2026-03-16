@@ -57,6 +57,27 @@ app.add_middleware(
 )
 
 
+# Allow Teams to iframe the app by setting permissive CSP/frame headers
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+
+class TeamsIframeMiddleware(BaseHTTPMiddleware):
+    """Allow Microsoft Teams to embed the app in an iframe."""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        # Broad frame-ancestors to support all Teams clients (desktop, web, mobile)
+        response.headers["Content-Security-Policy"] = "frame-ancestors *"
+        if "X-Frame-Options" in response.headers:
+            del response.headers["X-Frame-Options"]
+        return response
+
+
+app.add_middleware(TeamsIframeMiddleware)
+
+
 # --- Request/Response Models ---
 
 
@@ -369,4 +390,8 @@ if os.path.isdir(STATIC_DIR):
         file_path = os.path.join(STATIC_DIR, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
-        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+        # Prevent Teams from caching the SPA shell
+        return FileResponse(
+            os.path.join(STATIC_DIR, "index.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )

@@ -14,6 +14,7 @@
   "type": "commonjs",
   "dependencies": {
     "microsoft-cognitiveservices-speech-sdk": "^1.48.0",
+    "@microsoft/teams-js": "^2.31.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
