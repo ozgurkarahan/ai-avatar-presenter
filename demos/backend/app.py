@@ -68,10 +68,8 @@ class TeamsIframeMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         response: Response = await call_next(request)
-        response.headers["Content-Security-Policy"] = (
-            "frame-ancestors 'self' https://teams.microsoft.com https://*.teams.microsoft.com "
-            "https://*.office.com https://*.microsoft.com"
-        )
+        # Broad frame-ancestors to support all Teams clients (desktop, web, mobile)
+        response.headers["Content-Security-Policy"] = "frame-ancestors *"
         if "X-Frame-Options" in response.headers:
             del response.headers["X-Frame-Options"]
         return response
