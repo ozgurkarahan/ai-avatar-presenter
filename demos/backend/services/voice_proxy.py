@@ -24,6 +24,25 @@ DEFAULT_AVATAR_STYLE = "casual-sitting"
 DEFAULT_VOICE_NAME = "en-US-Ava:DragonHDLatestNeural"
 DEFAULT_VOICE_TYPE = "azure-standard"
 
+# Per-language configuration for the avatar session.
+# DragonHD has native voice personas for 6 locales (see docs). For other
+# languages en-US-Ava is multilingual and works as a fallback.
+# Source: https://learn.microsoft.com/en-us/azure/ai-services/speech-service/high-definition-voices
+VOICE_CONFIG: Dict[str, Dict[str, str]] = {
+    # --- Native DragonHD voices (best quality for these locales) ---
+    "en-US": {"voice": "en-US-Ava:DragonHDLatestNeural",       "name": "English"},
+    "fr-FR": {"voice": "fr-FR-Vivienne:DragonHDLatestNeural",   "name": "French"},
+    "es-ES": {"voice": "es-ES-Ximena:DragonHDLatestNeural",     "name": "Spanish"},
+    "de-DE": {"voice": "de-DE-Seraphina:DragonHDLatestNeural",  "name": "German"},
+    "ja-JP": {"voice": "ja-JP-Nanami:DragonHDLatestNeural",     "name": "Japanese"},
+    "zh-CN": {"voice": "zh-CN-Xiaochen:DragonHDLatestNeural",   "name": "Chinese"},
+    # --- Fallback: en-US-Ava is multilingual DragonHD ---
+    "it-IT": {"voice": "en-US-Ava:DragonHDLatestNeural",        "name": "Italian"},
+    "pt-BR": {"voice": "en-US-Ava:DragonHDLatestNeural",        "name": "Portuguese"},
+    "ko-KR": {"voice": "en-US-Ava:DragonHDLatestNeural",        "name": "Korean"},
+    "ar-SA": {"voice": "en-US-Ava:DragonHDLatestNeural",        "name": "Arabic"},
+}
+
 
 def _build_wss_url(config: AzureConfig, model: str, api_version: str = VOICE_API_VERSION) -> str:
     """Build the Azure Voice Live WebSocket URL."""
@@ -52,27 +71,48 @@ def build_session_config(
     language: str = "en-US",
     avatar_character: str = DEFAULT_AVATAR_CHARACTER,
     avatar_style: str = DEFAULT_AVATAR_STYLE,
-    voice_name: str = DEFAULT_VOICE_NAME,
+    voice_name: Optional[str] = None,
     instructions: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build the session.update payload with avatar config."""
+    """Build the session.update payload with avatar config.
+
+    Automatically selects the native DragonHD voice persona for the
+    requested language so the avatar speaks with the correct accent.
+    """
+    lang_cfg = VOICE_CONFIG.get(language, VOICE_CONFIG["en-US"])
+    resolved_voice = voice_name or lang_cfg["voice"]
+    lang_name = lang_cfg["name"]
+
+    # Session-level instructions lock the avatar into the target language
+    default_instructions = (
+        f"You are a professional presentation assistant. "
+        f"You MUST speak exclusively in {lang_name}. "
+        f"Use a native {lang_name} accent and natural pronunciation. "
+        f"Read all text exactly as provided, in {lang_name}. "
+        f"Do not translate or add commentary unless asked."
+    )
+
     session: Dict[str, Any] = {
         "modalities": ["text", "audio", "avatar"],
         "turn_detection": {"type": "azure_semantic_vad"},
         "input_audio_noise_reduction": {"type": "azure_deep_noise_suppression"},
         "input_audio_echo_cancellation": {"type": "server_echo_cancellation"},
         "voice": {
-            "name": voice_name,
-            "type": "azure-standard",
+            "name": resolved_voice,
+            "type": DEFAULT_VOICE_TYPE,
         },
         "avatar": {
             "character": avatar_character,
             "style": avatar_style if avatar_style else None,
             "customized": False,
         },
+        "instructions": instructions or default_instructions,
     }
-    if instructions:
-        session["instructions"] = instructions
+
+    logger.info(
+        "Session config: lang=%s, voice=%s, avatar=%s/%s",
+        language, resolved_voice, avatar_character, avatar_style,
+    )
     return session
 
 
@@ -161,7 +201,13 @@ async def _forward_azure_to_client(azure_ws: Any, client_ws: Any) -> None:
     try:
         async for message in azure_ws:
             if isinstance(message, str):
-                logger.debug("Azure→Client: %s", message[:100])
+                # Log message types at INFO level for debugging auto-navigation
+                try:
+                    msg_data = json.loads(message)
+                    msg_type = msg_data.get("type", "unknown")
+                    logger.info("Azure→Client: type=%s payload=%s", msg_type, message[:400])
+                except (json.JSONDecodeError, AttributeError):
+                    logger.debug("Azure→Client: (non-JSON) %s", message[:80])
                 await client_ws.send_text(message)
             else:
                 # Binary message

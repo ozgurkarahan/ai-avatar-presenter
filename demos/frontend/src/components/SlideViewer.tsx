@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { translateText, type Presentation } from '../services/api';
+import React, { useRef, useEffect } from 'react';
+import { type Presentation } from '../services/api';
 
 interface Props {
   presentation: Presentation;
   currentSlide: number;
   onSlideChange: (index: number) => void;
   language: string;
+  onVideoPlayingChange?: (playing: boolean) => void;
+  autoPlayVideo?: boolean;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -63,6 +65,24 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     height: '100%',
     objectFit: 'contain' as const,
+  },
+  slideVideo: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain' as const,
+    background: '#000',
+  },
+  pptxIframeContainer: {
+    aspectRatio: '16/9',
+    borderRadius: '10px',
+    border: '1px solid #d1d5db',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+    overflow: 'hidden',
+  },
+  pptxIframe: {
+    width: '100%',
+    height: '100%',
+    border: 'none',
   },
   slideNumber: {
     position: 'absolute' as const,
@@ -144,34 +164,32 @@ function formatBody(body: string) {
   );
 }
 
-export default function SlideViewer({ presentation, currentSlide, onSlideChange, language }: Props) {
+export default function SlideViewer({ presentation, currentSlide, onSlideChange, language, onVideoPlayingChange, autoPlayVideo = false }: Props) {
   const slide = presentation.slides[currentSlide];
-  const [translatedNotes, setTranslatedNotes] = useState('');
-  const [translating, setTranslating] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [imgError, setImgError] = React.useState(false);
 
+  // Reset image error state when slide changes
+  useEffect(() => { setImgError(false); }, [currentSlide, slide?.image_url]);
+
+  // Auto-play the video when the avatar triggers it during presentation mode
   useEffect(() => {
-    if (language === 'en-US' || !slide?.notes) {
-      setTranslatedNotes('');
-      return;
+    if (autoPlayVideo && videoRef.current) {
+      setTimeout(() => videoRef.current?.play().catch(() => {}), 100);
     }
-    let cancelled = false;
-    setTranslating(true);
-    translateText(slide.notes, language)
-      .then((res) => {
-        if (!cancelled) setTranslatedNotes(res.translated_text);
-      })
-      .catch(() => {
-        if (!cancelled) setTranslatedNotes('[Translation failed]');
-      })
-      .finally(() => {
-        if (!cancelled) setTranslating(false);
-      });
-    return () => { cancelled = true; };
-  }, [currentSlide, language, slide?.notes]);
+  }, [autoPlayVideo, slide?.video_url]);
 
   if (!slide) return <div>No slides found.</div>;
 
-  const displayNotes = language === 'en-US' ? slide.notes : (translatedNotes || slide.notes);
+  const displayNotes = language === 'en-US'
+    ? slide.notes
+    : (slide.translated_notes?.[language] || slide.notes);
+
+  // Build Office Online embed URL when pptx_url is available from Blob Storage
+  // wdSlidePage (1-based) navigates the viewer to the current slide
+  const officeEmbedUrl = presentation.pptx_url
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(presentation.pptx_url)}&wdSlidePage=${currentSlide + 1}`
+    : null;
 
   return (
     <div>
@@ -202,13 +220,38 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
         </div>
       </div>
 
-      {slide.image_url ? (
+      {slide.video_url ? (
+        <div style={styles.slideImageContainer}>
+          <video
+            ref={videoRef}
+            src={slide.video_url}
+            poster={slide.image_url}
+            style={styles.slideVideo}
+            controls
+            playsInline
+            onPlay={() => onVideoPlayingChange?.(true)}
+            onPause={() => onVideoPlayingChange?.(false)}
+            onEnded={() => onVideoPlayingChange?.(false)}
+          />
+        </div>
+      ) : slide.image_url && !imgError ? (
         <div style={styles.slideImageContainer}>
           <img
             key={slide.image_url}
             src={slide.image_url}
             alt={slide.title || `Slide ${currentSlide + 1}`}
             style={styles.slideImage}
+            onError={() => setImgError(true)}
+          />
+        </div>
+      ) : officeEmbedUrl ? (
+        <div style={styles.pptxIframeContainer}>
+          <iframe
+            key={`${presentation.id}-${currentSlide}`}
+            src={officeEmbedUrl}
+            style={styles.pptxIframe}
+            title={presentation.filename}
+            allowFullScreen
           />
         </div>
       ) : (
@@ -219,11 +262,10 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
         </div>
       )}
 
-      {(slide.notes || translatedNotes) && (
+      {displayNotes && (
         <div style={styles.notesSection}>
           <div style={styles.notesLabel}>
             🗒️ Speaker Notes {language !== 'en-US' && `(${language})`}
-            {translating && ' — translating...'}
           </div>
           <div style={styles.notesText}>{displayNotes}</div>
         </div>

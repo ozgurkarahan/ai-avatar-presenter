@@ -104,26 +104,24 @@ if (-not $SkipInstall) {
 # ── Launch services ──────────────────────────────────────────────────────────
 Write-Step "Starting services"
 
-$backendJob = $null
-$frontendJob = $null
+$backendProc = $null
+$frontendProc = $null
+$venvPython = Join-Path $VenvDir "Scripts\python.exe"
 
 try {
-    # Start backend in background job
-    $backendJob = Start-Job -Name "ai-presenter-backend" -ScriptBlock {
-        param($dir, $venv)
-        Set-Location $dir
-        . (Join-Path $venv "Scripts\Activate.ps1")
-        & python -m uvicorn app:app --reload --port 8000 --host 127.0.0.1 2>&1
-    } -ArgumentList $BackendDir, $VenvDir
+    # Start backend as a separate process (avoids Start-Job Anaconda/path conflicts)
+    $backendProc = Start-Process -FilePath $venvPython `
+        -ArgumentList "-m", "uvicorn", "app:app", "--reload", "--reload-exclude", ".venv", "--port", "8000", "--host", "127.0.0.1" `
+        -WorkingDirectory $BackendDir `
+        -PassThru -NoNewWindow
 
     Write-Ok "Backend starting on http://127.0.0.1:8000  (Swagger: http://127.0.0.1:8000/docs)"
 
-    # Start frontend in background job
-    $frontendJob = Start-Job -Name "ai-presenter-frontend" -ScriptBlock {
-        param($dir)
-        Set-Location $dir
-        & npm run dev 2>&1
-    } -ArgumentList $FrontendDir
+    # Start frontend as a separate process (npx is a batch script, so launch via cmd)
+    $frontendProc = Start-Process -FilePath "cmd.exe" `
+        -ArgumentList "/c", "npx vite" `
+        -WorkingDirectory $FrontendDir `
+        -PassThru -NoNewWindow
 
     Write-Ok "Frontend starting on http://localhost:5173"
 
@@ -143,32 +141,16 @@ try {
     Write-Host "Press Ctrl+C to stop both services." -ForegroundColor Yellow
     Write-Host ""
 
-    # Tail logs from both jobs
+    # Wait for either process to exit
     while ($true) {
-        # Backend output
-        $backendOutput = Receive-Job -Job $backendJob -ErrorAction SilentlyContinue
-        if ($backendOutput) {
-            $backendOutput | ForEach-Object { Write-Host "[backend]  $_" -ForegroundColor DarkCyan }
-        }
-
-        # Frontend output
-        $frontendOutput = Receive-Job -Job $frontendJob -ErrorAction SilentlyContinue
-        if ($frontendOutput) {
-            $frontendOutput | ForEach-Object { Write-Host "[frontend] $_" -ForegroundColor DarkMagenta }
-        }
-
-        # Check if either job died
-        if ($backendJob.State -eq "Failed") {
-            Write-Err "Backend crashed. Check logs above."
-            Receive-Job -Job $backendJob -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+        if ($backendProc.HasExited) {
+            Write-Err "Backend exited with code $($backendProc.ExitCode)."
             break
         }
-        if ($frontendJob.State -eq "Failed") {
-            Write-Err "Frontend crashed. Check logs above."
-            Receive-Job -Job $frontendJob -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+        if ($frontendProc.HasExited) {
+            Write-Err "Frontend exited with code $($frontendProc.ExitCode)."
             break
         }
-
         Start-Sleep -Milliseconds 500
     }
 }
@@ -177,14 +159,12 @@ finally {
     Write-Host ""
     Write-Step "Shutting down services"
 
-    if ($backendJob) {
-        Stop-Job -Job $backendJob -ErrorAction SilentlyContinue
-        Remove-Job -Job $backendJob -Force -ErrorAction SilentlyContinue
+    if ($backendProc -and -not $backendProc.HasExited) {
+        Stop-Process -Id $backendProc.Id -Force -ErrorAction SilentlyContinue
         Write-Ok "Backend stopped"
     }
-    if ($frontendJob) {
-        Stop-Job -Job $frontendJob -ErrorAction SilentlyContinue
-        Remove-Job -Job $frontendJob -Force -ErrorAction SilentlyContinue
+    if ($frontendProc -and -not $frontendProc.HasExited) {
+        Stop-Process -Id $frontendProc.Id -Force -ErrorAction SilentlyContinue
         Write-Ok "Frontend stopped"
     }
 

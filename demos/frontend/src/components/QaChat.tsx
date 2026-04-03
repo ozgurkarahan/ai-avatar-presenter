@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { askQuestion, type QaResponse } from '../services/api';
+import { agentChat, type AgentChatMessage } from '../services/api';
 
 interface Props {
   presentationId: string;
@@ -9,7 +9,6 @@ interface Props {
 interface Message {
   role: 'user' | 'assistant';
   text: string;
-  sourceSlides?: number[];
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -84,6 +83,7 @@ const styles: Record<string, React.CSSProperties> = {
 
 export default function QaChat({ presentationId, slideIndex }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [history, setHistory] = useState<AgentChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -96,16 +96,13 @@ export default function QaChat({ presentationId, slideIndex }: Props) {
     setInput('');
     setLoading(true);
 
+    const newHistory: AgentChatMessage[] = [...history, { role: 'user', content: question }];
+
     try {
-      const res = await askQuestion(presentationId, question, slideIndex);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: res.answer,
-          sourceSlides: res.source_slides,
-        },
-      ]);
+      const res = await agentChat(newHistory, presentationId, slideIndex);
+      const reply = res.reply;
+      setMessages((prev) => [...prev, { role: 'assistant', text: reply }]);
+      setHistory([...newHistory, { role: 'assistant', content: reply }]);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -118,12 +115,12 @@ export default function QaChat({ presentationId, slideIndex }: Props) {
 
   return (
     <div>
-      <div style={styles.title}>💬 Slide Q&A</div>
+      <div style={styles.title}>🤖 AI Presenter Agent</div>
 
       <div style={styles.messages}>
         {messages.length === 0 ? (
           <div style={styles.empty}>
-            Ask a question about the current slide
+            Ask questions, translate slides, or request presentations
           </div>
         ) : (
           messages.map((msg, i) => (
@@ -136,12 +133,6 @@ export default function QaChat({ presentationId, slideIndex }: Props) {
               >
                 {msg.text}
               </div>
-              {msg.sourceSlides && msg.sourceSlides.length > 0 && (
-                <div style={styles.sourceTag}>
-                  📎 Source: Slide{msg.sourceSlides.length > 1 ? 's' : ''}{' '}
-                  {msg.sourceSlides.map((s) => s + 1).join(', ')}
-                </div>
-              )}
             </div>
           ))
         )}
@@ -156,7 +147,7 @@ export default function QaChat({ presentationId, slideIndex }: Props) {
         <input
           style={styles.input}
           type="text"
-          placeholder="Ask about this slide..."
+          placeholder="Ask, translate, or present..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={loading}

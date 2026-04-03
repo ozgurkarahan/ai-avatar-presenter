@@ -65,7 +65,7 @@ def translate_text(
             {"role": "user", "content": text},
         ],
         temperature=0.3,
-        max_tokens=4096,
+        max_completion_tokens=4096,
     )
 
     return response.choices[0].message.content.strip()
@@ -96,7 +96,7 @@ def detect_language(
             {"role": "user", "content": text[:500]},
         ],
         temperature=0,
-        max_tokens=10,
+        max_completion_tokens=10,
     )
 
     return response.choices[0].message.content.strip()

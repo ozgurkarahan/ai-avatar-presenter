@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 # Load .env from backend directory, then project root
 _backend_dir = Path(__file__).resolve().parent
-load_dotenv(_backend_dir / ".env")
+load_dotenv(_backend_dir / ".env", override=True)
 load_dotenv(_backend_dir.parent.parent / ".env")
 
 
@@ -23,6 +23,11 @@ class AzureConfig:
     libreoffice_path: str = "soffice"
     use_managed_identity: bool = False
     use_local_search: bool = True
+    cosmos_endpoint: str = ""
+    cosmos_key: str = ""
+    cosmos_database: str = "ai-presenter"
+    blob_connection_string: str = ""
+    blob_container: str = "slide-images"
 
 
 def load_config() -> AzureConfig:
@@ -41,4 +46,9 @@ def load_config() -> AzureConfig:
         libreoffice_path=os.environ.get("LIBREOFFICE_PATH", "soffice"),
         use_managed_identity=os.environ.get("AZURE_USE_MANAGED_IDENTITY", "").lower() == "true",
         use_local_search=os.environ.get("USE_LOCAL_SEARCH", "true").lower() == "true",
+        cosmos_endpoint=os.environ.get("AZURE_COSMOS_ENDPOINT", ""),
+        cosmos_key=os.environ.get("AZURE_COSMOS_KEY", ""),
+        cosmos_database=os.environ.get("AZURE_COSMOS_DATABASE", "ai-presenter"),
+        blob_connection_string=os.environ.get("AZURE_BLOB_CONNECTION_STRING", ""),
+        blob_container=os.environ.get("AZURE_BLOB_CONTAINER", "slide-images"),
     )
