@@ -23,6 +23,7 @@ class SlideData:
     body: str
     notes: str
     image_url: Optional[str] = None
+    video_url: Optional[str] = None
 
 
 @dataclass
@@ -32,18 +33,30 @@ class PresentationData:
     slide_count: int
     slides: list[SlideData] = field(default_factory=list)
     slide_images: list[tuple[int, bytes]] = field(default_factory=list)
+    # (slide_index, video_bytes, file_extension e.g. ".mp4")
+    slide_videos: list[tuple[int, bytes, str]] = field(default_factory=list)
+    pptx_url: Optional[str] = None
+    pptx_bytes: Optional[bytes] = None
 
 
 def parse_pptx(file_bytes: bytes, filename: str, libreoffice_path: str = "soffice") -> PresentationData:
     """Parse a .pptx file, extract slide text/notes, and render slide images."""
     prs = Presentation(io.BytesIO(file_bytes))
     slides: list[SlideData] = []
+    slide_videos: list[tuple[int, bytes, str]] = []
 
     for i, slide in enumerate(prs.slides):
         title = _extract_title(slide)
         body = _extract_body(slide)
         notes = _extract_notes(slide)
-        slides.append(SlideData(index=i, title=title, body=body, notes=notes))
+        slide_data = SlideData(index=i, title=title, body=body, notes=notes)
+        slides.append(slide_data)
+
+        video = _extract_slide_video(slide)
+        if video:
+            video_bytes, ext = video
+            slide_videos.append((i, video_bytes, ext))
+            log.info("Extracted embedded video from slide %d (%s, %d bytes)", i + 1, ext, len(video_bytes))
 
     slide_images = _render_slides(file_bytes, len(slides), libreoffice_path)
 
@@ -54,16 +67,27 @@ def parse_pptx(file_bytes: bytes, filename: str, libreoffice_path: str = "soffic
         slide_count=len(slides),
         slides=slides,
         slide_images=slide_images,
+        slide_videos=slide_videos,
+        pptx_bytes=file_bytes,
     )
 
 
 def _render_slides(file_bytes: bytes, slide_count: int, libreoffice_path: str) -> list[tuple[int, bytes]]:
-    """Render slides to PNG via LibreOffice headless + pdf2image (same as reference)."""
+    """Render slides to PNG via PowerPoint COM (Windows) or LibreOffice headless."""
+    import sys
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir_path = Path(tmpdir)
         pptx_path = tmpdir_path / "presentation.pptx"
         pptx_path.write_bytes(file_bytes)
 
+        # Try PowerPoint COM automation on Windows first
+        if sys.platform == "win32":
+            result = _render_via_powerpoint(pptx_path, tmpdir_path, slide_count)
+            if result:
+                return result
+
+        # Try LibreOffice headless
         try:
             result = subprocess.run(
                 [
@@ -96,6 +120,58 @@ def _render_slides(file_bytes: bytes, slide_count: int, libreoffice_path: str) -
 
         # Fallback: placeholder images
         return _fallback_placeholders(slide_count)
+
+
+def _render_via_powerpoint(pptx_path: Path, output_dir: Path, slide_count: int) -> list[tuple[int, bytes]] | None:
+    """Render slides to PNG using PowerPoint COM automation (Windows only)."""
+    try:
+        import comtypes.client
+
+        powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
+        powerpoint.Visible = 1  # Must be visible or minimized for Export to work
+
+        pres = powerpoint.Presentations.Open(str(pptx_path), WithWindow=False)
+        try:
+            png_dir = output_dir / "png_export"
+            png_dir.mkdir(exist_ok=True)
+            # Export all slides as PNG (18 = ppSaveAsPNG)
+            pres.SaveAs(str(png_dir / "slide"), 18)
+        finally:
+            pres.Close()
+
+        # PowerPoint SaveAs creates a subdirectory named after the target
+        # e.g. SaveAs("png_export/slide", 18) → png_export/slide/Slide1.PNG
+        sub_dir = png_dir / "slide"
+        slide_images = []
+        for i in range(slide_count):
+            candidates = [
+                sub_dir / f"Slide{i + 1}.PNG",
+                sub_dir / f"Slide{i + 1}.png",
+                png_dir / f"Slide{i + 1}.PNG",
+                png_dir / f"Slide{i + 1}.png",
+            ]
+            for candidate in candidates:
+                if candidate.exists():
+                    slide_images.append((i, candidate.read_bytes()))
+                    break
+            else:
+                # Glob inside subdirectory — anchor to avoid Slide10 matching Slide1
+                matches = [
+                    p for p in sub_dir.glob(f"Slide{i + 1}.*")
+                    if p.is_file()
+                ] if sub_dir.exists() else []
+                if matches:
+                    slide_images.append((i, matches[0].read_bytes()))
+
+        if slide_images:
+            log.info("Rendered %d slides via PowerPoint COM", len(slide_images))
+            return slide_images
+
+        log.warning("PowerPoint COM export produced no images")
+        return None
+    except Exception as e:
+        log.warning("PowerPoint COM rendering failed: %s", e)
+        return None
 
 
 def _find_poppler() -> str | None:
@@ -140,6 +216,45 @@ def _fallback_placeholders(slide_count: int) -> list[tuple[int, bytes]]:
     return results
 
 
+# Relationship types used by PowerPoint for embedded/linked video media
+_VIDEO_RELTYPES = frozenset({
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/video",
+    "http://schemas.microsoft.com/office/2007/relationships/media",
+})
+
+# Content-type prefixes that indicate video
+_VIDEO_CT_PREFIXES = ("video/", "application/vnd.ms-asf")
+
+# Extension → MIME type mapping for the file-serving endpoint
+_EXT_TO_MIME: dict[str, str] = {
+    ".mp4": "video/mp4",
+    ".m4v": "video/mp4",
+    ".mov": "video/quicktime",
+    ".wmv": "video/x-ms-wmv",
+    ".avi": "video/x-msvideo",
+    ".webm": "video/webm",
+}
+
+
+def _extract_slide_video(slide) -> Optional[tuple[bytes, str]]:
+    """Return the first embedded (non-linked) video on a slide as (bytes, ext), or None."""
+    for rel in slide.part.rels.values():
+        if rel.reltype not in _VIDEO_RELTYPES:
+            continue
+        # Skip externally linked videos (e.g. YouTube) — only serve embedded files
+        if rel.is_external:
+            continue
+        try:
+            part = rel.target_part
+            ct: str = part.content_type
+            if any(ct.startswith(p) for p in _VIDEO_CT_PREFIXES) or "video" in ct.lower():
+                ext = Path(part.partname).suffix.lower() or ".mp4"
+                return part.blob, ext
+        except Exception as exc:
+            log.debug("Skipping video rel %s: %s", rel.reltype, exc)
+    return None
+
+
 def _extract_title(slide) -> str:
     """Extract the title from a slide."""
     if slide.shapes.title and slide.shapes.title.has_text_frame:
@@ -161,7 +276,30 @@ def _extract_body(slide) -> str:
 
 
 def _extract_notes(slide) -> str:
-    """Extract speaker notes from a slide."""
-    if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
-        return slide.notes_slide.notes_text_frame.text.strip()
-    return ""
+    """Extract speaker notes from a slide.
+
+    Tries the standard notes_text_frame first, then falls back to
+    scanning all shapes in the notes slide for text content.  Some
+    PPTX templates store notes in non-placeholder shapes.
+    """
+    if not slide.has_notes_slide:
+        return ""
+
+    notes_slide = slide.notes_slide
+
+    # Primary: standard notes body placeholder
+    if notes_slide.notes_text_frame:
+        text = notes_slide.notes_text_frame.text.strip()
+        if text:
+            return text
+
+    # Fallback: collect text from all shapes on the notes slide,
+    # skipping the slide-image placeholder (idx 0) which just has
+    # a thumbnail label.
+    parts: list[str] = []
+    for shape in notes_slide.shapes:
+        if shape.has_text_frame:
+            tf_text = shape.text_frame.text.strip()
+            if tf_text and tf_text != slide.shapes.title.text.strip() if slide.shapes.title else True:
+                parts.append(tf_text)
+    return "\n".join(parts)

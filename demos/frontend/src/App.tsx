@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import PptUpload from './components/PptUpload';
+import PresentationList from './components/PresentationList';
 import SlideViewer from './components/SlideViewer';
 import AvatarPanel from './components/AvatarPanel';
 import LanguageSelector from './components/LanguageSelector';
 import QaChat from './components/QaChat';
-import type { Presentation } from './services/api';
+import { getSlides, getTranslationsStatus, type Presentation } from './services/api';
 import { initializeTeams, isInTeams, getTeamsTheme, onTeamsThemeChange } from './services/teams';
 
 // Teams theme palette
@@ -73,6 +74,8 @@ export default function App() {
   const [presentation, setPresentation] = useState<Presentation | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [language, setLanguage] = useState('en-US');
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const [autoPlayVideo, setAutoPlayVideo] = useState(false);
   const [inTeams, setInTeams] = useState(false);
   const [teamsTheme, setTeamsTheme] = useState('default');
 
@@ -85,6 +88,48 @@ export default function App() {
       }
     });
   }, []);
+
+  const [translationStatus, setTranslationStatus] = useState<string | null>(null);
+
+  // Re-fetch slides when language changes to pick up cached translations from CosmosDB
+  useEffect(() => {
+    if (!presentation) return;
+    getSlides(presentation.id)
+      .then((fresh) => setPresentation(fresh))
+      .catch(() => {}); // silently ignore if backend unreachable
+  }, [language, presentation?.id]);
+
+  // Poll background batch-translation progress after a new upload.
+  // When completed, re-fetch slides from Cosmos DB to get all translated_notes.
+  useEffect(() => {
+    if (!presentation) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const status = await getTranslationsStatus(presentation.id);
+        if (cancelled) return;
+        if (status.status === 'in_progress') {
+          setTranslationStatus(`Translating notes: ${status.completed}/${status.total} languages...`);
+          setTimeout(poll, 3000);
+        } else if (status.status === 'completed') {
+          setTranslationStatus(null);
+          // Re-fetch slides to get all translated_notes from Cosmos DB
+          try {
+            const fresh = await getSlides(presentation.id);
+            if (!cancelled) setPresentation(fresh);
+          } catch (e) {
+            console.warn('Failed to refresh slides after translation:', e);
+          }
+        } else {
+          setTranslationStatus(null);
+        }
+      } catch {
+        if (!cancelled) setTranslationStatus(null);
+      }
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [presentation?.id]);
 
   const styles = getStyles(inTeams, teamsTheme);
 
@@ -103,6 +148,19 @@ export default function App() {
       </header>
 
       <main style={styles.main}>
+        {translationStatus && (
+          <div style={{
+            background: '#e0edff',
+            color: '#1d4ed8',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            marginBottom: '12px',
+            textAlign: 'center' as const,
+          }}>
+            ⏳ {translationStatus}
+          </div>
+        )}
         {!presentation ? (
           <div style={{ ...styles.card, maxWidth: '600px', margin: inTeams ? '24px auto' : '60px auto', textAlign: 'center' as const }}>
             <h2 style={{ marginBottom: '16px' }}>Upload a Presentation</h2>
@@ -111,9 +169,27 @@ export default function App() {
               The AI avatar will present your slides with multilingual text-to-speech.
             </p>
             <PptUpload onUploaded={setPresentation} />
+            <PresentationList onSelect={(p) => { setPresentation(p); setCurrentSlide(0); }} />
           </div>
         ) : (
-          <div style={styles.grid}>
+          <>
+            <button
+              onClick={() => { setPresentation(null); setCurrentSlide(0); }}
+              style={{
+                background: '#e2e8f0',
+                color: '#334155',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                padding: '6px 14px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                marginBottom: '12px',
+                alignSelf: 'flex-start',
+              }}
+            >
+              ← Back to presentations
+            </button>
+            <div style={styles.grid}>
             <div style={styles.leftPanel}>
               <div style={styles.card}>
                 <SlideViewer
@@ -121,6 +197,11 @@ export default function App() {
                   currentSlide={currentSlide}
                   onSlideChange={setCurrentSlide}
                   language={language}
+                  autoPlayVideo={autoPlayVideo}
+                  onVideoPlayingChange={(playing) => {
+                    setVideoPlaying(playing);
+                    if (playing) setAutoPlayVideo(false);
+                  }}
                 />
               </div>
             </div>
@@ -130,6 +211,9 @@ export default function App() {
                   presentation={presentation}
                   currentSlide={currentSlide}
                   language={language}
+                  onSlideChange={setCurrentSlide}
+                  videoPlaying={videoPlaying}
+                  onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
                 />
               </div>
               <div style={styles.card}>
@@ -140,6 +224,7 @@ export default function App() {
               </div>
             </div>
           </div>
+          </>
         )}
       </main>
     </div>
