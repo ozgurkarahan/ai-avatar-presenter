@@ -1,0 +1,134 @@
+<mxfile host="app.diagrams.net" modified="2026-04-06T22:03:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="uc2-batch" name="UC2 — Batch Video">
+    <mxGraphModel dx="1200" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="UC2 — Batch Video Generation Sequence" style="text;html=1;align=center;fontSize=16;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="250" y="10" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- PARTICIPANTS -->
+        <mxCell id="p-user" value="Content&#xa;Creator" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="30" y="60" width="100" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="p-wa" value="Web App&#xa;(FastAPI)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#C8E6C9;strokeColor=#43A047;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="210" y="60" width="100" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="p-cdb" value="Cosmos DB" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#E0F7FA;strokeColor=#00838F;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="390" y="60" width="100" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="p-llm" value="Azure OpenAI&#xa;(GPT-4.1)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F8BBD0;strokeColor=#E91E63;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="570" y="60" width="100" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="p-av" value="Azure Speech&#xa;(Batch Avatar)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#E8EAF6;strokeColor=#5C6BC0;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="750" y="60" width="100" height="1180" as="geometry" />
+        </mxCell>
+        <mxCell id="p-st" value="Azure Blob&#xa;Storage" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#FFF3E0;strokeColor=#E65100;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="930" y="60" width="100" height="1180" as="geometry" />
+        </mxCell>
+
+        <!-- VIDEO GENERATION PIPELINE -->
+        <mxCell id="n1" value="VIDEO GENERATION PIPELINE" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E3F2FD;strokeColor=#90CAF9;fontColor=#1565C0;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="30" y="130" width="1000" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="1. Select presentation + language + avatar" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="80" y="180" as="sourcePoint" /><mxPoint x="260" y="180" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m2" value="2. Collect slide texts (notes > body > title)" style="html=1;verticalAlign=bottom;endArrow=block;curved=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="270" y="220" as="sourcePoint" /><mxPoint x="270" y="240" as="targetPoint" />
+            <Array as="points"><mxPoint x="310" y="230" /></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Alt box -->
+        <mxCell id="alt1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#A5D6A7;dashed=1;dashPattern=5 3;" vertex="1" parent="1">
+          <mxGeometry x="220" y="260" width="470" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="alt1-label" value="alt [Cached translations available in Cosmos DB]" style="text;html=1;fontSize=9;fontColor=#2E7D32;fontStyle=3;align=left;" vertex="1" parent="1">
+          <mxGeometry x="225" y="263" width="300" height="16" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m3a" value="3a. Fetch cached translated_notes" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="260" y="300" as="sourcePoint" /><mxPoint x="440" y="300" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m3b" value="3b. Return cached translations" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="440" y="340" as="sourcePoint" /><mxPoint x="260" y="340" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="alt-div" value="" style="endArrow=none;dashed=1;dashPattern=3 3;strokeColor=#A5D6A7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="220" y="370" as="sourcePoint" /><mxPoint x="690" y="370" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="alt-else" value="else [Translate on demand]" style="text;html=1;fontSize=9;fontColor=#666666;fontStyle=2;align=left;" vertex="1" parent="1">
+          <mxGeometry x="225" y="373" width="180" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- Loop inside else -->
+        <mxCell id="loop-t" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#F8BBD0;dashed=1;dashPattern=5 3;" vertex="1" parent="1">
+          <mxGeometry x="235" y="395" width="440" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="loop-t-label" value="loop [For each slide if language != source]" style="text;html=1;fontSize=8;fontColor=#C62828;fontStyle=3;align=left;" vertex="1" parent="1">
+          <mxGeometry x="240" y="397" width="250" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="m3c" value="3c. Translate speaker notes" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="260" y="430" as="sourcePoint" /><mxPoint x="620" y="430" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m3d" value="3d. Translated text" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="620" y="460" as="sourcePoint" /><mxPoint x="260" y="460" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Build SSML + Submit -->
+        <mxCell id="m4" value="4. Build SSML with DragonHD voice name" style="html=1;verticalAlign=bottom;endArrow=block;curved=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="270" y="520" as="sourcePoint" /><mxPoint x="270" y="540" as="targetPoint" />
+            <Array as="points"><mxPoint x="310" y="530" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m5" value="5. PUT /avatar/batchsyntheses/{job_id}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="260" y="560" as="sourcePoint" /><mxPoint x="800" y="560" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m6" value="6. Job accepted (202)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="800" y="600" as="sourcePoint" /><mxPoint x="260" y="600" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m7" value="7. {job_id, status: submitted}" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="260" y="640" as="sourcePoint" /><mxPoint x="80" y="640" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- ASYNC RENDERING -->
+        <mxCell id="n2" value="ASYNC RENDERING" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E8F5E9;strokeColor=#A5D6A7;fontColor=#2E7D32;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="30" y="680" width="1000" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Poll loop -->
+        <mxCell id="loop2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#90CAF9;dashed=1;dashPattern=5 3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="780" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="loop2-label" value="loop [Poll until complete]" style="text;html=1;fontSize=9;fontColor=#1565C0;fontStyle=3;align=left;" vertex="1" parent="1">
+          <mxGeometry x="45" y="723" width="160" height="16" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m8" value="8. Check status" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="80" y="760" as="sourcePoint" /><mxPoint x="260" y="760" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m9" value="9. GET /avatar/batchsyntheses/{job_id}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="260" y="800" as="sourcePoint" /><mxPoint x="800" y="800" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m10" value="10. {status, outputs}" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="800" y="840" as="sourcePoint" /><mxPoint x="260" y="840" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Store + return -->
+        <mxCell id="m11" value="11. Store rendered MP4" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="800" y="910" as="sourcePoint" /><mxPoint x="980" y="910" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m12" value="12. Video ready (download URL)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="260" y="950" as="sourcePoint" /><mxPoint x="80" y="950" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
