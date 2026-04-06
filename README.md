@@ -27,23 +27,26 @@
 ```
 ┌──────────────────┐       ┌──────────────────────┐       ┌─────────────────────────┐
 │                  │       │                      │       │    Azure Services       │
-│   Browser        │       │   FastAPI Backend     │       │                         │
-│   (React SPA)    │◄─────►│   (Python 3.12)      │──────►│  Azure AI Speech        │
-│                  │ HTTP  │                      │       │   ├─ VoiceLive Avatar    │
-│  ┌────────────┐  │  &    │  ┌────────────────┐  │       │   └─ Text-to-Speech     │
-│  │SlideViewer │  │ WS    │  │ PPTX Parser    │  │       │                         │
-│  │AvatarPanel │  │       │  │ Translation    │  │       │  Azure OpenAI           │
-│  │QA Chat     │  │       │  │ Avatar Service │  │       │   ├─ GPT-4.1            │
-│  │Language    │  │       │  │ QA (RAG)       │  │       │   └─ text-embedding-    │
-│  │ Selector   │  │       │  │ Voice Proxy    │  │       │       3-small           │
-│  └────────────┘  │       │  └────────────────┘  │       │                         │
-└──────────────────┘       └──────────────────────┘       └─────────────────────────┘
-                                     │
-                           ┌─────────┴─────────┐
-                           │  LibreOffice       │
-                           │  PPTX → PDF → PNG  │
-                           │  (Poppler)         │
-                           └───────────────────┘
+│   Browser /      │       │   FastAPI Backend     │       │                         │
+│   Teams Tab      │◄─────►│   (Python 3.12)      │──────►│  Azure AI Speech        │
+│   (React SPA)    │ HTTP  │                      │       │   ├─ VoiceLive Avatar    │
+│                  │  &    │  ┌────────────────┐  │       │   ├─ DragonHD TTS       │
+│  ┌────────────┐  │ WS    │  │ PPTX Parser    │  │       │   └─ Batch Synthesis    │
+│  │SlideViewer │  │       │  │ Translation    │  │       │                         │
+│  │AvatarPanel │  │       │  │ Avatar Service │  │       │  Azure OpenAI           │
+│  │QA Chat     │  │       │  │ QA (RAG)       │  │       │   ├─ GPT-4.1            │
+│  │Agent Chat  │  │       │  │ Voice Proxy    │  │       │   └─ text-embedding-    │
+│  │Language    │  │       │  │ Storage Service│  │       │       3-small           │
+│  │ Selector   │  │       │  │ Agent (FC)     │  │       │                         │
+│  │Pres. List  │  │       │  └────────────────┘  │       │  Azure Cosmos DB        │
+│  └────────────┘  │       │                      │       │   └─ Presentation data  │
+└──────────────────┘       └──────────────────────┘       │                         │
+                                     │                    │  Azure Blob Storage     │
+                           ┌─────────┴─────────┐         │   └─ Slide images + PPTX│
+                           │  LibreOffice       │         │                         │
+                           │  PPTX → PDF → PNG  │         │  Azure Container Apps   │
+                           │  (Poppler)         │         │  Azure Container Registry│
+                           └───────────────────┘         └─────────────────────────┘
 ```
 
 ---
@@ -54,12 +57,14 @@
 | ---------------- | ----------------------------------------------------------- |
 | **Frontend**     | React 19, TypeScript, Vite 8                                |
 | **Backend**      | Python 3.12, FastAPI, Uvicorn, Gunicorn                     |
-| **AI / Speech**  | Azure AI Speech (VoiceLive Avatar API, TTS)                 |
+| **AI / Speech**  | Azure AI Speech (VoiceLive Avatar API, DragonHD TTS, Batch Synthesis) |
 | **AI / LLM**    | Azure OpenAI — GPT-4.1, text-embedding-3-small              |
+| **AI / Agent**   | Function-calling agent (translate, Q&A, SSML generation)    |
 | **Slide Render** | LibreOffice Impress (headless) → PDF → pdf2image (Poppler)  |
 | **Vector Search**| In-memory numpy cosine similarity                           |
+| **Persistence**  | Azure Cosmos DB (Serverless) + Azure Blob Storage (SAS URLs)|
 | **Auth**         | Azure AD / Managed Identity (`DefaultAzureCredential`)      |
-| **Infra**        | Azure Container Apps, Bicep IaC, Azure Developer CLI (`azd`)|
+| **Infra**        | Azure Container Apps, ACR, Bicep IaC, Azure Developer CLI (`azd`)|
 | **Teams**        | `@microsoft/teams-js` SDK, Static Tab manifest (v1.17)      |
 | **Containerization** | Docker (multi-stage build)                              |
 
@@ -190,9 +195,12 @@ azd up
 ```
 
 The Bicep templates in `infra/` provision:
-- **Azure Container App** with managed identity
-- **Role assignments** for AI Speech and OpenAI access
-- References to **existing Azure AI Services** and **Azure OpenAI** resources
+- **Azure Container App** with managed identity + **Container Registry**
+- **Azure Cosmos DB** (Serverless) for presentation persistence
+- **Azure Blob Storage** for slide images and PPTX files
+- **Azure AI Services** (Speech/Avatar) and **Azure OpenAI** with model deployments
+- **RBAC role assignments** for managed identity access to all services
+- **Log Analytics** workspace for container monitoring
 
 > Configure deployment parameters in `infra/main.parameters.json` before running `azd up`.
 
@@ -229,11 +237,15 @@ Then sideload `teams-app-package.zip` in Teams:
 | `GET`  | `/api/presentations`           | List all uploaded presentations          |
 | `GET`  | `/api/slides/{id}`             | Get slide data for a presentation        |
 | `GET`  | `/api/slides/{id}/{n}.png`     | Serve a rendered slide image (PNG)       |
+| `DELETE`| `/api/presentations/{id}`     | Delete presentation + assets             |
+| `POST` | `/api/presentations/{id}/translate-notes` | Batch-translate notes (cached) |
+| `GET`  | `/api/presentations/{id}/translations-status` | Translation progress    |
 | `POST` | `/api/translate`               | Translate text to a target language       |
 | `GET`  | `/api/avatar/token`            | Get Speech SDK authentication token      |
 | `POST` | `/api/avatar/batch`            | Start batch avatar video synthesis       |
 | `GET`  | `/api/avatar/batch/{job_id}`   | Check batch synthesis job status         |
 | `POST` | `/api/qa`                      | Ask a question about slide content (RAG) |
+| `POST` | `/api/agent/chat`              | Multi-turn agent chat (function-calling) |
 | `WS`   | `/ws/voice`                    | WebSocket proxy for VoiceLive avatar     |
 | `GET`  | `/api/health`                  | Health check endpoint                    |
 
@@ -247,8 +259,10 @@ Then sideload `teams-app-package.zip` in Teams:
 ai-presenter/
 ├── demos/
 │   ├── backend/                  # FastAPI backend
-│   │   ├── app.py               # Main application & API routes
+│   │   ├── app.py               # Main application & API routes + agent chat
 │   │   ├── config.py            # Configuration management
+│   │   ├── agent_app.py         # Azure AI Foundry agent entry point
+│   │   ├── agent_tools.py       # Agent tool definitions
 │   │   ├── requirements.txt     # Python dependencies
 │   │   ├── .env.example         # Environment variable template
 │   │   ├── data/
@@ -259,16 +273,18 @@ ai-presenter/
 │   │       ├── translation.py   # Azure OpenAI translation
 │   │       ├── avatar.py        # Azure Speech avatar service
 │   │       ├── voice_proxy.py   # WebSocket voice proxy
-│   │       └── qa.py            # RAG-based slide Q&A
+│   │       ├── qa.py            # RAG-based slide Q&A
+│   │       └── storage.py       # Cosmos DB + Blob Storage persistence
 │   └── frontend/                 # React SPA
 │       ├── src/
 │       │   ├── main.tsx         # React entry point
-│       │   ├── App.tsx          # Root component
+│       │   ├── App.tsx          # Root component (Teams theme support)
 │       │   ├── components/
 │       │   │   ├── PptUpload.tsx       # File upload UI
+│       │   │   ├── PresentationList.tsx # Saved presentations (CRUD)
 │       │   │   ├── SlideViewer.tsx     # Slide display & navigation
 │       │   │   ├── AvatarPanel.tsx     # Avatar video panel
-│       │   │   ├── LanguageSelector.tsx # Language picker
+│       │   │   ├── LanguageSelector.tsx # Language picker (10 languages)
 │       │   │   └── QaChat.tsx          # Q&A chat interface
 │       │   └── services/
 │       │       ├── api.ts       # API client
@@ -278,13 +294,16 @@ ai-presenter/
 │       ├── package.json
 │       └── vite.config.ts
 ├── infra/                        # Azure Bicep IaC
-│   ├── main.bicep               # Main template
+│   ├── main.bicep               # Main template (subscription-scoped)
 │   ├── main.parameters.json     # Deployment parameters
 │   ├── main.parameters.copilot.json  # Copilot instance parameters
 │   └── modules/
-│       ├── containerapp.bicep   # Container App definition
-│       ├── existing-ai.bicep    # AI service references
-│       └── roles.bicep          # RBAC role assignments
+│       ├── ai-services.bicep    # Azure AI Services (Speech/Avatar)
+│       ├── openai.bicep         # Azure OpenAI + model deployments
+│       ├── cosmos.bicep         # Cosmos DB (Serverless)
+│       ├── storage.bicep        # Blob Storage account
+│       ├── containerapp.bicep   # Container App + ACR + Log Analytics
+│       └── roles.bicep          # RBAC role assignments (5 roles)
 ├── scripts/
 │   └── package-teams-app.ps1    # Teams app packaging script
 ├── docs/                         # Documentation
@@ -292,7 +311,8 @@ ai-presenter/
 │   ├── deep-dive-azure.md
 │   ├── deploy-copilot.md        # Copilot instance deployment guide
 │   ├── feasibility.md
-│   └── teams-integration.md
+│   ├── teams-integration.md
+│   └── diagrams/                # Mermaid + draw.io diagrams
 ├── Dockerfile                    # Multi-stage Docker build
 ├── azure.yaml                    # Azure Developer CLI config
 ├── run-local.ps1                 # Local development script (Windows)
