@@ -31,6 +31,15 @@ param openAiChatDeployment string
 @description('Azure OpenAI embedding deployment name')
 param openAiEmbeddingDeployment string
 
+@description('Azure Cosmos DB endpoint')
+param cosmosEndpoint string
+
+@description('Azure Storage Account name')
+param storageAccountName string
+
+@description('Azure Blob container name')
+param blobContainerName string = 'slide-images'
+
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: acrName
   location: location
@@ -115,6 +124,9 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: openAiEmbeddingDeployment }
             { name: 'AZURE_USE_MANAGED_IDENTITY', value: 'true' }
             { name: 'USE_LOCAL_SEARCH', value: 'true' }
+            { name: 'AZURE_COSMOS_ENDPOINT', value: cosmosEndpoint }
+            { name: 'AZURE_BLOB_ACCOUNT_NAME', value: storageAccountName }
+            { name: 'AZURE_BLOB_CONTAINER', value: blobContainerName }
           ]
         }
       ]
