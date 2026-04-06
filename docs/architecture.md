@@ -381,11 +381,12 @@ ai-presenter/
 │   ├── feasibility.md                 ← Feasibility assessment
 │   ├── teams-integration.md           ← Teams embedding analysis
 │   └── diagrams/
-│       ├── azure-architecture.drawio  ← draw.io visual diagram
-│       ├── uc1-bronze-voicerag-sequence.mmd
-│       ├── uc1-silver-ingestion-sequence.mmd
-│       ├── uc1-silver-runtime-sequence.mmd
-│       └── uc2-batch-video-sequence.mmd
+│       ├── azure-architecture.drawio           ← Azure resource topology
+│       ├── uc1-silver-ingestion-sequence.drawio ← Upload + persist flow
+│       ├── uc1-silver-runtime-sequence.drawio   ← Runtime presentation flow
+│       ├── uc1-bronze-voicerag-sequence.drawio  ← VoiceLive + Q&A flow
+│       ├── uc2-batch-video-sequence.drawio      ← Batch video generation
+│       └── agent-chat-sequence.drawio           ← Agent function-calling flow
 ├── demos/
 │   ├── backend/
 │   │   ├── app.py                     ← FastAPI app (REST + WebSocket + Agent)
