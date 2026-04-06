@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant L as Learner
+    participant WA as Web Application
+    participant VL as Voice Live API
+    participant CDB as Azure Cosmos DB
+    participant LLM as Azure OpenAI<br/>(GPT-4.1)
+    participant AVT as TTS Avatar<br/>(DragonHD)
+    participant SD as Slide Display
+
+    Note over L,SD: RUNTIME SESSION
+
+    L->>WA: 1. Connect Avatar
+    WA->>VL: 2. WebSocket + session.update<br/>{voice: DragonHD, avatar: lisa}
+    VL->>AVT: 3. Avatar session config<br/>(semantic VAD, echo cancellation)
+    AVT-->>WA: 4. ICE servers → WebRTC handshake
+    Note over WA,AVT: WebRTC connected
+
+    L->>WA: 5. Navigate to slide N
+    WA->>CDB: 6. Fetch slide + cached translations
+    WA->>SD: 7. Display slide image (SAS URL)
+
+    Note over L,SD: TRANSLATE + SPEAK
+
+    alt Cached translation exists in Cosmos DB
+        CDB-->>WA: 8a. Return cached translated_notes
+    else No cache — translate on demand
+        WA->>LLM: 8b. Translate speaker notes
+        LLM-->>WA: 8c. Translated text
+    end
+
+    WA->>VL: 9. conversation.item.create + response.create
+    VL->>AVT: 10. TTS render (DragonHD voice)
+    AVT-->>L: 11. Avatar speaks (WebRTC video+audio)
+    SD-->>L: 12. Slide displayed alongside avatar
+
+    Note over L,SD: INTERACTIVE Q&A
+
+    L->>WA: 13. Ask question
+    WA->>LLM: 14. Embed question
+    WA->>WA: 15. numpy cosine search (top 3 slides)
+    WA->>LLM: 16. Generate answer (RAG)
+    LLM-->>WA: 17. Answer
+    WA-->>L: 18. Display answer + slide refs
