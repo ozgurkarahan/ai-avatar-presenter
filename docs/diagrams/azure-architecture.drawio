@@ -1,294 +1,309 @@
-<mxfile host="app.diagrams.net" modified="2026-04-02T00:00:00.000Z" agent="Claude" version="24.0.0" type="device">
-  <diagram id="azure-arch" name="AI Presenter — Azure Architecture">
-    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+<mxfile host="app.diagrams.net" modified="2026-04-06T21:46:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="azure-arch" name="Azure Architecture">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
       <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
 
-        <!-- ============ TITLE ============ -->
-        <mxCell id="title" value="AI Presenter — Azure Component Architecture" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=18;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
-          <mxGeometry x="480" y="15" width="440" height="40" as="geometry"/>
-        </mxCell>
-        <mxCell id="subtitle" value="Sweden Central Region" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="610" y="48" width="160" height="25" as="geometry"/>
+        <!-- ==================== TITLE ==================== -->
+        <mxCell id="title" value="&lt;b&gt;AI Presenter — Azure Architecture&lt;/b&gt;&lt;br&gt;RFI559 AI Avatar Solution for Saint-Gobain" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="540" y="20" width="380" height="50" as="geometry" />
         </mxCell>
 
-        <!-- ============ USERS ============ -->
-        <mxCell id="user-trainer" value="Content Creator" style="shape=mxgraph.azure.user;fillColor=#0078D4;fontColor=#333333;strokeColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="60" y="200" width="47.5" height="50" as="geometry"/>
-        </mxCell>
-        <mxCell id="user-learner" value="Learner" style="shape=mxgraph.azure.user;fillColor=#0078D4;fontColor=#333333;strokeColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="60" y="400" width="47.5" height="50" as="geometry"/>
+        <!-- ==================== CLIENT ZONE ==================== -->
+        <mxCell id="client-group" value="Client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontStyle=1;fontSize=13;arcSize=8;dashed=1;dashPattern=5 5;" vertex="1" parent="1">
+          <mxGeometry x="30" y="90" width="340" height="340" as="geometry" />
         </mxCell>
 
-        <!-- ============ AZURE SUBSCRIPTION BOUNDARY ============ -->
-        <mxCell id="azure-sub" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#0078D4;strokeWidth=2;arcSize=3;" vertex="1" parent="1">
-          <mxGeometry x="200" y="80" width="1320" height="740" as="geometry"/>
-        </mxCell>
-        <mxCell id="azure-sub-label" value="  Azure Subscription — Sweden Central  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#0078D4;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=11;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="210" y="85" width="270" height="24" as="geometry"/>
+        <!-- Browser -->
+        <mxCell id="browser" value="&lt;b&gt;Browser&lt;/b&gt;&lt;br&gt;React 19 SPA" style="shape=mxgraph.azure.user;fillColor=#0078D4;fontColor=#ffffff;strokeColor=none;fontSize=11;html=1;verticalAlign=top;align=center;spacingTop=2;" vertex="1" parent="1">
+          <mxGeometry x="80" y="140" width="80" height="80" as="geometry" />
         </mxCell>
 
-        <!-- ============ CONTAINER APPS ============ -->
-        <mxCell id="aca-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F2FF;strokeColor=#0078D4;strokeWidth=1.5;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="230" y="130" width="380" height="440" as="geometry"/>
+        <!-- Frontend Components -->
+        <mxCell id="fe-slide" value="SlideViewer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="240" width="90" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="aca-label" value="  Azure Container Apps  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#0078D4;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="240" y="137" width="175" height="22" as="geometry"/>
+        <mxCell id="fe-avatar" value="AvatarPanel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="150" y="240" width="90" height="30" as="geometry" />
         </mxCell>
-
-        <!-- Web Application box -->
-        <mxCell id="webapp" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#0078D4;strokeWidth=1;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="250" y="175" width="340" height="380" as="geometry"/>
+        <mxCell id="fe-upload" value="PptUpload" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="240" width="90" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="webapp-label" value="  Web Application (React + FastAPI)  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#005A9E;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="260" y="182" width="255" height="22" as="geometry"/>
+        <mxCell id="fe-qa" value="QA Chat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="280" width="90" height="30" as="geometry" />
         </mxCell>
-
-        <!-- Modules inside Web App -->
-        <mxCell id="wa-upload" value="PPT Upload + Parsing&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;python-pptx, LibreOffice&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FF9800;fontSize=9;fontStyle=0;" vertex="1" parent="1">
-          <mxGeometry x="270" y="218" width="145" height="42" as="geometry"/>
+        <mxCell id="fe-lang" value="Language (10)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="150" y="280" width="90" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="wa-viewer" value="Slide Viewer +&lt;br&gt;Navigation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FF9800;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="430" y="218" width="145" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="wa-avatar" value="Avatar Panel&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;WebRTC video + audio&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#4CAF50;fontSize=9;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="270" y="275" width="145" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="wa-proxy" value="Voice WebSocket Proxy&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;voice_proxy.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#4CAF50;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="430" y="275" width="145" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="wa-translate" value="Translation Service&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;GPT-4.1 translate + detect&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#2196F3;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="270" y="332" width="145" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="wa-qa" value="Q&amp;A RAG Service&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;embed → search → generate&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#2196F3;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="430" y="332" width="145" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="wa-batch" value="Batch Avatar Service&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;SSML → async MP4&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#4CAF50;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="270" y="389" width="145" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="wa-lang" value="Language Selector&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;37+ languages&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#9C27B0;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="430" y="389" width="145" height="42" as="geometry"/>
+        <mxCell id="fe-list" value="Pres. List" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="250" y="280" width="90" height="30" as="geometry" />
         </mxCell>
 
-        <!-- Protocols inside web app -->
-        <mxCell id="wa-proto" value="&lt;font color=&quot;#666&quot; style=&quot;font-size:8px&quot;&gt;HTTPS  |  WebSocket  |  WebRTC (receive)&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;" vertex="1" parent="1">
-          <mxGeometry x="310" y="445" width="220" height="18" as="geometry"/>
+        <!-- Teams Tab -->
+        <mxCell id="teams" value="&lt;b&gt;Microsoft Teams&lt;/b&gt;&lt;br&gt;Static Tab (iframe)" style="shape=mxgraph.azure.microsoft;fillColor=#7B83EB;fontColor=#ffffff;strokeColor=none;fontSize=11;html=1;verticalAlign=top;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="140" width="80" height="80" as="geometry" />
         </mxCell>
 
-        <!-- ============ AZURE AI SPEECH ============ -->
-        <mxCell id="speech-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#FFC107;strokeWidth=1.5;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="680" y="130" width="300" height="240" as="geometry"/>
+        <!-- Protocol Labels -->
+        <mxCell id="proto-rest" value="REST /api/*" style="text;html=1;fontSize=9;fontColor=#666666;align=center;" vertex="1" parent="1">
+          <mxGeometry x="110" y="340" width="80" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="speech-icon" value="" style="shape=mxgraph.azure.speech;fillColor=#0078D4;strokeColor=none;fontColor=#FFFFFF;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="695" y="137" width="22" height="22" as="geometry"/>
+        <mxCell id="proto-ws" value="WS /ws/voice" style="text;html=1;fontSize=9;fontColor=#666666;align=center;" vertex="1" parent="1">
+          <mxGeometry x="210" y="340" width="80" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="speech-label" value="  Azure AI Speech  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#FFC107;fontColor=#000000;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="720" y="137" width="140" height="22" as="geometry"/>
-        </mxCell>
-
-        <mxCell id="speech-voicelive" value="Voice Live API&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Real-time speech-to-speech&lt;br&gt;+ Avatar rendering (WebRTC)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFC107;fontSize=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="700" y="175" width="255" height="50" as="geometry"/>
-        </mxCell>
-        <mxCell id="speech-tts" value="TTS Neural Voices&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;600+ voices, 150+ locales&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFC107;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="700" y="237" width="255" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="speech-batch" value="Batch Avatar Synthesis&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Async MP4 video generation&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#FFC107;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="700" y="291" width="255" height="42" as="geometry"/>
+        <mxCell id="proto-webrtc" value="WebRTC" style="text;html=1;fontSize=9;fontColor=#666666;align=center;" vertex="1" parent="1">
+          <mxGeometry x="115" y="370" width="60" height="20" as="geometry" />
         </mxCell>
 
-        <!-- ============ AZURE OPENAI ============ -->
-        <mxCell id="openai-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;strokeWidth=1.5;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="680" y="400" width="300" height="160" as="geometry"/>
-        </mxCell>
-        <mxCell id="openai-label" value="  Azure OpenAI  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#3F51B5;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="695" y="407" width="115" height="22" as="geometry"/>
+        <!-- ==================== RESOURCE GROUP ==================== -->
+        <mxCell id="rg" value="&lt;b&gt;Resource Group: rg-{environment}&lt;/b&gt;&lt;br&gt;Region: Sweden Central" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontStyle=0;fontSize=12;arcSize=5;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="420" y="90" width="1150" height="960" as="geometry" />
         </mxCell>
 
-        <mxCell id="openai-gpt" value="GPT-4.1&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Translation, Q&amp;A generation, script&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3F51B5;fontSize=10;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="700" y="442" width="255" height="42" as="geometry"/>
-        </mxCell>
-        <mxCell id="openai-embed" value="text-embedding-3-small&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Slide content embeddings for RAG&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3F51B5;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="700" y="496" width="255" height="42" as="geometry"/>
+        <!-- ==================== CONTAINER APPS ==================== -->
+        <mxCell id="ca-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="460" y="150" width="480" height="420" as="geometry" />
         </mxCell>
 
-        <!-- ============ AZURE AI SEARCH ============ -->
-        <mxCell id="search-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#009688;strokeWidth=1.5;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="680" y="590" width="300" height="100" as="geometry"/>
-        </mxCell>
-        <mxCell id="search-label" value="  Azure AI Search  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#009688;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="695" y="597" width="130" height="22" as="geometry"/>
-        </mxCell>
-        <mxCell id="search-detail" value="Vector Store + Semantic Ranking&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Slide embeddings, hybrid search&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#009688;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="700" y="632" width="255" height="42" as="geometry"/>
+        <!-- Container App -->
+        <mxCell id="ca" value="&lt;b&gt;Azure Container Apps&lt;/b&gt;&lt;br&gt;ca-{token}&lt;br&gt;1 vCPU · 2 GiB · 1-3 replicas&lt;br&gt;System-assigned Managed Identity" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAlign=center;image=img/lib/azure2/containers/Container_Apps.svg;html=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="640" y="160" width="50" height="50" as="geometry" />
         </mxCell>
 
-        <!-- ============ AZURE BLOB STORAGE ============ -->
-        <mxCell id="storage-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#607D8B;strokeWidth=1.5;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="1060" y="130" width="220" height="200" as="geometry"/>
-        </mxCell>
-        <mxCell id="storage-icon" value="" style="shape=mxgraph.azure.storage;fillColor=#0078D4;strokeColor=none;" vertex="1" parent="1">
-          <mxGeometry x="1075" y="137" width="22" height="22" as="geometry"/>
-        </mxCell>
-        <mxCell id="storage-label" value="  Azure Blob Storage  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#607D8B;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="137" width="155" height="22" as="geometry"/>
-        </mxCell>
-        <mxCell id="blob-ppt" value="presentations/&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Uploaded .pptx files&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#607D8B;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="175" width="180" height="35" as="geometry"/>
-        </mxCell>
-        <mxCell id="blob-slides" value="slides/&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Rendered PNG images&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#607D8B;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="220" width="180" height="35" as="geometry"/>
-        </mxCell>
-        <mxCell id="blob-videos" value="videos/&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Generated MP4 avatar videos&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#607D8B;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="265" width="180" height="35" as="geometry"/>
+        <!-- FastAPI Backend -->
+        <mxCell id="fastapi" value="&lt;b&gt;FastAPI Backend&lt;/b&gt;&lt;br&gt;Python 3.12 + Gunicorn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0078D4;fontColor=#ffffff;strokeColor=none;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="230" width="280" height="35" as="geometry" />
         </mxCell>
 
-        <!-- ============ IDENTITY & SECURITY ============ -->
-        <mxCell id="identity-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#9C27B0;strokeWidth=1.5;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="1060" y="370" width="220" height="170" as="geometry"/>
+        <!-- Backend Services -->
+        <mxCell id="svc-parser" value="&lt;b&gt;PPTX Parser&lt;/b&gt;&lt;br&gt;python-pptx&lt;br&gt;LibreOffice + Poppler" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="480" y="280" width="110" height="55" as="geometry" />
         </mxCell>
-        <mxCell id="identity-icon" value="" style="shape=mxgraph.azure.azure_active_directory;fillColor=#0078D4;strokeColor=none;" vertex="1" parent="1">
-          <mxGeometry x="1075" y="377" width="22" height="22" as="geometry"/>
+        <mxCell id="svc-translate" value="&lt;b&gt;Translation&lt;/b&gt;&lt;br&gt;GPT-4.1&lt;br&gt;10 languages" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="600" y="280" width="110" height="55" as="geometry" />
         </mxCell>
-        <mxCell id="identity-label" value="  Identity &amp; Security  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#9C27B0;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="377" width="150" height="22" as="geometry"/>
+        <mxCell id="svc-avatar" value="&lt;b&gt;Avatar Service&lt;/b&gt;&lt;br&gt;Token + SSML&lt;br&gt;Batch synthesis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="720" y="280" width="110" height="55" as="geometry" />
         </mxCell>
-        <mxCell id="entra" value="Azure Entra ID&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;SSO with SG tenant + RBAC&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9C27B0;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="412" width="180" height="35" as="geometry"/>
+        <mxCell id="svc-voice" value="&lt;b&gt;Voice Proxy&lt;/b&gt;&lt;br&gt;WSS → VoiceLive&lt;br&gt;DragonHD voices" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="480" y="350" width="110" height="55" as="geometry" />
         </mxCell>
-        <mxCell id="mi" value="Managed Identity&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Service-to-service auth (no keys)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9C27B0;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="457" width="180" height="35" as="geometry"/>
+        <mxCell id="svc-qa" value="&lt;b&gt;Q&amp;A (RAG)&lt;/b&gt;&lt;br&gt;numpy cosine&lt;br&gt;embeddings" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="600" y="350" width="110" height="55" as="geometry" />
         </mxCell>
-        <mxCell id="keyvault" value="Azure Key Vault&lt;br&gt;&lt;font color=&quot;#888&quot; style=&quot;font-size:8px&quot;&gt;Customer-managed keys (CMK)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9C27B0;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="502" width="180" height="30" as="geometry"/>
+        <mxCell id="svc-storage" value="&lt;b&gt;Storage Service&lt;/b&gt;&lt;br&gt;Cosmos DB + Blob&lt;br&gt;SAS tokens" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="720" y="350" width="110" height="55" as="geometry" />
         </mxCell>
-
-        <!-- ============ OPERATIONS ============ -->
-        <mxCell id="ops-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFEBE9;strokeColor=#795548;strokeWidth=1.5;arcSize=6;" vertex="1" parent="1">
-          <mxGeometry x="1060" y="580" width="220" height="120" as="geometry"/>
-        </mxCell>
-        <mxCell id="ops-label" value="  Operations  " style="text;html=1;align=left;verticalAlign=middle;fillColor=#795548;fontColor=#FFFFFF;strokeColor=none;rounded=1;fontSize=10;fontStyle=1;spacingLeft=6;spacingRight=6;" vertex="1" parent="1">
-          <mxGeometry x="1075" y="587" width="100" height="22" as="geometry"/>
-        </mxCell>
-        <mxCell id="acr" value="Azure Container Registry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#795548;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="622" width="180" height="25" as="geometry"/>
-        </mxCell>
-        <mxCell id="monitor" value="Azure Monitor + Application Insights" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#795548;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="1080" y="657" width="180" height="25" as="geometry"/>
+        <mxCell id="svc-agent" value="&lt;b&gt;Agent Chat&lt;/b&gt;&lt;br&gt;Function-calling&lt;br&gt;5 tools" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="480" y="420" width="110" height="55" as="geometry" />
         </mxCell>
 
-        <!-- ============ CONNECTIONS ============ -->
-
-        <!-- Users → Web App -->
-        <mxCell id="c-trainer-wa" value="Upload PPT" style="endArrow=classic;html=1;strokeColor=#0078D4;strokeWidth=2;fontSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" source="user-trainer" target="webapp" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="c-learner-wa" value="Browse / Q&amp;A /&lt;br&gt;Avatar stream" style="endArrow=classic;html=1;strokeColor=#0078D4;strokeWidth=2;fontSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" source="user-learner" target="webapp" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- React Static -->
+        <mxCell id="static" value="React 19 Static Build" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6c8ebf;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="600" y="420" width="110" height="30" as="geometry" />
         </mxCell>
 
-        <!-- Web App → Azure AI Speech -->
-        <mxCell id="c-wa-voicelive" value="WSS + WebRTC" style="endArrow=classic;startArrow=classic;html=1;strokeColor=#FF5722;strokeWidth=2;fontSize=8;" edge="1" source="wa-proxy" target="speech-voicelive" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="c-wa-batch" value="REST" style="endArrow=classic;html=1;strokeColor=#FFC107;strokeWidth=1.5;fontSize=8;" edge="1" source="wa-batch" target="speech-batch" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- In-memory vector store -->
+        <mxCell id="vector" value="&lt;b&gt;In-Memory Vector Store&lt;/b&gt;&lt;br&gt;numpy cosine similarity&lt;br&gt;(ephemeral)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="730" y="420" width="100" height="60" as="geometry" />
         </mxCell>
 
-        <!-- Web App → Azure OpenAI -->
-        <mxCell id="c-wa-gpt" value="Chat API" style="endArrow=classic;html=1;strokeColor=#3F51B5;strokeWidth=1.5;fontSize=8;" edge="1" source="wa-translate" target="openai-gpt" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="c-wa-embed" value="Embeddings API" style="endArrow=classic;html=1;strokeColor=#3F51B5;strokeWidth=1.5;fontSize=8;" edge="1" source="wa-qa" target="openai-embed" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- API endpoints label -->
+        <mxCell id="api-label" value="&lt;b&gt;15 REST endpoints&lt;/b&gt; + &lt;b&gt;1 WebSocket&lt;/b&gt;&lt;br&gt;/api/upload · /api/slides · /api/translate&lt;br&gt;/api/avatar · /api/qa · /api/agent/chat · /ws/voice" style="text;html=1;fontSize=9;fontColor=#333333;align=center;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="510" y="500" width="300" height="50" as="geometry" />
         </mxCell>
 
-        <!-- Web App → AI Search -->
-        <mxCell id="c-wa-search" value="Vector search" style="endArrow=classic;html=1;strokeColor=#009688;strokeWidth=1.5;fontSize=8;" edge="1" source="wa-qa" target="search-detail" parent="1">
+        <!-- ==================== ACR ==================== -->
+        <mxCell id="acr" value="&lt;b&gt;Container Registry&lt;/b&gt;&lt;br&gt;cr{token} (Basic)&lt;br&gt;Multi-stage Docker" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAlign=center;image=img/lib/azure2/containers/Container_Registries.svg;html=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="470" y="560" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ACR to CA arrow -->
+        <mxCell id="acr-to-ca" value="docker pull" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=0;exitDx=0;exitDy=0;fontSize=8;fontColor=#888888;strokeColor=#999999;dashed=1;" edge="1" source="acr" target="ca-group" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== LOG ANALYTICS ==================== -->
+        <mxCell id="logs" value="&lt;b&gt;Log Analytics&lt;/b&gt;&lt;br&gt;cae-{token}-logs&lt;br&gt;30-day retention" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAlign=center;image=img/lib/azure2/analytics/Log_Analytics_Workspaces.svg;html=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="610" y="560" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- CA to Logs arrow -->
+        <mxCell id="ca-to-logs" value="app logs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;fontSize=8;fontColor=#888888;strokeColor=#999999;dashed=1;" edge="1" source="ca-group" target="logs" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== AI SERVICES ==================== -->
+        <mxCell id="ai-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#5C6BC0;verticalAlign=top;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="990" y="150" width="260" height="250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ais" value="&lt;b&gt;Azure AI Services&lt;/b&gt;&lt;br&gt;ais-{token} (S0)" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAlign=center;image=img/lib/azure2/ai_machine_learning/Cognitive_Services.svg;html=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="155" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ais-voicelive" value="VoiceLive API&lt;br&gt;(WebRTC avatar streaming)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="220" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ais-batch" value="Batch Avatar&lt;br&gt;Synthesis API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="220" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ais-tts" value="DragonHD TTS&lt;br&gt;(6 native + 4 multilingual)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="270" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ais-ice" value="ICE / TURN&lt;br&gt;Relay" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C5CAE9;strokeColor=#5C6BC0;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="270" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== AZURE OPENAI ==================== -->
+        <mxCell id="oai-group" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#E91E63;verticalAlign=top;arcSize=8;" vertex="1" parent="1">
+          <mxGeometry x="990" y="430" width="260" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="oai" value="&lt;b&gt;Azure OpenAI&lt;/b&gt;&lt;br&gt;oai-{token} (S0)" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAlign=center;image=img/lib/azure2/ai_machine_learning/Azure_OpenAI.svg;html=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="435" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="oai-gpt" value="&lt;b&gt;GPT-4.1&lt;/b&gt;&lt;br&gt;GlobalStandard · 80 TPM&lt;br&gt;Translation · Q&amp;A · Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#E91E63;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="500" width="110" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="oai-emb" value="&lt;b&gt;text-embedding-&lt;br&gt;3-small&lt;/b&gt;&lt;br&gt;GlobalStandard · 120 TPM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8BBD0;strokeColor=#E91E63;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="500" width="110" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== COSMOS DB ==================== -->
+        <mxCell id="cosmos" value="&lt;b&gt;Azure Cosmos DB&lt;/b&gt;&lt;br&gt;cosmos-{token} (Serverless)&lt;br&gt;&lt;br&gt;DB: ai-presenter&lt;br&gt;Container: presentations&lt;br&gt;Partition: /id&lt;br&gt;&lt;br&gt;• Slide metadata&lt;br&gt;• Translated notes cache" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAlign=center;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;html=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="150" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== BLOB STORAGE ==================== -->
+        <mxCell id="blob" value="&lt;b&gt;Azure Blob Storage&lt;/b&gt;&lt;br&gt;st{token} (Standard LRS)&lt;br&gt;&lt;br&gt;Container: slide-images&lt;br&gt;(private, SAS access)&lt;br&gt;&lt;br&gt;• Slide PNGs&lt;br&gt;• Original PPTX files" style="shape=image;verticalLabelPosition=bottom;labelBackgroundColor=default;verticalAlign=top;aspect=fixed;imageAlign=center;image=img/lib/azure2/storage/Storage_Accounts.svg;html=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="430" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ==================== CONNECTIONS ==================== -->
+
+        <!-- Client to Container App -->
+        <mxCell id="client-to-ca" value="HTTPS + WSS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.3;entryDx=0;entryDy=0;fontSize=9;fontColor=#0078D4;strokeColor=#0078D4;strokeWidth=2;" edge="1" source="client-group" target="ca-group" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Container App to AI Services -->
+        <mxCell id="ca-to-ais" value="Managed Identity&lt;br&gt;&lt;i&gt;Speech User + Cognitive Svc User&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=8;fontColor=#5C6BC0;strokeColor=#5C6BC0;strokeWidth=2;" edge="1" source="ca-group" target="ai-group" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="650" y="653"/>
+              <mxPoint x="960" y="200" />
+              <mxPoint x="960" y="275" />
             </Array>
           </mxGeometry>
         </mxCell>
 
-        <!-- Web App → Blob Storage -->
-        <mxCell id="c-wa-blob" value="Store / serve files" style="endArrow=classic;startArrow=classic;html=1;strokeColor=#607D8B;strokeWidth=1.5;fontSize=8;" edge="1" source="wa-upload" target="blob-ppt" parent="1">
+        <!-- Container App to OpenAI -->
+        <mxCell id="ca-to-oai" value="Managed Identity&lt;br&gt;&lt;i&gt;OpenAI User&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=8;fontColor=#E91E63;strokeColor=#E91E63;strokeWidth=2;" edge="1" source="ca-group" target="oai-group" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="640" y="239"/>
-              <mxPoint x="1040" y="239"/>
-              <mxPoint x="1040" y="192"/>
+              <mxPoint x="960" y="530" />
             </Array>
           </mxGeometry>
         </mxCell>
 
-        <!-- Batch → Storage (video output) -->
-        <mxCell id="c-batch-blob" value="MP4" style="endArrow=classic;html=1;strokeColor=#607D8B;strokeWidth=1;dashed=1;dashPattern=5 3;fontSize=8;" edge="1" source="speech-batch" target="blob-videos" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- Container App to Cosmos DB -->
+        <mxCell id="ca-to-cosmos" value="Managed Identity&lt;br&gt;&lt;i&gt;Cosmos DB Data Contributor&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;fontSize=8;fontColor=#00897B;strokeColor=#00897B;strokeWidth=2;" edge="1" source="svc-storage" target="cosmos" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="375" />
+              <mxPoint x="860" y="174" />
+              <mxPoint x="1310" y="174" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
-        <!-- Managed Identity auth (dashed purple) -->
-        <mxCell id="c-mi-speech" value="" style="endArrow=classic;html=1;strokeColor=#9C27B0;strokeWidth=1;dashed=1;dashPattern=4 3;" edge="1" source="mi" target="speech-group" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="c-mi-openai" value="" style="endArrow=classic;html=1;strokeColor=#9C27B0;strokeWidth=1;dashed=1;dashPattern=4 3;" edge="1" source="mi" target="openai-group" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="c-mi-blob" value="" style="endArrow=classic;html=1;strokeColor=#9C27B0;strokeWidth=1;dashed=1;dashPattern=4 3;" edge="1" source="mi" target="storage-group" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="c-mi-search" value="" style="endArrow=classic;html=1;strokeColor=#9C27B0;strokeWidth=1;dashed=1;dashPattern=4 3;" edge="1" source="mi" target="search-group" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- Container App to Blob Storage -->
+        <mxCell id="ca-to-blob" value="Managed Identity&lt;br&gt;&lt;i&gt;Blob Data Contributor&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;fontSize=8;fontColor=#F57C00;strokeColor=#F57C00;strokeWidth=2;" edge="1" source="svc-storage" target="blob" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="870" y="377" />
+              <mxPoint x="870" y="454" />
+              <mxPoint x="1310" y="454" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
-        <!-- Entra → Users (SSO) -->
-        <mxCell id="c-entra-wa" value="SSO" style="endArrow=classic;html=1;strokeColor=#9C27B0;strokeWidth=1;dashed=1;dashPattern=4 3;fontSize=8;" edge="1" source="entra" target="aca-group" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- WebRTC from Client to AI Services -->
+        <mxCell id="webrtc" value="WebRTC (video + audio)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;fontSize=8;fontColor=#9C27B0;strokeColor=#9C27B0;strokeWidth=2;dashed=1;dashPattern=8 4;" edge="1" source="fe-avatar" target="ais-voicelive" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="195" y="400" />
+              <mxPoint x="20" y="400" />
+              <mxPoint x="20" y="700" />
+              <mxPoint x="1065" y="700" />
+              <mxPoint x="1065" y="260" />
+            </Array>
+          </mxGeometry>
         </mxCell>
 
-        <!-- Ops → Container Apps -->
-        <mxCell id="c-acr-aca" value="Deploy" style="endArrow=classic;html=1;strokeColor=#795548;strokeWidth=1;dashed=1;dashPattern=4 3;fontSize=8;" edge="1" source="acr" target="aca-group" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <!-- ==================== RBAC LEGEND ==================== -->
+        <mxCell id="rbac-title" value="&lt;b&gt;RBAC Role Assignments (Managed Identity)&lt;/b&gt;" style="text;html=1;fontSize=11;fontColor=#333333;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="460" y="680" width="300" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="c-mon-aca" value="Telemetry" style="endArrow=classic;html=1;strokeColor=#795548;strokeWidth=1;dashed=1;dashPattern=4 3;fontSize=8;" edge="1" source="monitor" target="aca-group" parent="1">
-          <mxGeometry relative="1" as="geometry"/>
+        <mxCell id="rbac1" value="━ Cognitive Services Speech User → AI Services" style="text;html=1;fontSize=9;fontColor=#5C6BC0;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="705" width="300" height="18" as="geometry" />
         </mxCell>
-
-        <!-- ============ LEGEND ============ -->
-        <mxCell id="legend" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CCCCCC;arcSize=8;" vertex="1" parent="1">
-          <mxGeometry x="230" y="590" width="360" height="120" as="geometry"/>
+        <mxCell id="rbac2" value="━ Cognitive Services User → AI Services" style="text;html=1;fontSize=9;fontColor=#5C6BC0;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="723" width="300" height="18" as="geometry" />
         </mxCell>
-        <mxCell id="legend-title" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=10;spacingLeft=5;" vertex="1" parent="1">
-          <mxGeometry x="240" y="593" width="60" height="18" as="geometry"/>
+        <mxCell id="rbac3" value="━ Cognitive Services OpenAI User → OpenAI" style="text;html=1;fontSize=9;fontColor=#E91E63;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="741" width="300" height="18" as="geometry" />
         </mxCell>
-
-        <mxCell id="leg1" value="" style="endArrow=classic;html=1;strokeColor=#0078D4;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="625" as="sourcePoint"/><mxPoint x="310" y="625" as="targetPoint"/></mxGeometry>
+        <mxCell id="rbac4" value="━ Cosmos DB Built-in Data Contributor → Cosmos DB" style="text;html=1;fontSize=9;fontColor=#00897B;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="759" width="300" height="18" as="geometry" />
         </mxCell>
-        <mxCell id="leg1t" value="User interaction (HTTPS)" style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="315" y="617" width="160" height="16" as="geometry"/>
+        <mxCell id="rbac5" value="━ Storage Blob Data Contributor → Storage Account" style="text;html=1;fontSize=9;fontColor=#F57C00;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="777" width="300" height="18" as="geometry" />
         </mxCell>
 
-        <mxCell id="leg2" value="" style="endArrow=classic;startArrow=classic;html=1;strokeColor=#FF5722;strokeWidth=2;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="647" as="sourcePoint"/><mxPoint x="310" y="647" as="targetPoint"/></mxGeometry>
+        <!-- ==================== USE CASE LEGEND ==================== -->
+        <mxCell id="uc-title" value="&lt;b&gt;RFI559 Use Case Coverage&lt;/b&gt;" style="text;html=1;fontSize=11;fontColor=#333333;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="820" y="680" width="250" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="leg2t" value="WebSocket + WebRTC (bidirectional)" style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="315" y="639" width="220" height="16" as="geometry"/>
+        <mxCell id="uc1" value="✅ UC1 Silver — Interactive avatar over PPT slides with Q&amp;A" style="text;html=1;fontSize=9;fontColor=#2E7D32;align=left;" vertex="1" parent="1">
+          <mxGeometry x="820" y="705" width="350" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="uc2" value="✅ UC2 — Automated batch video generation" style="text;html=1;fontSize=9;fontColor=#2E7D32;align=left;" vertex="1" parent="1">
+          <mxGeometry x="820" y="723" width="350" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="uc3" value="✅ Multilingual — 10 languages (6 native DragonHD + 4 fallback)" style="text;html=1;fontSize=9;fontColor=#2E7D32;align=left;" vertex="1" parent="1">
+          <mxGeometry x="820" y="741" width="350" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="uc4" value="✅ Teams — Static Tab with theme support" style="text;html=1;fontSize=9;fontColor=#2E7D32;align=left;" vertex="1" parent="1">
+          <mxGeometry x="820" y="759" width="350" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="uc5" value="🔲 UC1 Gold — Multi-deck AI slide selection (roadmap)" style="text;html=1;fontSize=9;fontColor=#888888;align=left;" vertex="1" parent="1">
+          <mxGeometry x="820" y="777" width="350" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="uc6" value="🔲 UC3 — Podcast-style video generation (roadmap)" style="text;html=1;fontSize=9;fontColor=#888888;align=left;" vertex="1" parent="1">
+          <mxGeometry x="820" y="795" width="350" height="18" as="geometry" />
         </mxCell>
 
-        <mxCell id="leg3" value="" style="endArrow=classic;html=1;strokeColor=#3F51B5;strokeWidth=1.5;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="669" as="sourcePoint"/><mxPoint x="310" y="669" as="targetPoint"/></mxGeometry>
+        <!-- ==================== DATA FLOW LEGEND ==================== -->
+        <mxCell id="flow-title" value="&lt;b&gt;Key Data Flows&lt;/b&gt;" style="text;html=1;fontSize=11;fontColor=#333333;align=left;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="460" y="830" width="200" height="25" as="geometry" />
         </mxCell>
-        <mxCell id="leg3t" value="REST / API calls (HTTPS)" style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="315" y="661" width="160" height="16" as="geometry"/>
+        <mxCell id="flow1" value="1. Upload .pptx → Parse → LibreOffice → PNGs → Blob Storage + Cosmos DB" style="text;html=1;fontSize=9;fontColor=#555555;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="855" width="450" height="18" as="geometry" />
         </mxCell>
-
-        <mxCell id="leg4" value="" style="endArrow=classic;html=1;strokeColor=#9C27B0;strokeWidth=1;dashed=1;dashPattern=4 3;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="691" as="sourcePoint"/><mxPoint x="310" y="691" as="targetPoint"/></mxGeometry>
+        <mxCell id="flow2" value="2. Navigate slide → Translate notes (GPT-4.1, cached) → VoiceLive → Avatar speaks (WebRTC)" style="text;html=1;fontSize=9;fontColor=#555555;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="873" width="500" height="18" as="geometry" />
         </mxCell>
-        <mxCell id="leg4t" value="Managed Identity / Entra ID auth" style="text;html=1;align=left;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=9;" vertex="1" parent="1">
-          <mxGeometry x="315" y="683" width="200" height="16" as="geometry"/>
+        <mxCell id="flow3" value="3. Ask question → Embed → numpy cosine search → GPT-4.1 RAG → Grounded answer" style="text;html=1;fontSize=9;fontColor=#555555;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="891" width="500" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="flow4" value="4. Batch video → Translate all slides → SSML → Batch Avatar Synthesis → MP4" style="text;html=1;fontSize=9;fontColor=#555555;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="909" width="500" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="flow5" value="5. Agent chat → GPT-4.1 function-calling → 5 tools (translate, Q&amp;A, SSML, detect, prepare)" style="text;html=1;fontSize=9;fontColor=#555555;align=left;" vertex="1" parent="1">
+          <mxGeometry x="460" y="927" width="500" height="18" as="geometry" />
         </mxCell>
 
       </root>
