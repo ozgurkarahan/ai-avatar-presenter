@@ -141,7 +141,7 @@
         </mxCell>
 
         <!-- Azure Container Apps — Icon -->
-        <mxCell id="88" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/containers/Container_Apps.svg;" vertex="1" parent="1">
+        <mxCell id="88" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/containers/Container_Instances.svg;" vertex="1" parent="1">
           <mxGeometry x="1105" y="440" width="48" height="48" as="geometry" />
         </mxCell>
         <!-- Azure Container Apps — Label -->

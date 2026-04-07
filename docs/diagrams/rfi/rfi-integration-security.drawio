@@ -95,7 +95,7 @@
         </mxCell>
 
         <!-- Azure OpenAI — icon -->
-        <mxCell id="openai-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Azure_Open_AI.svg;" vertex="1" parent="1">
+        <mxCell id="openai-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Azure_OpenAI.svg;" vertex="1" parent="1">
           <mxGeometry x="246" y="650" width="48" height="48" as="geometry"/>
         </mxCell>
         <mxCell id="openai-label" value="&lt;b&gt;Azure OpenAI&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;GPT-4.1 · Embeddings&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
@@ -103,7 +103,7 @@
         </mxCell>
 
         <!-- Azure AI Search — icon -->
-        <mxCell id="search-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Cognitive_Search.svg;" vertex="1" parent="1">
+        <mxCell id="search-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Serverless_Search.svg;" vertex="1" parent="1">
           <mxGeometry x="421" y="650" width="48" height="48" as="geometry"/>
         </mxCell>
         <mxCell id="search-label" value="&lt;b&gt;Azure AI Search&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Production RAG index&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
@@ -126,7 +126,7 @@
         </mxCell>
 
         <!-- Azure Blob Storage — icon -->
-        <mxCell id="blob-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/storage/Blob_Block.svg;" vertex="1" parent="1">
+        <mxCell id="blob-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/storage/Storage_Accounts.svg;" vertex="1" parent="1">
           <mxGeometry x="796" y="650" width="48" height="48" as="geometry"/>
         </mxCell>
         <mxCell id="blob-label" value="&lt;b&gt;Azure Blob Storage&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Slides · Videos · PPTX&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">

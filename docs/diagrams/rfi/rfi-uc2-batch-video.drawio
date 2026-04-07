@@ -178,7 +178,7 @@
         </mxCell>
 
         <!-- Container Apps -->
-        <mxCell id="az-ca" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/compute/Container_Apps.svg;fontColor=#1a1a1a;" vertex="1" parent="grp-azure">
+        <mxCell id="az-ca" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/containers/Container_Instances.svg;fontColor=#1a1a1a;" vertex="1" parent="grp-azure">
           <mxGeometry x="900" y="25" width="50" height="50" as="geometry"/>
         </mxCell>
         <mxCell id="az-ca-lbl" value="Container Apps&lt;br&gt;(API &amp;amp; Workers)" style="text;html=1;align=center;verticalAlign=top;fontSize=9;fontColor=#1a1a1a;fontFamily=Segoe UI;" vertex="1" parent="grp-azure">
