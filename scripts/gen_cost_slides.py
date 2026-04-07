@@ -1,4 +1,11 @@
-"""Generate RFI559 Cost Estimation PowerPoint slides."""
+"""Generate RFI559 Cost Estimation PowerPoint slides.
+
+Cost model: "Batch-First Training Platform"
+- Presentations are batch-rendered into videos ONCE (one-time cost per content)
+- Learners watch pre-recorded videos unlimited times (zero marginal cost)
+- Real-time avatar used only for occasional live Q&A / interactive demos
+- Cost scales with CONTENT CREATED, not with number of viewers
+"""
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -141,38 +148,96 @@ add_multi_text(slide, Inches(1.5), Inches(4.5), Inches(10), Inches(2.0), [
 print("Slide 1: Title")
 
 # ═══════════════════════════════════════════════════════════════════
-# SLIDE 2 — PROGRESSIVE APPROACH
+# SLIDE 2 — COST MODEL PHILOSOPHY
 # ═══════════════════════════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
 add_shape(slide, Inches(0), Inches(0), WIDTH, Inches(0.9), DARK_BLUE,
           shape=MSO_SHAPE.RECTANGLE)
 add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
-         "Progressive Deployment Approach", 24, WHITE, True)
+         'Cost Model: "Batch-First" Training Platform', 24, WHITE, True)
+
+# Key insight box
+add_shape(slide, Inches(0.3), Inches(1.2), Inches(12.7), Inches(1.6),
+          RGBColor(0xE3, 0xF2, 0xFD), shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+add_multi_text(slide, Inches(0.5), Inches(1.3), Inches(12.3), Inches(1.4), [
+    {"text": "Key Insight: Cost scales with CONTENT CREATED, not with NUMBER OF VIEWERS",
+     "size": 18, "bold": True, "color": DARK_BLUE, "align": PP_ALIGN.CENTER},
+    {"text": "", "size": 6, "space_after": 4},
+    {"text": "Batch avatar videos are rendered ONCE per presentation, then stored and replayed unlimited times at zero marginal cost.",
+     "size": 13, "color": DARK_GRAY, "align": PP_ALIGN.CENTER},
+    {"text": "Whether 10 or 10,000 learners watch a video, the Azure cost is the same: $0 per additional view.",
+     "size": 13, "color": DARK_GRAY, "align": PP_ALIGN.CENTER},
+])
+
+# Two columns: Batch vs Real-time
+add_shape(slide, Inches(0.3), Inches(3.1), Inches(6.2), Inches(0.5),
+          GREEN, "Batch Video (UC2) \u2014 Primary Delivery", 13, WHITE, True)
+add_multi_text(slide, Inches(0.5), Inches(3.7), Inches(5.8), Inches(2.5), [
+    {"text": "How it works:", "size": 12, "bold": True, "color": GREEN},
+    {"text": "1. Author uploads PowerPoint presentation", "size": 11, "color": DARK_GRAY},
+    {"text": "2. System generates avatar video (one-time batch cost)", "size": 11, "color": DARK_GRAY},
+    {"text": "3. Video stored in Azure Blob Storage (~$0.018/GB/mo)", "size": 11, "color": DARK_GRAY},
+    {"text": "4. Unlimited learners stream/download at near-zero cost", "size": 11, "color": DARK_GRAY},
+    {"text": "", "size": 6, "space_after": 4},
+    {"text": "Cost per 10-min video: $5.00 (one-time)", "size": 13, "bold": True, "color": GREEN},
+    {"text": "Cost per additional viewer: $0.00", "size": 13, "bold": True, "color": GREEN},
+])
+
+add_shape(slide, Inches(6.8), Inches(3.1), Inches(6.2), Inches(0.5),
+          AZURE_BLUE, "Real-Time Avatar (UC1) \u2014 Interactive Only", 13, WHITE, True)
+add_multi_text(slide, Inches(7.0), Inches(3.7), Inches(5.8), Inches(2.5), [
+    {"text": "When it's used:", "size": 12, "bold": True, "color": AZURE_BLUE},
+    {"text": "1. Live Q&A with avatar over slide content", "size": 11, "color": DARK_GRAY},
+    {"text": "2. On-demand interactive exploration of slides", "size": 11, "color": DARK_GRAY},
+    {"text": "3. Agent chat for deeper knowledge queries", "size": 11, "color": DARK_GRAY},
+    {"text": "4. Typically short sessions (3\u20135 min of avatar)", "size": 11, "color": DARK_GRAY},
+    {"text": "", "size": 6, "space_after": 4},
+    {"text": "Cost per 5-min Q&A session: $2.50", "size": 13, "bold": True, "color": AZURE_BLUE},
+    {"text": "Used by ~10-20% of learners occasionally", "size": 13, "bold": True, "color": AZURE_BLUE},
+])
+
+# Bottom note
+add_multi_text(slide, Inches(0.3), Inches(6.5), Inches(12.7), Inches(0.8), [
+    {"text": "This model makes the solution extremely cost-effective at scale: "
+     "50 training videos serving 5,000 learners costs the same as serving 50 learners.",
+     "size": 12, "bold": True, "color": ACCENT_TEAL},
+])
+print("Slide 2: Cost Model Philosophy")
+
+# ═══════════════════════════════════════════════════════════════════
+# SLIDE 3 — PROGRESSIVE PHASES OVERVIEW
+# ═══════════════════════════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+add_bg(slide)
+add_shape(slide, Inches(0), Inches(0), WIDTH, Inches(0.9), DARK_BLUE,
+          shape=MSO_SHAPE.RECTANGLE)
+add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
+         "Progressive Deployment Phases", 24, WHITE, True)
 
 phases = [
     ("Phase 1: PoC / Pilot", "3\u20136 months", [
         "UC1 Silver \u2014 Avatar over PPT",
         "UC2 \u2014 Batch video generation",
         "10 languages (DragonHD voices)",
-        "50 pilot users",
-        "Standard Microsoft avatars",
+        "~20 new presentations/month",
+        "50 learners, standard avatars",
         "Single Azure region",
     ], GREEN),
     ("Phase 2: Production", "6\u201312 months", [
         "UC1 Basic + Silver + Gold",
         "UC2 + SCORM/LMS output",
         "37 languages (full RFI scope)",
-        "500 users \u2014 SGChat integration",
-        "M365 Copilot connector",
-        "Multi-region HA (2 regions)",
+        "~50 new presentations/month",
+        "500 learners, SGChat integration",
+        "2-region HA deployment",
     ], AZURE_BLUE),
     ("Phase 3: Enterprise", "12+ months", [
         "UC1 + UC2 + UC3 Podcast",
         "Custom avatar (executive)",
         "Full LMS/SCORM ecosystem",
-        "5,000+ users \u2014 global rollout",
-        "Custom voices & branding",
+        "~200 new presentations/month",
+        "5,000+ learners, global rollout",
         "Multi-region (3+ regions)",
     ], ORANGE),
 ]
@@ -195,70 +260,19 @@ for i in range(2):
              "\u25b6", 28, MED_GRAY)
 
 add_multi_text(slide, Inches(0.5), Inches(5.2), Inches(12), Inches(2.0), [
-    {"text": "Cost Driver Insight", "size": 14, "bold": True, "color": DARK_BLUE},
-    {"text": "The dominant cost component across all phases is VoiceLive Avatar streaming (~80-90% of variable costs).",
+    {"text": "Cost scales with content production, not learner count",
+     "size": 14, "bold": True, "color": DARK_BLUE},
+    {"text": "The main cost driver is the number of NEW presentations rendered into avatar videos each month.",
      "size": 12, "color": DARK_GRAY},
-    {"text": "Infrastructure (Container Apps, Cosmos DB, Blob Storage) remains minimal due to serverless/consumption pricing.",
+    {"text": "Once a video is generated, it is stored in Blob Storage and can be viewed by unlimited learners at near-zero cost.",
      "size": 12, "color": MED_GRAY},
-    {"text": "OpenAI costs (GPT-4.1 + embeddings) are highly competitive and scale linearly with session count.",
+    {"text": "Real-time avatar (live Q&A) is used only occasionally and represents a small fraction of the total cost.",
      "size": 12, "color": MED_GRAY},
 ])
-print("Slide 2: Progressive Approach")
+print("Slide 3: Progressive Phases")
 
 # ═══════════════════════════════════════════════════════════════════
-# SLIDE 3 — AZURE SERVICE UNIT PRICING
-# ═══════════════════════════════════════════════════════════════════
-slide = prs.slides.add_slide(prs.slide_layouts[6])
-add_bg(slide)
-add_shape(slide, Inches(0), Inches(0), WIDTH, Inches(0.9), DARK_BLUE,
-          shape=MSO_SHAPE.RECTANGLE)
-add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
-         "Azure Service Unit Pricing Reference", 24, WHITE, True)
-
-pricing_data = [
-    ["Azure Service", "SKU / Tier", "Unit", "Unit Price", "Notes"],
-    ["VoiceLive Avatar (real-time)", "Standard", "per minute", "$0.50",
-     "Dominant cost \u2014 real-time WebRTC avatar"],
-    ["Batch Avatar Synthesis", "Standard", "per minute", "$0.50",
-     "Async video generation from text"],
-    ["Custom Avatar Hosting", "Custom", "per model/hour", "$0.60",
-     "Phase 3 only \u2014 custom executive avatar"],
-    ["Azure OpenAI \u2014 GPT-4.1", "S0", "per 1K input tokens", "$0.002",
-     "Translation, Q&A, Agent chat"],
-    ["Azure OpenAI \u2014 GPT-4.1", "S0", "per 1K output tokens", "$0.008",
-     "Responses, generated text"],
-    ["OpenAI \u2014 text-embedding-3-small", "S0", "per 1M input tokens", "$0.02",
-     "RAG embeddings (negligible cost)"],
-    ["Azure AI Translator", "S1", "per 1M characters", "$10.00",
-     "Phase 2+ for 37-language expansion"],
-    ["Azure Cosmos DB (Serverless)", "Serverless", "per 1M RUs", "$0.25",
-     "Metadata, translations cache"],
-    ["Azure Cosmos DB (Serverless)", "Serverless", "per GB/month", "$0.25",
-     "Storage for slide data"],
-    ["Azure Blob Storage", "Standard LRS Hot", "per GB/month", "$0.018",
-     "Slide images, PPTX, videos"],
-    ["Azure Container Apps", "Consumption", "per vCPU-second", "$0.000024",
-     "Free tier: 180K vCPU-sec/mo"],
-    ["Azure Container Apps", "Consumption", "per GiB-second", "$0.000003",
-     "Free tier: 360K GiB-sec/mo"],
-    ["Azure Container Registry", "Basic", "per month", "$5.00",
-     "10 GB included storage"],
-    ["Log Analytics", "\u2014", "per GB ingested", "Free 5GB",
-     "First 5 GB/month free"],
-]
-
-add_table(slide, Inches(0.3), Inches(1.1), Inches(12.7), Inches(5.8),
-          len(pricing_data), 5, pricing_data,
-          col_widths=[Inches(3.0), Inches(1.5), Inches(2.0), Inches(1.7), Inches(4.5)])
-
-add_text(slide, Inches(0.3), Inches(7.0), Inches(12), Inches(0.4),
-         "* All prices USD, West Europe region, April 2026. Subject to change. "
-         "Enterprise agreements may include volume discounts.",
-         9, MED_GRAY)
-print("Slide 3: Unit Pricing")
-
-# ═══════════════════════════════════════════════════════════════════
-# SLIDE 4 — PHASE 1 COST BREAKDOWN
+# SLIDE 4 — PHASE 1 COST BREAKDOWN (REVISED)
 # ═══════════════════════════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
@@ -267,56 +281,58 @@ add_shape(slide, Inches(0), Inches(0), WIDTH, Inches(0.9), GREEN,
 add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
          "Phase 1: PoC / Pilot \u2014 Monthly Cost Estimate", 24, WHITE, True)
 
-add_shape(slide, Inches(0.3), Inches(1.1), Inches(4.8), Inches(2.5),
+add_shape(slide, Inches(0.3), Inches(1.1), Inches(4.8), Inches(2.8),
           RGBColor(0xE8, 0xF5, 0xE9), shape=MSO_SHAPE.ROUNDED_RECTANGLE)
-add_multi_text(slide, Inches(0.5), Inches(1.2), Inches(4.4), Inches(2.3), [
+add_multi_text(slide, Inches(0.5), Inches(1.2), Inches(4.4), Inches(2.6), [
     {"text": "Assumptions", "size": 14, "bold": True, "color": GREEN},
-    {"text": "\u2022 50 pilot users (internal Saint-Gobain)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 ~200 sessions/month (4 per user)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 ~10 min avg avatar time per session", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 10 batch videos/month (10 min avg)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 50 learners (internal Saint-Gobain pilot)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 20 new presentations created/month", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 Each presentation: ~10 slides, ~10 min video", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 Batch video: rendered once, watched many times", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 ~30 live Q&A sessions/month (~5 min each)", "size": 11, "color": DARK_GRAY},
     {"text": "\u2022 10 languages (DragonHD voices)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 Standard Microsoft avatars", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 Single region (West Europe)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 Standard avatars, single region", "size": 11, "color": DARK_GRAY},
+    {"text": "", "size": 6, "space_after": 2},
+    {"text": "Learners primarily watch batch videos", "size": 11, "bold": True, "color": GREEN},
 ])
 
 phase1_data = [
     ["Service", "Usage/Month", "Unit Cost", "Monthly Cost", "% of Total"],
-    ["VoiceLive Avatar (real-time)", "2,000 min", "$0.50/min", "$1,000", "79.2%"],
-    ["Batch Avatar Synthesis", "100 min", "$0.50/min", "$50", "4.0%"],
-    ["Azure OpenAI GPT-4.1", "~2M tokens", "$0.002-0.008/1K", "$12", "0.9%"],
-    ["OpenAI Embeddings", "~1.5M tokens", "$0.02/1M", "$0.03", "<0.1%"],
-    ["Container Apps (1vCPU, 2GB)", "24/7 after free tier", "$0.000024/s", "$35", "2.8%"],
-    ["Cosmos DB Serverless", "~2M RUs + 1 GB", "$0.25/1M RU", "$1", "<0.1%"],
-    ["Blob Storage (Hot LRS)", "~2 GB", "$0.018/GB", "$0.04", "<0.1%"],
-    ["Container Registry (Basic)", "1 registry", "$5/month", "$5", "0.4%"],
+    ["Batch Avatar Synthesis", "200 min (20 videos)", "$0.50/min", "$100", "34.7%"],
+    ["VoiceLive Avatar (live Q&A)", "150 min (30 sessions)", "$0.50/min", "$75", "26.0%"],
+    ["Azure OpenAI GPT-4.1", "~1M tokens", "$0.002-0.008/1K", "$6", "2.1%"],
+    ["OpenAI Embeddings", "~500K tokens", "$0.02/1M", "$0.01", "<0.1%"],
+    ["Container Apps (1vCPU, 2GB)", "24/7 after free tier", "$0.000024/s", "$35", "12.1%"],
+    ["Cosmos DB Serverless", "~1M RUs + 0.5 GB", "$0.25/1M RU", "$0.40", "<0.1%"],
+    ["Blob Storage (Hot LRS)", "~5 GB (videos+slides)", "$0.018/GB", "$0.10", "<0.1%"],
+    ["Container Registry (Basic)", "1 registry", "$5/month", "$5", "1.7%"],
     ["Log Analytics", "~1 GB logs", "Free 5GB", "$0", "0%"],
     ["", "", "", "", ""],
-    ["TOTAL", "", "", "$1,103", "100%"],
+    ["TOTAL", "", "", "$222", "100%"],
 ]
 
 add_table(slide, Inches(5.3), Inches(1.1), Inches(7.7), Inches(4.8),
           len(phase1_data), 5, phase1_data,
           col_widths=[Inches(2.4), Inches(1.3), Inches(1.5), Inches(1.2), Inches(1.3)])
 
-add_multi_text(slide, Inches(0.5), Inches(4.0), Inches(4.4), Inches(3.0), [
+add_multi_text(slide, Inches(0.5), Inches(4.3), Inches(4.4), Inches(3.0), [
     {"text": "Key Insight", "size": 14, "bold": True, "color": GREEN},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "VoiceLive Avatar streaming represents 83% of total monthly cost.",
-     "size": 12, "bold": True, "color": DARK_GRAY},
+    {"text": "Batch video = one-time cost. A 10-min training video costs $5 to render and can be viewed by all 50 users at $0 extra.",
+     "size": 11, "bold": True, "color": DARK_GRAY},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Infrastructure costs are near-zero thanks to serverless/consumption pricing.",
+    {"text": "Live Q&A is optional and short \u2014 only a fraction of users need interactive sessions.",
      "size": 11, "color": MED_GRAY},
+    {"text": "", "size": 6, "space_after": 4},
+    {"text": "Cost per video produced: ~$5", "size": 13, "bold": True, "color": GREEN},
+    {"text": "Cost per learner: ~$4.44/month", "size": 13, "bold": True, "color": GREEN},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Per-user cost: ~$22/user/month", "size": 13, "bold": True, "color": GREEN},
-    {"text": "Per-session cost: ~$5.50/session", "size": 13, "bold": True, "color": GREEN},
-    {"text": "", "size": 6, "space_after": 2},
-    {"text": "Annual estimate: ~$13,200", "size": 14, "bold": True, "color": DARK_BLUE},
+    {"text": "Annual estimate: ~$2,660", "size": 14, "bold": True, "color": DARK_BLUE},
 ])
 print("Slide 4: Phase 1")
 
 # ═══════════════════════════════════════════════════════════════════
-# SLIDE 5 — PHASE 2 COST BREAKDOWN
+# SLIDE 5 — PHASE 2 COST BREAKDOWN (REVISED)
 # ═══════════════════════════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
@@ -329,31 +345,33 @@ add_shape(slide, Inches(0.3), Inches(1.1), Inches(4.8), Inches(2.7), LIGHT_BLUE,
           shape=MSO_SHAPE.ROUNDED_RECTANGLE)
 add_multi_text(slide, Inches(0.5), Inches(1.2), Inches(4.4), Inches(2.5), [
     {"text": "Assumptions", "size": 14, "bold": True, "color": AZURE_BLUE},
-    {"text": "\u2022 500 users (Saint-Gobain departments)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 ~2,000 sessions/month (4 per user)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 ~10 min avg avatar time per session", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 100 batch videos/month (10 min avg)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 500 learners (Saint-Gobain departments)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 50 new presentations/month", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 Each presentation: ~10 min batch video", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 ~100 live Q&A sessions/month (~5 min each)", "size": 11, "color": DARK_GRAY},
     {"text": "\u2022 37 languages (full RFI scope)", "size": 11, "color": DARK_GRAY},
     {"text": "\u2022 UC1 Gold: multi-deck AI selection", "size": 11, "color": DARK_GRAY},
     {"text": "\u2022 SGChat + M365 integration", "size": 11, "color": DARK_GRAY},
     {"text": "\u2022 2-region deployment (HA)", "size": 11, "color": DARK_GRAY},
+    {"text": "", "size": 6, "space_after": 2},
+    {"text": "500 learners watch same batch videos", "size": 11, "bold": True, "color": AZURE_BLUE},
 ])
 
 phase2_data = [
     ["Service", "Usage/Month", "Unit Cost", "Monthly Cost", "% of Total"],
-    ["VoiceLive Avatar (real-time)", "20,000 min", "$0.50/min", "$10,000", "81.5%"],
-    ["Batch Avatar Synthesis", "1,000 min", "$0.50/min", "$500", "4.1%"],
-    ["Azure OpenAI GPT-4.1", "~20M tokens", "$0.002-0.008/1K", "$100", "0.8%"],
-    ["OpenAI Embeddings", "~15M tokens", "$0.02/1M", "$0.30", "<0.1%"],
-    ["Azure AI Translator", "~50M chars", "$10/1M", "$500", "4.1%"],
-    ["Container Apps (2vCPU, 4GB x2)", "24/7, 2 replicas", "$0.000024/s", "$310", "2.5%"],
-    ["Cosmos DB Serverless", "~20M RUs + 10 GB", "$0.25/1M RU", "$8", "<0.1%"],
-    ["Blob Storage (Hot LRS)", "~50 GB", "$0.018/GB", "$1", "<0.1%"],
-    ["Container Registry (Basic)", "1 registry", "$5/month", "$5", "<0.1%"],
-    ["Log Analytics", "~5 GB logs", "Free 5GB", "$0", "0%"],
-    ["AI Search (Basic) \u2014 UC1 Gold", "1 unit", "$73/month", "$73", "0.6%"],
+    ["Batch Avatar Synthesis", "500 min (50 videos)", "$0.50/min", "$250", "19.4%"],
+    ["VoiceLive Avatar (live Q&A)", "500 min (100 sessions)", "$0.50/min", "$250", "19.4%"],
+    ["Azure OpenAI GPT-4.1", "~5M tokens", "$0.002-0.008/1K", "$25", "1.9%"],
+    ["OpenAI Embeddings", "~3M tokens", "$0.02/1M", "$0.06", "<0.1%"],
+    ["Azure AI Translator", "~20M chars", "$10/1M", "$200", "15.5%"],
+    ["Container Apps (2vCPU, 4GB x2)", "24/7, 2 replicas", "$0.000024/s", "$310", "24.1%"],
+    ["Cosmos DB Serverless", "~5M RUs + 5 GB", "$0.25/1M RU", "$3", "0.2%"],
+    ["Blob Storage (Hot LRS)", "~30 GB (videos)", "$0.018/GB", "$0.55", "<0.1%"],
+    ["Container Registry (Basic)", "1 registry", "$5/month", "$5", "0.4%"],
+    ["Log Analytics", "~3 GB logs", "Free 5GB", "$0", "0%"],
+    ["AI Search (Basic) \u2014 UC1 Gold", "1 unit", "$73/month", "$73", "5.7%"],
     ["", "", "", "", ""],
-    ["TOTAL", "", "", "$11,497", "100%"],
+    ["TOTAL", "", "", "$1,117", "100%"],
 ]
 
 add_table(slide, Inches(5.3), Inches(1.1), Inches(7.7), Inches(5.3),
@@ -363,23 +381,23 @@ add_table(slide, Inches(5.3), Inches(1.1), Inches(7.7), Inches(5.3),
 add_multi_text(slide, Inches(0.5), Inches(4.2), Inches(4.4), Inches(3.0), [
     {"text": "Key Insight", "size": 14, "bold": True, "color": AZURE_BLUE},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Cost scales linearly with user count. 10x users = ~10x avatar cost.",
+    {"text": "10x learners (50\u2192500) but only ~5x cost increase because content production scales, not viewership.",
      "size": 12, "bold": True, "color": DARK_GRAY},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Azure AI Translator adds $500/mo for 37-language expansion.",
+    {"text": "Translation is now a meaningful cost with 37 languages.",
      "size": 11, "color": MED_GRAY},
-    {"text": "AI Search added for UC1 Gold multi-deck retrieval.",
+    {"text": "Compute and infrastructure become a larger share as avatar costs stay modest.",
      "size": 11, "color": MED_GRAY},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Per-user cost: ~$23/user/month", "size": 13, "bold": True, "color": AZURE_BLUE},
-    {"text": "Per-session cost: ~$5.75/session", "size": 13, "bold": True, "color": AZURE_BLUE},
+    {"text": "Cost per video produced: ~$5", "size": 13, "bold": True, "color": AZURE_BLUE},
+    {"text": "Cost per learner: ~$2.23/month", "size": 13, "bold": True, "color": AZURE_BLUE},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Annual estimate: ~$138,000", "size": 14, "bold": True, "color": DARK_BLUE},
+    {"text": "Annual estimate: ~$13,400", "size": 14, "bold": True, "color": DARK_BLUE},
 ])
 print("Slide 5: Phase 2")
 
 # ═══════════════════════════════════════════════════════════════════
-# SLIDE 6 — PHASE 3 COST BREAKDOWN
+# SLIDE 6 — PHASE 3 COST BREAKDOWN (REVISED)
 # ═══════════════════════════════════════════════════════════════════
 slide = prs.slides.add_slide(prs.slide_layouts[6])
 add_bg(slide)
@@ -392,35 +410,36 @@ add_shape(slide, Inches(0.3), Inches(1.1), Inches(4.8), Inches(2.7),
           RGBColor(0xFD, 0xF0, 0xE0), shape=MSO_SHAPE.ROUNDED_RECTANGLE)
 add_multi_text(slide, Inches(0.5), Inches(1.2), Inches(4.4), Inches(2.5), [
     {"text": "Assumptions", "size": 14, "bold": True, "color": ORANGE},
-    {"text": "\u2022 5,000 users (global Saint-Gobain)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 ~15,000 sessions/month (3 per user)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 ~8 min avg avatar time per session", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 500 batch videos/month (10 min avg)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 UC3: 50 podcasts/month (20 min each)", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 37 languages, custom avatar model", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 5,000 learners (global Saint-Gobain)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 200 new presentations/month", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 Each presentation: ~10 min batch video", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 ~300 live Q&A sessions/month (~5 min)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 UC3: 30 podcasts/month (20 min each)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 37 languages, 1 custom avatar model", "size": 11, "color": DARK_GRAY},
     {"text": "\u2022 Full LMS/SCORM integration", "size": 11, "color": DARK_GRAY},
-    {"text": "\u2022 Multi-region (3 regions, active-active)", "size": 11, "color": DARK_GRAY},
+    {"text": "\u2022 Multi-region (3 regions)", "size": 11, "color": DARK_GRAY},
+    {"text": "", "size": 6, "space_after": 2},
+    {"text": "5,000 learners watch same video library", "size": 11, "bold": True, "color": ORANGE},
 ])
 
 phase3_data = [
     ["Service", "Usage/Month", "Unit Cost", "Monthly Cost", "% of Total"],
-    ["VoiceLive Avatar (real-time)", "120,000 min", "$0.50/min", "$60,000", "79.3%"],
-    ["Batch Avatar Synthesis", "5,000 min", "$0.50/min", "$2,500", "3.3%"],
-    ["UC3 Podcast (dual avatar)", "1,000 min", "$0.50/min x2", "$1,000", "1.3%"],
-    ["Custom Avatar Hosting", "1 model, 24/7", "$0.60/hr", "$432", "0.6%"],
-    ["Azure OpenAI GPT-4.1", "~150M tokens", "$0.002-0.008/1K", "$750", "1.0%"],
-    ["OpenAI Embeddings", "~100M tokens", "$0.02/1M", "$2", "<0.1%"],
-    ["Azure AI Translator", "~300M chars", "$8.22/1M*", "$2,466", "3.3%"],
-    ["Container Apps (4vCPU, 8GB x3)", "24/7, 3 replicas x3", "$0.000024/s", "$2,800", "3.7%"],
-    ["Cosmos DB Serverless", "~200M RUs + 100GB", "$0.25/1M RU", "$75", "0.1%"],
-    ["Blob Storage (Hot LRS)", "~500 GB + videos", "$0.018/GB", "$9", "<0.1%"],
-    ["AI Search (Standard S1)", "1 unit x 3 regions", "$245/unit", "$735", "1.0%"],
-    ["Container Registry (Std)", "1 registry", "$20/month", "$20", "<0.1%"],
-    ["Log Analytics", "~20 GB logs", "$2.76/GB*", "$42", "<0.1%"],
-    ["Front Door (CDN + WAF)", "Global routing", "~$35/month", "$35", "<0.1%"],
-    ["Key Vault", "RBAC + secrets", "$0.03/10K ops", "$1", "<0.1%"],
+    ["Batch Avatar Synthesis", "2,000 min (200 videos)", "$0.50/min", "$1,000", "14.2%"],
+    ["VoiceLive Avatar (live Q&A)", "1,500 min (300 sessions)", "$0.50/min", "$750", "10.7%"],
+    ["UC3 Podcast (dual avatar)", "600 min (30 podcasts)", "$0.50/min x2", "$600", "8.5%"],
+    ["Custom Avatar Hosting", "1 model, 24/7", "$0.60/hr", "$432", "6.2%"],
+    ["Azure OpenAI GPT-4.1", "~30M tokens", "$0.002-0.008/1K", "$150", "2.1%"],
+    ["OpenAI Embeddings", "~20M tokens", "$0.02/1M", "$0.40", "<0.1%"],
+    ["Azure AI Translator", "~100M chars", "$10/1M", "$1,000", "14.2%"],
+    ["Container Apps (4vCPU, 8GB x3)", "24/7, 3 replicas", "$0.000024/s", "$940", "13.4%"],
+    ["Cosmos DB Serverless", "~50M RUs + 50 GB", "$0.25/1M RU", "$25", "0.4%"],
+    ["Blob Storage (Hot LRS)", "~200 GB (videos)", "$0.018/GB", "$3.60", "<0.1%"],
+    ["AI Search (Standard S1)", "1 unit x 3 regions", "$245/unit", "$735", "10.5%"],
+    ["Container Registry (Std)", "1 registry", "$20/month", "$20", "0.3%"],
+    ["Log Analytics", "~10 GB logs", "$2.76/GB*", "$14", "0.2%"],
+    ["Front Door + Key Vault", "Global routing", "~$36/month", "$36", "0.5%"],
     ["", "", "", "", ""],
-    ["TOTAL", "", "", "$70,867", "100%"],
+    ["TOTAL", "", "", "$5,706", "100%"],
 ]
 
 add_table(slide, Inches(5.3), Inches(1.1), Inches(7.7), Inches(6.0),
@@ -430,18 +449,18 @@ add_table(slide, Inches(5.3), Inches(1.1), Inches(7.7), Inches(6.0),
 add_multi_text(slide, Inches(0.5), Inches(4.2), Inches(4.4), Inches(2.8), [
     {"text": "Key Insight", "size": 14, "bold": True, "color": ORANGE},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Per-user cost drops to ~$14/user/month at scale thanks to amortized infra.",
+    {"text": "100x learners (50\u21925,000) but only ~25x cost because viewers are free.",
      "size": 12, "bold": True, "color": DARK_GRAY},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Translator volume discount kicks in (250M+ chars).",
+    {"text": "Cost is distributed across content production, translation, compute, and search \u2014 no single dominant driver.",
      "size": 11, "color": MED_GRAY},
-    {"text": "Multi-region adds ~30% to compute costs but provides HA/DR.",
+    {"text": "UC3 Podcast adds modest cost ($600/mo for 30 episodes).",
      "size": 11, "color": MED_GRAY},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Per-user cost: ~$14/user/month", "size": 13, "bold": True, "color": ORANGE},
-    {"text": "Per-session cost: ~$4.70/session", "size": 13, "bold": True, "color": ORANGE},
+    {"text": "Cost per video produced: ~$5", "size": 13, "bold": True, "color": ORANGE},
+    {"text": "Cost per learner: ~$1.14/month", "size": 13, "bold": True, "color": ORANGE},
     {"text": "", "size": 6, "space_after": 2},
-    {"text": "Annual estimate: ~$850,000", "size": 14, "bold": True, "color": DARK_BLUE},
+    {"text": "Annual estimate: ~$68,500", "size": 14, "bold": True, "color": DARK_BLUE},
 ])
 print("Slide 6: Phase 3")
 
@@ -457,21 +476,21 @@ add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
 
 summary_data = [
     ["", "Phase 1: PoC", "Phase 2: Production", "Phase 3: Enterprise"],
-    ["Users", "50", "500", "5,000"],
-    ["Sessions/Month", "200", "2,000", "15,000"],
+    ["Learners", "50", "500", "5,000"],
+    ["New Videos/Month", "20", "50", "200"],
     ["Use Cases", "UC1 Silver + UC2", "UC1 All + UC2", "UC1 + UC2 + UC3"],
     ["Languages", "10", "37", "37"],
     ["Avatars", "Standard", "Standard", "Standard + Custom"],
     ["Regions", "1", "2", "3"],
     ["", "", "", ""],
-    ["Monthly Cost", "$1,103", "$11,497", "$70,867"],
-    ["Annual Cost", "$13,236", "$137,964", "$850,404"],
-    ["Per-User/Month", "$22.06", "$22.99", "$14.17"],
-    ["Per-Session Cost", "$5.52", "$5.75", "$4.72"],
+    ["Monthly Cost", "$222", "$1,117", "$5,706"],
+    ["Annual Cost", "$2,660", "$13,400", "$68,470"],
+    ["Per-Learner/Month", "$4.44", "$2.23", "$1.14"],
+    ["Per-Video Produced", "$5.00", "$5.00", "$5.00"],
     ["", "", "", ""],
-    ["Avatar % of Total", "83%", "86%", "84%"],
-    ["Infra % of Total", "3%", "3%", "5%"],
-    ["AI/LLM % of Total", "1%", "1%", "1%"],
+    ["Batch Video %", "45%", "22%", "18%"],
+    ["Live Q&A %", "34%", "22%", "11%"],
+    ["Infra + AI %", "21%", "56%", "71%"],
 ]
 
 tbl_shape = add_table(slide, Inches(0.5), Inches(1.2), Inches(12.3), Inches(5.5),
@@ -499,67 +518,61 @@ add_bg(slide)
 add_shape(slide, Inches(0), Inches(0), WIDTH, Inches(0.9), DARK_BLUE,
           shape=MSO_SHAPE.RECTANGLE)
 add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
-         "Cost Scaling & Unit Economics", 24, WHITE, True)
+         "Unit Economics: Cost per Content Piece", 24, WHITE, True)
 
 add_shape(slide, Inches(0.3), Inches(1.2), Inches(6.2), Inches(0.5),
-          AZURE_BLUE, "Anatomy of a Single Session Cost", 13, WHITE, True)
+          AZURE_BLUE, "Cost to Produce One Training Video", 13, WHITE, True)
 
 session_data = [
-    ["Cost Component", "Calculation", "Per Session"],
-    ["Avatar streaming (10 min)", "10 min x $0.50/min", "$5.00"],
-    ["GPT-4.1 translation", "~5K tokens x $0.002-0.008", "$0.03"],
-    ["GPT-4.1 Q&A (2 questions)", "~4K tokens total", "$0.02"],
-    ["Embeddings (RAG)", "~5K tokens x $0.02/1M", "$0.0001"],
-    ["Cosmos DB reads/writes", "~20 RUs", "$0.000005"],
-    ["Blob Storage reads", "~10 images served", "$0.0001"],
-    ["Container Apps compute", "~10 min active", "$0.014"],
+    ["Cost Component", "Calculation", "Cost"],
+    ["Batch avatar rendering (10 min)", "10 min x $0.50/min", "$5.00"],
+    ["GPT-4.1 translation (10 langs)", "~50K chars x $0.002-0.008/1K", "$0.15"],
+    ["Embeddings for Q&A index", "~5K tokens x $0.02/1M", "$0.0001"],
+    ["Cosmos DB writes", "~10 RUs", "$0.000003"],
+    ["Blob Storage (video + slides)", "~200 MB stored/month", "$0.004"],
     ["", "", ""],
-    ["TOTAL per Session", "", "$5.06"],
+    ["TOTAL per video (one-time)", "", "$5.15"],
+    ["", "", ""],
+    ["Cost per viewer (streaming)", "Video playback from Blob", "~$0.00"],
+    ["Cost per Q&A session (live)", "5 min avatar + GPT-4.1", "~$2.55"],
 ]
 
-add_table(slide, Inches(0.3), Inches(1.8), Inches(6.2), Inches(3.5),
+add_table(slide, Inches(0.3), Inches(1.8), Inches(6.2), Inches(4.0),
           len(session_data), 3, session_data,
           col_widths=[Inches(2.5), Inches(2.0), Inches(1.7)])
 
 add_shape(slide, Inches(6.8), Inches(1.2), Inches(6.2), Inches(0.5),
-          ACCENT_TEAL, "Cost Optimization Levers", 13, WHITE, True)
+          ACCENT_TEAL, "Why This Model is Cost-Effective", 13, WHITE, True)
 
 add_multi_text(slide, Inches(7.0), Inches(1.9), Inches(5.8), Inches(5.0), [
-    {"text": "Avatar Time = Cost", "size": 14, "bold": True, "color": ACCENT_TEAL},
-    {"text": "Reducing average avatar time from 10 to 7 min saves 30% of total cost.",
+    {"text": "Batch = Invest Once, Serve Forever", "size": 14, "bold": True, "color": ACCENT_TEAL},
+    {"text": "A $5 video can train 10,000 employees. Cost per learner approaches $0.",
      "size": 11, "color": DARK_GRAY},
     {"text": "", "size": 6, "space_after": 6},
-    {"text": "Batch over Real-Time", "size": 14, "bold": True, "color": ACCENT_TEAL},
-    {"text": "Pre-recorded videos (UC2) can be reused unlimited times. Invest in batch for frequently-used content.",
+    {"text": "Compare: Traditional Video Production", "size": 14, "bold": True, "color": ACCENT_TEAL},
+    {"text": "Professional training video: $5,000\u2013$15,000 per video with studio, actors, editing.",
+     "size": 11, "color": DARK_GRAY},
+    {"text": "AI Avatar: $5 per video. That's 1,000x cheaper.",
+     "size": 11, "bold": True, "color": DARK_GRAY},
+    {"text": "", "size": 6, "space_after": 6},
+    {"text": "Update Content Instantly", "size": 14, "bold": True, "color": ACCENT_TEAL},
+    {"text": "Update the PPT, re-generate video for $5. No re-shooting, no re-editing.",
      "size": 11, "color": DARK_GRAY},
     {"text": "", "size": 6, "space_after": 6},
-    {"text": "Smart Translation Caching", "size": 14, "bold": True, "color": ACCENT_TEAL},
-    {"text": "Background batch translation on upload means translations are cached in Cosmos DB. Zero cost on repeated access.",
+    {"text": "Multilingual at Marginal Cost", "size": 14, "bold": True, "color": ACCENT_TEAL},
+    {"text": "Generate 37-language versions of a 10-min video: ~$185 total ($5/lang).",
+     "size": 11, "color": DARK_GRAY},
+    {"text": "Traditional dubbing: $2,000\u2013$5,000 per language.",
      "size": 11, "color": DARK_GRAY},
     {"text": "", "size": 6, "space_after": 6},
-    {"text": "Enterprise Agreement Discounts", "size": 14, "bold": True, "color": ACCENT_TEAL},
-    {"text": "Saint-Gobain EA pricing could reduce avatar costs by 20-40% from published rates.",
-     "size": 11, "color": DARK_GRAY},
-    {"text": "", "size": 6, "space_after": 6},
-    {"text": "Reserved Capacity", "size": 14, "bold": True, "color": ACCENT_TEAL},
-    {"text": "Azure AI Services commitment tiers provide significant discounts for predictable workloads.",
-     "size": 11, "color": DARK_GRAY},
-    {"text": "", "size": 6, "space_after": 6},
-    {"text": "Hybrid Avatar Strategy", "size": 14, "bold": True, "color": ACCENT_TEAL},
-    {"text": "Use TTS audio-only for low-value interactions (agent chat), reserve avatar for presentations.",
+    {"text": "Live Q&A is Optional", "size": 14, "bold": True, "color": ACCENT_TEAL},
+    {"text": "Most learners watch batch videos. Only ~10-20% use live Q&A, keeping costs low.",
      "size": 11, "color": DARK_GRAY},
 ])
 
-add_shape(slide, Inches(0.3), Inches(5.5), Inches(6.2), Inches(0.5),
-          DARK_BLUE, "Session Cost Breakdown \u2014 99% is Avatar", 12, WHITE, True)
-add_shape(slide, Inches(0.5), Inches(6.15), Inches(5.74), Inches(0.35),
-          RGBColor(0xFF, 0x6B, 0x35),
-          "VoiceLive Avatar \u2014 $5.00 (98.8%)", 10, WHITE, True,
-          shape=MSO_SHAPE.RECTANGLE)
-add_shape(slide, Inches(6.24), Inches(6.15), Inches(0.15), Inches(0.35),
-          AZURE_BLUE, shape=MSO_SHAPE.RECTANGLE)
-add_text(slide, Inches(0.5), Inches(6.6), Inches(5.8), Inches(0.3),
-         "Avatar (98.8%)    OpenAI+Infra (1.2%)", 9, MED_GRAY)
+add_shape(slide, Inches(0.3), Inches(6.0), Inches(12.7), Inches(0.5),
+          DARK_BLUE, "Total cost of a 10-min training video in 37 languages: ~$190  |  Traditional equivalent: ~$100,000+",
+          12, WHITE, True)
 print("Slide 8: Unit Economics")
 
 # ═══════════════════════════════════════════════════════════════════
@@ -573,14 +586,13 @@ add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
          "Cost Optimization Scenarios (Phase 2 \u2014 500 Users)", 24, WHITE, True)
 
 scenarios_data = [
-    ["Scenario", "Monthly Cost", "Savings vs Base", "Per-User", "Notes"],
-    ["Baseline (published rates)", "$11,497", "\u2014", "$23.0", "No optimizations"],
-    ["EA Discount (20% on Avatar)", "$9,497", "-$2,000 (17%)", "$19.0", "Enterprise agreement pricing"],
-    ["EA Discount (40% on Avatar)", "$7,497", "-$4,000 (35%)", "$15.0", "Strong EA negotiation"],
-    ["Reduce avatar to 7 min avg", "$8,497", "-$3,000 (26%)", "$17.0", "Optimize content length"],
-    ["50% sessions use batch only", "$6,747", "-$4,750 (41%)", "$13.5", "Pre-record common content"],
-    ["Audio-only for agent chat", "$10,497", "-$1,000 (9%)", "$21.0", "TTS instead of avatar for Q&A"],
-    ["Combined optimistic", "$4,500", "-$7,000 (61%)", "$9.0", "EA + batch + shorter sessions"],
+    ["Scenario", "Monthly Cost", "Savings vs Base", "Per-Learner", "Notes"],
+    ["Baseline (published rates)", "$1,117", "\u2014", "$2.23", "Phase 2 with 500 learners"],
+    ["EA Discount (20% on Avatar)", "$1,017", "-$100 (9%)", "$2.03", "Enterprise agreement pricing"],
+    ["Shorter videos (7 min avg)", "$967", "-$150 (13%)", "$1.93", "Optimize presentation length"],
+    ["Use Translator instead of GPT", "$917", "-$200 (18%)", "$1.83", "Azure Translator for batch"],
+    ["TTS audio-only for Q&A", "$867", "-$250 (22%)", "$1.73", "No avatar for Q&A, voice only"],
+    ["Combined optimistic", "$750", "-$367 (33%)", "$1.50", "EA + shorter + audio Q&A"],
 ]
 
 add_table(slide, Inches(0.3), Inches(1.2), Inches(12.7), Inches(3.5),
@@ -592,15 +604,15 @@ add_shape(slide, Inches(0.3), Inches(5.0), Inches(12.7), Inches(2.2),
 add_multi_text(slide, Inches(0.5), Inches(5.1), Inches(12.3), Inches(2.0), [
     {"text": "Recommended Cost Strategy", "size": 16, "bold": True, "color": DARK_BLUE},
     {"text": "", "size": 6, "space_after": 4},
-    {"text": "1. Negotiate Enterprise Agreement pricing for AI Speech Services (target: 25-30% discount on avatar)",
+    {"text": "1. Negotiate Enterprise Agreement pricing for AI Speech Services (target: 20-30% discount on avatar)",
      "size": 12, "color": DARK_GRAY},
-    {"text": '2. Implement "batch first" strategy \u2014 auto-generate batch videos for all uploaded presentations (reusable at zero marginal cost)',
+    {"text": '2. Optimize presentation lengths \u2014 shorter, focused modules (7 min) reduce batch rendering costs',
      "size": 12, "color": DARK_GRAY},
-    {"text": "3. Use TTS audio-only for agent chat / Q&A interactions \u2014 reserve VoiceLive for presentation mode only",
+    {"text": "3. Use TTS audio-only for Q&A interactions \u2014 reserve avatar rendering for batch videos only",
      "size": 12, "color": DARK_GRAY},
     {"text": "4. Cache all translations on upload \u2014 Cosmos DB cache eliminates repeat translation costs",
      "size": 12, "color": DARK_GRAY},
-    {"text": '5. Monitor & optimize session lengths \u2014 provide "key points summary" mode for shorter interactions',
+    {"text": '5. Leverage Azure Cost Management \u2014 set budgets and alerts to track actual vs. estimated usage',
      "size": 12, "color": DARK_GRAY},
 ])
 print("Slide 9: Optimization")
@@ -618,9 +630,9 @@ add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
 tco_data = [
     ["Cost Category", "Year 1", "Year 2", "Year 3", "3-Year Total"],
     ["", "", "", "", ""],
-    ["Phase 1 Azure (6 months)", "$6,618", "\u2014", "\u2014", "$6,618"],
-    ["Phase 2 Azure (6mo Y1 + 12mo Y2)", "$68,982", "$137,964", "\u2014", "$206,946"],
-    ["Phase 3 Azure (12 months)", "\u2014", "\u2014", "$850,404", "$850,404"],
+    ["Phase 1 Azure (6 months)", "$1,330", "\u2014", "\u2014", "$1,330"],
+    ["Phase 2 Azure (6mo Y1 + 12mo Y2)", "$6,700", "$13,400", "\u2014", "$20,100"],
+    ["Phase 3 Azure (12 months)", "\u2014", "\u2014", "$68,470", "$68,470"],
     ["", "", "", "", ""],
     ["Implementation (one-time)", "", "", "", ""],
     ["Phase 1\u21922 development", "$80,000", "\u2014", "\u2014", "$80,000"],
@@ -631,7 +643,7 @@ tco_data = [
     ["Support & Operations", "", "", "", ""],
     ["DevOps / SRE (0.5 FTE)", "$50,000", "$50,000", "$50,000", "$150,000"],
     ["", "", "", "", ""],
-    ["ANNUAL TOTAL", "$205,600", "$367,964", "$930,404", "$1,503,968"],
+    ["ANNUAL TOTAL", "$138,030", "$243,400", "$148,470", "$529,900"],
 ]
 
 tco_tbl = add_table(slide, Inches(0.3), Inches(1.2), Inches(12.7), Inches(5.5),
@@ -658,6 +670,56 @@ add_multi_text(slide, Inches(0.3), Inches(6.8), Inches(12), Inches(0.6), [
      "size": 9, "color": MED_GRAY},
 ])
 print("Slide 10: TCO")
+
+# ═══════════════════════════════════════════════════════════════════
+# SLIDE 11 — AZURE SERVICE UNIT PRICING REFERENCE
+# ═══════════════════════════════════════════════════════════════════
+slide = prs.slides.add_slide(prs.slide_layouts[6])
+add_bg(slide)
+add_shape(slide, Inches(0), Inches(0), WIDTH, Inches(0.9), DARK_BLUE,
+          shape=MSO_SHAPE.RECTANGLE)
+add_text(slide, Inches(0.5), Inches(0.15), Inches(12), Inches(0.6),
+         "Appendix: Azure Service Unit Pricing Reference", 24, WHITE, True)
+
+pricing_data = [
+    ["Azure Service", "SKU / Tier", "Unit", "Unit Price", "Notes"],
+    ["Batch Avatar Synthesis", "Standard", "per minute", "$0.50",
+     "One-time render per video \u2014 main content cost"],
+    ["VoiceLive Avatar (real-time)", "Standard", "per minute", "$0.50",
+     "Live interactive Q&A only"],
+    ["Custom Avatar Hosting", "Custom", "per model/hour", "$0.60",
+     "Phase 3 only \u2014 custom executive avatar"],
+    ["Azure OpenAI \u2014 GPT-4.1", "S0", "per 1K input tokens", "$0.002",
+     "Translation, Q&A, Agent chat"],
+    ["Azure OpenAI \u2014 GPT-4.1", "S0", "per 1K output tokens", "$0.008",
+     "Responses, generated text"],
+    ["OpenAI \u2014 text-embedding-3-small", "S0", "per 1M input tokens", "$0.02",
+     "RAG embeddings (negligible cost)"],
+    ["Azure AI Translator", "S1", "per 1M characters", "$10.00",
+     "Phase 2+ for 37-language expansion"],
+    ["Azure Cosmos DB (Serverless)", "Serverless", "per 1M RUs", "$0.25",
+     "Metadata, translations cache"],
+    ["Azure Cosmos DB (Serverless)", "Serverless", "per GB/month", "$0.25",
+     "Storage for slide data"],
+    ["Azure Blob Storage", "Standard LRS Hot", "per GB/month", "$0.018",
+     "Slide images, PPTX, videos"],
+    ["Azure Container Apps", "Consumption", "per vCPU-second", "$0.000024",
+     "Free tier: 180K vCPU-sec/mo"],
+    ["Azure Container Registry", "Basic", "per month", "$5.00",
+     "10 GB included storage"],
+    ["Log Analytics", "\u2014", "per GB ingested", "Free 5GB",
+     "First 5 GB/month free"],
+]
+
+add_table(slide, Inches(0.3), Inches(1.1), Inches(12.7), Inches(5.5),
+          len(pricing_data), 5, pricing_data,
+          col_widths=[Inches(3.0), Inches(1.5), Inches(2.0), Inches(1.7), Inches(4.5)])
+
+add_text(slide, Inches(0.3), Inches(6.8), Inches(12), Inches(0.4),
+         "* All prices USD, West Europe region, April 2026. Subject to change. "
+         "Enterprise agreements may include volume discounts.",
+         9, MED_GRAY)
+print("Slide 11: Pricing Reference")
 
 # ═══════════════════════════════════════════════════════════════════
 # SLIDE 11 — ASSUMPTIONS & NEXT STEPS
@@ -726,7 +788,7 @@ add_multi_text(slide, Inches(7.0), Inches(1.8), Inches(5.8), Inches(4.5), [
     {"text": "Each phase has a cost review gate before scaling to the next tier.",
      "size": 10, "color": DARK_GRAY},
 ])
-print("Slide 11: Assumptions")
+print("Slide 12: Assumptions")
 
 # ─── SAVE ─────────────────────────────────────────────────────────
 out_path = os.path.join("docs", "RFI559-Cost-Estimation.pptx")
