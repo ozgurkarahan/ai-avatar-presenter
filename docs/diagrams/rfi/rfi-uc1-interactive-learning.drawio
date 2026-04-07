@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2025-01-01T00:00:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram name="UC1 — Interactive Learning with Avatars" id="uc1-arch">
+    <mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== TITLE ===== -->
+        <mxCell id="title" value="&lt;b&gt;UC1 — Interactive Learning with Avatars&lt;/b&gt;&lt;br&gt;Solution Architecture (Basic · Silver · Gold)" style="text;html=1;fontSize=16;fontColor=#1a1a1a;align=center;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="250" y="5" width="900" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== LEFT PANEL — USERS ===== -->
+        <mxCell id="users-panel" value="Users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1a1a1a;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="10" y="50" width="120" height="950" as="geometry" />
+        </mxCell>
+
+        <mxCell id="user-learner" value="Learner" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontColor=#1a1a1a;fontSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="45" y="135" width="30" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="user-creator" value="Content&lt;br&gt;Creator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontColor=#1a1a1a;fontSize=10;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="45" y="400" width="30" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="user-admin" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontColor=#1a1a1a;fontSize=10;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="45" y="775" width="30" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- ===== RIGHT PANEL — SHARED AZURE SERVICES ===== -->
+        <mxCell id="shared-panel" value="Shared Azure Services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#7986cb;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="50" width="280" height="950" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared-ai" value="Azure AI&lt;br&gt;Services" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=10;image=img/lib/azure2/ai_machine_learning/Cognitive_Services.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="100" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared-openai" value="Azure&lt;br&gt;OpenAI" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=10;image=img/lib/azure2/ai_machine_learning/Azure_OpenAI.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="220" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared-cosmos" value="Cosmos DB" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=10;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="340" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared-blob" value="Blob Storage" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=10;image=img/lib/azure2/storage/Storage_Blob.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="460" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared-container" value="Container&lt;br&gt;Apps" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=10;image=img/lib/azure2/compute/Container_Apps.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="580" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared-search" value="AI Search" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=10;image=img/lib/azure2/ai_machine_learning/Cognitive_Search.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1415" y="710" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- TIER 1 — BASIC (green tint #E8F5E9)                              -->
+        <!-- Voice conversation with avatar from knowledge base                -->
+        <!-- ================================================================ -->
+        <mxCell id="basic-group" value="TIER 1 — BASIC  |  Voice conversation with avatar from knowledge base" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#82b366;verticalAlign=top;fontSize=13;fontStyle=1;fontColor=#1a1a1a;arcSize=3;" vertex="1" parent="1">
+          <mxGeometry x="140" y="50" width="1160" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- Basic — Main flow components -->
+        <mxCell id="basic-browser" value="Browser / Teams&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(Web Client)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="195" y="125" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basic-fastapi" value="FastAPI&lt;br&gt;Backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="125" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basic-voicelive" value="VoiceLive API&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(WebRTC)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="610" y="125" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basic-avatar" value="DragonHD&lt;br&gt;Avatar" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#1a1a1a;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="125" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basic-stream" value="Audio/Video&lt;br&gt;Stream" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontColor=#1a1a1a;fontSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="125" width="115" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Basic — Side path components -->
+        <mxCell id="basic-stt" value="Speech-to-Text" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=9;image=img/lib/azure2/ai_machine_learning/Speech_Services.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="310" y="225" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basic-gpt" value="GPT-4.1 (RAG)" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=9;image=img/lib/azure2/ai_machine_learning/Azure_OpenAI.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="540" y="225" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basic-kb" value="Knowledge Base&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(SGChat Docs)&lt;/font&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#1a1a1a;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="770" y="218" width="120" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basic-label" value="&#x2726; Real-time spoken Q&amp;A — no typing required" style="text;html=1;fontSize=11;fontStyle=2;align=left;fontColor=#2e7d32;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="195" y="295" width="400" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Basic — Arrows -->
+        <mxCell id="b-arr1" value="&#x2460;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="user-learner" target="basic-browser" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b-arr2" value="&#x2461; WebSocket" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="basic-browser" target="basic-fastapi" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b-arr3" value="&#x2462;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="basic-fastapi" target="basic-voicelive" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b-arr4" value="&#x2463;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="basic-voicelive" target="basic-avatar" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b-arr5" value="&#x2464;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="basic-avatar" target="basic-stream" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b-arr6" value="&#x2465; stream back" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#e57373;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" edge="1" source="basic-stream" target="basic-browser" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1098" y="100" />
+              <mxPoint x="325" y="100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="b-arr7" value="&#x2466; user speaks" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="basic-browser" target="basic-stt" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="249" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="b-arr8" value="&#x2467;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="basic-stt" target="basic-gpt" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b-arr9" value="&#x2468; RAG lookup" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="basic-gpt" target="basic-kb" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b-arr10" value="&#x2469; avatar speaks" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#388e3c;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="basic-gpt" target="basic-avatar" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="564" y="195" />
+              <mxPoint x="895" y="195" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- TIER 2 — SILVER (blue tint #E3F2FD)                               -->
+        <!-- Avatar overlaid on PowerPoint slides with Q&A                     -->
+        <!-- ================================================================ -->
+        <mxCell id="silver-group" value="TIER 2 — SILVER  |  Avatar overlaid on PowerPoint slides with Q&amp;amp;A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#42a5f5;verticalAlign=top;fontSize=13;fontStyle=1;fontColor=#1a1a1a;arcSize=3;" vertex="1" parent="1">
+          <mxGeometry x="140" y="340" width="1160" height="310" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-ingest-label" value="Content Ingestion Pipeline" style="text;html=1;fontSize=10;fontStyle=3;align=left;fontColor=#1565c0;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="155" y="370" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Silver — Ingestion row -->
+        <mxCell id="silver-ppt" value="PPT Upload" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="195" y="400" width="115" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-pptx" value="python-pptx&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Parse&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="400" width="115" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-libre" value="LibreOffice&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Render PNG&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="400" width="120" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-blob" value="Blob Storage&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(slides)&lt;/font&gt;" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=9;image=img/lib/azure2/storage/Storage_Blob.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="750" y="397" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-cosmos" value="Cosmos DB&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(metadata)&lt;/font&gt;" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=9;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="890" y="397" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-exp-label" value="Learner Experience" style="text;html=1;fontSize=10;fontStyle=3;align=left;fontColor=#1565c0;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="155" y="490" width="200" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Silver — Experience row -->
+        <mxCell id="silver-slideviewer" value="SlideViewer&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Component&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="195" y="520" width="130" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-avatarpanel" value="AvatarPanel&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(WebRTC)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="400" y="520" width="130" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-translation" value="Translation&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;(10 langs)&lt;/font&gt;" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=9;image=img/lib/azure2/ai_machine_learning/Translator_Text.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="600" y="517" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-rag" value="Q&amp;amp;A RAG&lt;br&gt;&lt;font style=&quot;font-size:9px&quot;&gt;Pipeline&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="740" y="520" width="130" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-answer" value="Avatar&lt;br&gt;Answers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="960" y="520" width="120" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="silver-label" value="&#x2726; PPT slides + avatar narration + interactive Q&amp;A" style="text;html=1;fontSize=11;fontStyle=2;align=left;fontColor=#1565c0;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="195" y="615" width="400" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Silver — Ingestion arrows -->
+        <mxCell id="s-arr1" value="&#x2460;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="user-creator" target="silver-ppt" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s-arr2" value="&#x2461;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="silver-ppt" target="silver-pptx" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s-arr3" value="&#x2462;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="silver-pptx" target="silver-libre" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s-arr4" value="&#x2463; slides" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="silver-libre" target="silver-blob" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s-arr5" value="&#x2464; metadata" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="silver-pptx" target="silver-cosmos" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="495" y="460" />
+              <mxPoint x="860" y="460" />
+              <mxPoint x="860" y="421" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Silver — Experience arrows -->
+        <mxCell id="s-arr6" value="&#x2465;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#42a5f5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="user-learner" target="silver-slideviewer" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="60" y="543" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="s-arr7" value="&#x2466; navigate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#42a5f5;" edge="1" source="silver-slideviewer" target="silver-avatarpanel" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s-arr8" value="&#x2467; translate" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#42a5f5;" edge="1" source="silver-avatarpanel" target="silver-translation" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s-arr9" value="&#x2468; Q&amp;A" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#42a5f5;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="silver-slideviewer" target="silver-rag" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="325" y="580" />
+              <mxPoint x="710" y="580" />
+              <mxPoint x="710" y="543" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="s-arr10" value="&#x2469;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#42a5f5;" edge="1" source="silver-rag" target="silver-answer" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ================================================================ -->
+        <!-- TIER 3 — GOLD (amber tint #FFF8E1)                                -->
+        <!-- Multi-deck AI selection                                           -->
+        <!-- ================================================================ -->
+        <mxCell id="gold-group" value="TIER 3 — GOLD  |  Multi-deck AI selection — avatar selects relevant slides from multiple decks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#ffa726;verticalAlign=top;fontSize=13;fontStyle=1;fontColor=#1a1a1a;arcSize=3;" vertex="1" parent="1">
+          <mxGeometry x="140" y="660" width="1160" height="340" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-roadmap" value="&#x1F6A7; ROADMAP — proposed for Phase 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#e53935;fontColor=#c62828;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="900" y="668" width="260" height="28" as="geometry" />
+        </mxCell>
+
+        <!-- Gold — Components -->
+        <mxCell id="gold-upload" value="Upload&lt;br&gt;Multiple Decks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="195" y="770" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-index" value="Multi-deck&lt;br&gt;Index" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="395" y="770" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-search" value="AI Search" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=9;image=img/lib/azure2/ai_machine_learning/Cognitive_Search.svg;fontColor=#1a1a1a;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="585" y="767" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-selector" value="GPT-4.1&lt;br&gt;Slide Selector" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#1a1a1a;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="770" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-builder" value="Dynamic&lt;br&gt;Presentation&lt;br&gt;Builder" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a1a1a;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="930" y="765" width="130" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-present" value="Avatar&lt;br&gt;Presents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#1a1a1a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="770" width="110" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-need" value="Learner describes&lt;br&gt;learning need" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#7986cb;fontColor=#1a1a1a;fontSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="195" y="870" width="140" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gold-label" value="&#x2726; AI-curated presentations from multiple decks" style="text;html=1;fontSize=11;fontStyle=2;align=left;fontColor=#e65100;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="195" y="960" width="400" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Gold — Arrows -->
+        <mxCell id="g-arr1" value="&#x2460;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="user-admin" target="gold-upload" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g-arr2" value="&#x2461; index all" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="gold-upload" target="gold-index" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g-arr3" value="&#x2462;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="gold-index" target="gold-search" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g-arr4" value="&#x2463; describes need" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#ffa726;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" source="gold-need" target="gold-selector" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="785" y="893" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="g-arr5" value="&#x2464; query" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="gold-selector" target="gold-search" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="795" />
+              <mxPoint x="680" y="791" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="g-arr6" value="&#x2465; select slides" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="gold-selector" target="gold-builder" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g-arr7" value="&#x2466; present" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#666666;" edge="1" source="gold-builder" target="gold-present" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g-arr8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontColor=#1a1a1a;fontSize=9;strokeColor=#ffa726;dashed=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="user-learner" target="gold-need" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="60" y="893" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== CONNECTION ARROWS TO SHARED SERVICES (dashed) ===== -->
+        <mxCell id="c-arr1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#bbbbbb;dashed=1;strokeWidth=1;" edge="1" source="basic-stt" target="shared-ai" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1280" y="249" />
+              <mxPoint x="1280" y="124" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="c-arr2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#bbbbbb;dashed=1;strokeWidth=1;" edge="1" source="basic-gpt" target="shared-openai" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1290" y="249" />
+              <mxPoint x="1290" y="244" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="c-arr3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#bbbbbb;dashed=1;strokeWidth=1;" edge="1" source="silver-blob" target="shared-blob" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1280" y="421" />
+              <mxPoint x="1280" y="484" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="c-arr4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#bbbbbb;dashed=1;strokeWidth=1;" edge="1" source="silver-cosmos" target="shared-cosmos" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1270" y="421" />
+              <mxPoint x="1270" y="364" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="c-arr5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#bbbbbb;dashed=1;strokeWidth=1;" edge="1" source="gold-search" target="shared-search" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1280" y="791" />
+              <mxPoint x="1280" y="734" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

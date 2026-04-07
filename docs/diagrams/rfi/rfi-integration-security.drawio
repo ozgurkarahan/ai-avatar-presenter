@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2025-01-01T00:00:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="rfi-integration-security" name="Integration &amp; Security Architecture">
+    <mxGraphModel dx="1700" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TITLE                                                      -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="title" value="AI Presenter — Integration &amp; Security Architecture  (RFI559)" style="text;html=1;fontSize=20;fontStyle=1;fontColor=#1a1a1a;align=center;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="300" y="8" width="1100" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TOP GROUP — Saint-Gobain Ecosystem                         -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="sg-group" value="Saint-Gobain Ecosystem" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#9E9E9E;fontStyle=1;fontSize=14;fontColor=#1a1a1a;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;strokeWidth=2;container=0;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="50" width="1280" height="200" as="geometry"/>
+        </mxCell>
+
+        <!-- SGChat -->
+        <mxCell id="sgchat" value="&lt;b style=&apos;font-size:13px&apos;&gt;💬 SGChat API / SDK&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:4px 0;border:0;border-top:1px solid #ccc&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;Custom chatbots with&lt;br&gt;knowledge base (RAG)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#757575;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="45" y="95" width="280" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- M365 Copilot -->
+        <mxCell id="m365" value="&lt;b style=&apos;font-size:13px&apos;&gt;Ⓜ Microsoft 365 Copilot&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:4px 0;border:0;border-top:1px solid #ccc&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;Declarative Agent Plugin&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#757575;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="345" y="95" width="280" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- LMS -->
+        <mxCell id="lms" value="&lt;b style=&apos;font-size:13px&apos;&gt;🎓 Learning Management System&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:4px 0;border:0;border-top:1px solid #ccc&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;SCORM 1.2 / 2004 packages&lt;br&gt;(Cornerstone / Boost)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#757575;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="645" y="95" width="280" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- Microsoft Teams -->
+        <mxCell id="teams" value="&lt;b style=&apos;font-size:13px&apos;&gt;🟦 Microsoft Teams&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:4px 0;border:0;border-top:1px solid #ccc&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;Static Tab +&lt;br&gt;Bot Framework (v2)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#757575;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=12;" vertex="1" parent="1">
+          <mxGeometry x="945" y="95" width="280" height="130" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- CENTER GROUP — AI Presenter Platform                       -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="platform-group" value="AI Presenter Platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;fontStyle=1;fontSize=14;fontColor=#1a1a1a;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;strokeWidth=2;container=0;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="275" width="1060" height="295" as="geometry"/>
+        </mxCell>
+
+        <!-- FastAPI Backend (API Gateway) — central hub -->
+        <mxCell id="api-gateway" value="&lt;b style=&apos;font-size:14px&apos;&gt;⚡ FastAPI Backend (API Gateway)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#1a1a1a;fontSize=14;verticalAlign=middle;shadow=1;arcSize=15;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="310" y="305" width="460" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- REST API Layer -->
+        <mxCell id="rest-api" value="&lt;b&gt;REST API&lt;/b&gt;  ›  /api/upload  ·  /api/avatar  ·  /api/qa  ·  /api/agent/chat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1565C0;fontColor=#1a1a1a;fontSize=10;verticalAlign=middle;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="45" y="368" width="580" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- WebSocket Layer -->
+        <mxCell id="websocket" value="&lt;b&gt;WebSocket&lt;/b&gt;  ›  /ws/voice (VoiceLive proxy)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#90CAF9;strokeColor=#1565C0;fontColor=#1a1a1a;fontSize=10;verticalAlign=middle;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="645" y="368" width="410" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Integration Adapters -->
+        <mxCell id="adapter-sgchat" value="&lt;b&gt;SGChat Adapter&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Webhook receiver +&lt;br&gt;knowledge base connector&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#42A5F5;fontColor=#1a1a1a;fontSize=11;verticalAlign=middle;arcSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="422" width="235" height="75" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="adapter-copilot" value="&lt;b&gt;Copilot Plugin&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Declarative agent&lt;br&gt;manifest + API&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#42A5F5;fontColor=#1a1a1a;fontSize=11;verticalAlign=middle;arcSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="422" width="235" height="75" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="adapter-scorm" value="&lt;b&gt;SCORM Exporter&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Package builder +&lt;br&gt;quiz generator&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#42A5F5;fontColor=#1a1a1a;fontSize=11;verticalAlign=middle;arcSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="555" y="422" width="235" height="75" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="adapter-teams" value="&lt;b&gt;Teams Tab&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;iframe + theme support&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#42A5F5;fontColor=#1a1a1a;fontSize=11;verticalAlign=middle;arcSize=10;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="810" y="422" width="235" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- BOTTOM-LEFT GROUP — Azure AI Services                      -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="ai-group" value="Azure AI Services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;fontStyle=1;fontSize=14;fontColor=#1a1a1a;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;strokeWidth=2;container=0;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="600" width="520" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure AI Services (Speech) — icon -->
+        <mxCell id="ai-svc-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Cognitive_Services.svg;" vertex="1" parent="1">
+          <mxGeometry x="71" y="650" width="48" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="ai-svc-label" value="&lt;b&gt;Azure AI Services&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;VoiceLive · Batch&lt;br&gt;Synthesis · TTS&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="20" y="705" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure OpenAI — icon -->
+        <mxCell id="openai-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Azure_Open_AI.svg;" vertex="1" parent="1">
+          <mxGeometry x="246" y="650" width="48" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="openai-label" value="&lt;b&gt;Azure OpenAI&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;GPT-4.1 · Embeddings&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="195" y="705" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure AI Search — icon -->
+        <mxCell id="search-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Cognitive_Search.svg;" vertex="1" parent="1">
+          <mxGeometry x="421" y="650" width="48" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="search-label" value="&lt;b&gt;Azure AI Search&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Production RAG index&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="370" y="705" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- BOTTOM-RIGHT GROUP — Data &amp; Storage                        -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="data-group" value="Data &amp; Storage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E0F7FA;strokeColor=#00838F;fontStyle=1;fontSize=14;fontColor=#1a1a1a;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;strokeWidth=2;container=0;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="560" y="600" width="520" height="260" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure Cosmos DB — icon -->
+        <mxCell id="cosmos-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;" vertex="1" parent="1">
+          <mxGeometry x="621" y="650" width="48" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="cosmos-label" value="&lt;b&gt;Azure Cosmos DB&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Metadata · Translations&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="570" y="705" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure Blob Storage — icon -->
+        <mxCell id="blob-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/storage/Blob_Block.svg;" vertex="1" parent="1">
+          <mxGeometry x="796" y="650" width="48" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="blob-label" value="&lt;b&gt;Azure Blob Storage&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Slides · Videos · PPTX&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="745" y="705" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure Key Vault — icon -->
+        <mxCell id="kv-icon" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/security/Key_Vaults.svg;" vertex="1" parent="1">
+          <mxGeometry x="971" y="650" width="48" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="kv-label" value="&lt;b&gt;Azure Key Vault&lt;/b&gt;&lt;br&gt;&lt;span style=&apos;font-size:9px;color:#1a1a1a&apos;&gt;Secrets Management&lt;/span&gt;" style="text;html=1;fontSize=11;fontColor=#1a1a1a;align=center;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="920" y="705" width="150" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- RIGHT GROUP — Security &amp; Compliance                        -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="security-group" value="Security &amp; Compliance" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;fontStyle=1;fontSize=14;fontColor=#1a1a1a;verticalAlign=top;align=left;spacingLeft=15;spacingTop=8;strokeWidth=2;container=0;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="275" width="560" height="585" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure Entra ID -->
+        <mxCell id="entra" value="&lt;b style=&apos;font-size:13px&apos;&gt;🔐 Azure Entra ID&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:3px 0;border:0;border-top:1px solid #ddd&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;SSO / SAML / OIDC&lt;br&gt;Saint-Gobain tenant federation&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F57C00;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="315" width="510" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Managed Identity -->
+        <mxCell id="managed-id" value="&lt;b style=&apos;font-size:13px&apos;&gt;🔑 Managed Identity&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:3px 0;border:0;border-top:1px solid #ddd&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;No keys in code&lt;br&gt;RBAC role assignments&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F57C00;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="440" width="510" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- GDPR Compliance -->
+        <mxCell id="gdpr" value="&lt;b style=&apos;font-size:13px&apos;&gt;🇪🇺 GDPR Compliance&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:3px 0;border:0;border-top:1px solid #ddd&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;Data residency: EU (Sweden Central)&lt;br&gt;Data retention policies · User consent mgmt&lt;br&gt;Right to erasure support&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F57C00;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="565" width="510" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- Network Security -->
+        <mxCell id="network-sec" value="&lt;b style=&apos;font-size:13px&apos;&gt;🛡️ Network Security&lt;/b&gt;&lt;br&gt;&lt;hr style=&apos;margin:3px 0;border:0;border-top:1px solid #ddd&apos;&gt;&lt;span style=&apos;font-size:10px;color:#1a1a1a&apos;&gt;HTTPS only · Private endpoints (option)&lt;br&gt;WAF (Azure Front Door)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#F57C00;fontColor=#1a1a1a;fontSize=12;verticalAlign=middle;shadow=1;arcSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="690" width="510" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- CONNECTIONS / EDGES                                        -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+
+        <!-- SGChat ⟷ API Gateway  (bidirectional) -->
+        <mxCell id="edge-sgchat" value="REST API / Webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#616161;fontColor=#1a1a1a;fontSize=10;startArrow=classic;startFill=1;endArrow=classic;endFill=1;labelBackgroundColor=#FFFFFF;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.15;entryY=0;entryDx=0;entryDy=0;" edge="1" source="sgchat" target="api-gateway" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- M365 Copilot → API Gateway -->
+        <mxCell id="edge-m365" value="Declarative Agent API" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#616161;fontColor=#1a1a1a;fontSize=10;endArrow=classic;endFill=1;labelBackgroundColor=#FFFFFF;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.38;entryY=0;entryDx=0;entryDy=0;" edge="1" source="m365" target="api-gateway" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LMS → API Gateway -->
+        <mxCell id="edge-lms" value="SCORM Upload / xAPI" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#616161;fontColor=#1a1a1a;fontSize=10;endArrow=classic;endFill=1;labelBackgroundColor=#FFFFFF;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.62;entryY=0;entryDx=0;entryDy=0;" edge="1" source="lms" target="api-gateway" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Teams → API Gateway -->
+        <mxCell id="edge-teams" value="iframe + @microsoft/teams-js" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#616161;fontColor=#1a1a1a;fontSize=10;endArrow=classic;endFill=1;labelBackgroundColor=#FFFFFF;strokeWidth=1.5;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.85;entryY=0;entryDx=0;entryDy=0;" edge="1" source="teams" target="api-gateway" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- API Gateway → Azure AI Services group -->
+        <mxCell id="edge-ai" value="Managed Identity" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3F51B5;fontColor=#1a1a1a;fontSize=10;endArrow=classic;endFill=1;labelBackgroundColor=#FFFFFF;strokeWidth=1.5;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="api-gateway" target="ai-group" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- API Gateway → Data &amp; Storage group -->
+        <mxCell id="edge-data" value="Managed Identity" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#00838F;fontColor=#1a1a1a;fontSize=10;endArrow=classic;endFill=1;labelBackgroundColor=#FFFFFF;strokeWidth=1.5;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" source="api-gateway" target="data-group" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Entra ID → API Gateway -->
+        <mxCell id="edge-entra" value="OAuth 2.0 / OIDC tokens" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E65100;fontColor=#1a1a1a;fontSize=10;endArrow=classic;endFill=1;labelBackgroundColor=#FFFFFF;strokeWidth=2;dashed=1;dashPattern=8 4;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" source="entra" target="api-gateway" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- FOOTER                                                     -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <mxCell id="footer" value="RFI559 — Saint-Gobain AI Avatar Solution  |  All connections secured via Azure Managed Identity &amp; Entra ID  |  EU data residency (Sweden Central)" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#1a1a1a;align=center;verticalAlign=middle;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1060" width="1300" height="25" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

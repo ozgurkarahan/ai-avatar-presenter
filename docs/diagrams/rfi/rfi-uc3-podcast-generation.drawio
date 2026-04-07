@@ -1,0 +1,205 @@
+<mxfile host="draw.io" modified="2025-01-01T00:00:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="uc3-podcast-gen" name="UC3 — Podcast-Style Dual-Avatar">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ============================================ -->
+        <!-- TITLE                                        -->
+        <!-- ============================================ -->
+        <mxCell id="title" value="&lt;b&gt;UC3 — Podcast-Style Dual-Avatar Video Generation&lt;/b&gt;&lt;br&gt;RFI559 — AI Avatar Solution for Saint-Gobain" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontColor=#1a1a1a;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="350" y="10" width="700" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- GROUP 1 — INPUT (green)                      -->
+        <!-- ============================================ -->
+        <mxCell id="grp-input" value="User Input" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f4ea;strokeColor=#34a853;dashed=0;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#1a1a1a;arcSize=10;container=1;collapsible=0;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="20" y="80" width="200" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="in-docs" value="&lt;b&gt;Upload Documents&lt;/b&gt;&lt;br&gt;PowerPoint, PDF, articles, reports, research papers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#34a853;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-input">
+          <mxGeometry x="15" y="40" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="in-instructions" value="&lt;b&gt;Optional Instructions&lt;/b&gt;&lt;br&gt;• Topic focus&lt;br&gt;• Conversation style&lt;br&gt;• Target length&lt;br&gt;• Target language" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#34a853;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-input">
+          <mxGeometry x="15" y="145" width="170" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- GROUP 2 — AI SCRIPT GENERATION (pink)        -->
+        <!-- ============================================ -->
+        <mxCell id="grp-script" value="AI Script Generation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#d81b60;dashed=0;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#1a1a1a;arcSize=10;container=1;collapsible=0;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="270" y="80" width="230" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="scr-analyze" value="&lt;b&gt;GPT-4.1 Analysis&lt;/b&gt;&lt;br&gt;Analyzes uploaded documents, extracts key topics &amp;amp; talking points" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d81b60;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-script">
+          <mxGeometry x="15" y="40" width="200" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="scr-generate" value="&lt;b&gt;Podcast Script&lt;/b&gt;&lt;br&gt;Generates conversational dialogue between two roles" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d81b60;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-script">
+          <mxGeometry x="15" y="110" width="200" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="scr-roles" value="&lt;b&gt;Two Roles Assigned&lt;/b&gt;&lt;br&gt;🎙️ Interviewer&lt;br&gt;🧑‍🏫 Subject Matter Expert" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d81b60;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-script">
+          <mxGeometry x="15" y="180" width="200" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="scr-review" value="&lt;b&gt;Review &amp;amp; Edit&lt;/b&gt;&lt;br&gt;User can modify script before rendering" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d81b60;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-script">
+          <mxGeometry x="15" y="245" width="200" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- Script internal arrows -->
+        <mxCell id="arr-s1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d81b60;fontColor=#1a1a1a;" edge="1" parent="grp-script" source="scr-analyze" target="scr-generate">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-s2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d81b60;fontColor=#1a1a1a;" edge="1" parent="grp-script" source="scr-generate" target="scr-roles">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d81b60;fontColor=#1a1a1a;" edge="1" parent="grp-script" source="scr-roles" target="scr-review">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- GROUP 3 — AVATAR ASSIGNMENT (amber)          -->
+        <!-- ============================================ -->
+        <mxCell id="grp-avatar" value="Avatar Assignment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff8e1;strokeColor=#f9a825;dashed=0;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#1a1a1a;arcSize=10;container=1;collapsible=0;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="550" y="80" width="230" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="av-interviewer" value="&lt;b&gt;Interviewer Avatar&lt;/b&gt;&lt;br&gt;e.g., &lt;i&gt;harry&lt;/i&gt; — professional male" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-avatar">
+          <mxGeometry x="15" y="40" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="av-interviewee" value="&lt;b&gt;Interviewee Avatar&lt;/b&gt;&lt;br&gt;e.g., &lt;i&gt;lisa&lt;/i&gt; — professional female" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-avatar">
+          <mxGeometry x="15" y="110" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="av-voice" value="&lt;b&gt;Voice Selection&lt;/b&gt;&lt;br&gt;DragonHD neural voices per avatar" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-avatar">
+          <mxGeometry x="15" y="180" width="200" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="av-lang" value="&lt;b&gt;Language Selection&lt;/b&gt;&lt;br&gt;Multilingual support (37+ languages)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#f9a825;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-avatar">
+          <mxGeometry x="15" y="245" width="200" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- GROUP 4 — RENDERING (purple)                 -->
+        <!-- ============================================ -->
+        <mxCell id="grp-render" value="Video Rendering" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e8fd;strokeColor=#9334e6;dashed=0;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#1a1a1a;arcSize=10;container=1;collapsible=0;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="830" y="80" width="240" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="rend-batch" value="&lt;b&gt;Azure AI Speech&lt;/b&gt;&lt;br&gt;Batch Synthesis for each avatar turn" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9334e6;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-render">
+          <mxGeometry x="15" y="40" width="210" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="rend-compose" value="&lt;b&gt;Video Composition&lt;/b&gt;&lt;br&gt;Alternating camera angles between avatars" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9334e6;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-render">
+          <mxGeometry x="15" y="110" width="210" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="rend-layout" value="&lt;b&gt;Layout Options&lt;/b&gt;&lt;br&gt;Picture-in-picture or split-screen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9334e6;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-render">
+          <mxGeometry x="15" y="180" width="210" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="rend-extras" value="&lt;b&gt;Enhancements&lt;/b&gt;&lt;br&gt;Background music &amp;amp; transitions (optional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9334e6;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-render">
+          <mxGeometry x="15" y="245" width="210" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- GROUP 5 — OUTPUT (orange)                    -->
+        <!-- ============================================ -->
+        <mxCell id="grp-output" value="Output Deliverables" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef3e0;strokeColor=#e8710a;dashed=0;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#1a1a1a;arcSize=10;container=1;collapsible=0;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="80" width="210" height="300" as="geometry"/>
+        </mxCell>
+        <mxCell id="out-mp4" value="&lt;b&gt;Podcast Video&lt;/b&gt;&lt;br&gt;MP4 — dual-avatar conversation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e8710a;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-output">
+          <mxGeometry x="15" y="40" width="180" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="out-mp3" value="&lt;b&gt;Audio-Only&lt;/b&gt;&lt;br&gt;MP3 — for podcast platforms" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e8710a;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-output">
+          <mxGeometry x="15" y="107" width="180" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="out-transcript" value="&lt;b&gt;Transcript&lt;/b&gt;&lt;br&gt;With timestamps &amp;amp; speaker labels" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e8710a;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-output">
+          <mxGeometry x="15" y="175" width="180" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="out-scorm" value="&lt;b&gt;SCORM Package&lt;/b&gt;&lt;br&gt;Optional LMS-ready package" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e8710a;fontSize=10;fontColor=#1a1a1a;align=center;verticalAlign=middle;" vertex="1" parent="grp-output">
+          <mxGeometry x="15" y="242" width="180" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- INTER-GROUP ARROWS                           -->
+        <!-- ============================================ -->
+        <mxCell id="arr-in-scr" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#5f6368;strokeWidth=2;fontColor=#1a1a1a;entryX=0;entryY=0.5;exitX=1;exitY=0.5;" edge="1" parent="1" source="grp-input" target="grp-script">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-scr-av" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#5f6368;strokeWidth=2;fontColor=#1a1a1a;entryX=0;entryY=0.5;exitX=1;exitY=0.5;" edge="1" parent="1" source="grp-script" target="grp-avatar">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-av-rend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#5f6368;strokeWidth=2;fontColor=#1a1a1a;entryX=0;entryY=0.5;exitX=1;exitY=0.5;" edge="1" parent="1" source="grp-avatar" target="grp-render">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-rend-out" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#5f6368;strokeWidth=2;fontColor=#1a1a1a;entryX=0;entryY=0.5;exitX=1;exitY=0.5;" edge="1" parent="1" source="grp-render" target="grp-output">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- BOTTOM — ROADMAP BANNER                      -->
+        <!-- ============================================ -->
+        <mxCell id="roadmap-banner" value="⚡ ROADMAP — Proposed for Phase 2  ·  Similar to NotebookLM Audio Overview feature" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3cd;strokeColor=#ffc107;fontSize=13;fontColor=#1a1a1a;fontStyle=1;align=center;verticalAlign=middle;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="170" y="420" width="1060" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- BOTTOM — Azure Services Used                 -->
+        <!-- ============================================ -->
+        <mxCell id="grp-azure" value="Azure Services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9e9e9e;dashed=1;verticalAlign=top;fontStyle=1;fontSize=12;fontColor=#1a1a1a;arcSize=6;container=1;collapsible=0;spacingTop=4;" vertex="1" parent="1">
+          <mxGeometry x="170" y="480" width="1060" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure AI Services -->
+        <mxCell id="az-ai" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Cognitive_Services.svg;fontColor=#1a1a1a;" vertex="1" parent="grp-azure">
+          <mxGeometry x="50" y="25" width="50" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="az-ai-lbl" value="Azure AI Services&lt;br&gt;(Speech &amp;amp; Avatar)" style="text;html=1;align=center;verticalAlign=top;fontSize=9;fontColor=#1a1a1a;fontFamily=Segoe UI;" vertex="1" parent="grp-azure">
+          <mxGeometry x="15" y="78" width="120" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Azure OpenAI -->
+        <mxCell id="az-openai" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/ai_machine_learning/Cognitive_Services.svg;fontColor=#1a1a1a;" vertex="1" parent="grp-azure">
+          <mxGeometry x="250" y="25" width="50" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="az-openai-lbl" value="Azure OpenAI&lt;br&gt;(GPT-4.1 Scripts)" style="text;html=1;align=center;verticalAlign=top;fontSize=9;fontColor=#1a1a1a;fontFamily=Segoe UI;" vertex="1" parent="grp-azure">
+          <mxGeometry x="215" y="78" width="120" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Cosmos DB -->
+        <mxCell id="az-cosmos" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/databases/Azure_Cosmos_DB.svg;fontColor=#1a1a1a;" vertex="1" parent="grp-azure">
+          <mxGeometry x="450" y="25" width="50" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="az-cosmos-lbl" value="Cosmos DB&lt;br&gt;(Sessions &amp;amp; Scripts)" style="text;html=1;align=center;verticalAlign=top;fontSize=9;fontColor=#1a1a1a;fontFamily=Segoe UI;" vertex="1" parent="grp-azure">
+          <mxGeometry x="415" y="78" width="120" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Blob Storage -->
+        <mxCell id="az-blob" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/storage/Storage_Accounts.svg;fontColor=#1a1a1a;" vertex="1" parent="grp-azure">
+          <mxGeometry x="650" y="25" width="50" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="az-blob-lbl" value="Blob Storage&lt;br&gt;(Media Assets)" style="text;html=1;align=center;verticalAlign=top;fontSize=9;fontColor=#1a1a1a;fontFamily=Segoe UI;" vertex="1" parent="grp-azure">
+          <mxGeometry x="615" y="78" width="120" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- Container Apps -->
+        <mxCell id="az-ca" value="" style="aspect=fixed;html=1;points=[];align=center;image;fontSize=11;image=img/lib/azure2/compute/Container_Apps.svg;fontColor=#1a1a1a;" vertex="1" parent="grp-azure">
+          <mxGeometry x="850" y="25" width="50" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="az-ca-lbl" value="Container Apps&lt;br&gt;(Composition Engine)" style="text;html=1;align=center;verticalAlign=top;fontSize=9;fontColor=#1a1a1a;fontFamily=Segoe UI;" vertex="1" parent="grp-azure">
+          <mxGeometry x="810" y="78" width="130" height="35" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- Connecting lines to Azure bar                -->
+        <!-- ============================================ -->
+        <mxCell id="az-conn-1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#bdbdbd;strokeWidth=1;dashed=1;fontColor=#1a1a1a;exitX=0.5;exitY=1;entryX=0.3;entryY=0;" edge="1" parent="1" source="grp-script" target="grp-azure">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="az-conn-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#bdbdbd;strokeWidth=1;dashed=1;fontColor=#1a1a1a;exitX=0.5;exitY=1;entryX=0.7;entryY=0;" edge="1" parent="1" source="grp-render" target="grp-azure">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ============================================ -->
+        <!-- FOOTER                                       -->
+        <!-- ============================================ -->
+        <mxCell id="footer" value="RFI559 — AI Avatar Solution · Saint-Gobain · Confidential" style="text;html=1;align=right;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#1a1a1a;fontStyle=2;fontFamily=Segoe UI;" vertex="1" parent="1">
+          <mxGeometry x="950" y="615" width="350" height="20" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
