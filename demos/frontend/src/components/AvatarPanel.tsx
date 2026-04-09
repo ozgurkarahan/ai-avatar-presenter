@@ -35,6 +35,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     height: '100%',
     objectFit: 'cover' as const,
+    // Zoom in and shift up to frame the avatar from chest up (Teams-call style)
+    transform: 'scale(1.5)',
+    transformOrigin: 'center top',
   },
   placeholder: {
     color: '#888',
@@ -106,27 +109,18 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   const safetyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleMessageRef = useRef<(event: MessageEvent) => void>(() => {});
   const prevVideoPlayingRef = useRef(videoPlaying);
+  const videoPlayingRef = useRef(videoPlaying);
 
-  // When video starts playing, interrupt the avatar's speech
-  useEffect(() => {
-    if (!videoPlaying) return;
-    if (!connected) return;
-    // Cancel pending timers so auto-advance doesn't fire mid-video
-    if (speechTimeoutRef.current) { clearTimeout(speechTimeoutRef.current); speechTimeoutRef.current = null; }
-    if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null; }
-    setSpeaking(false);
-    setStatus('⏸ Video playing — avatar paused');
-    // Tell Azure to stop the current response immediately
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'response.cancel' }));
-    }
-  }, [videoPlaying, connected]);
+  // Keep videoPlayingRef in sync — avatar speaks over video (videos have no sound)
+  useEffect(() => { videoPlayingRef.current = videoPlaying; }, [videoPlaying]);
 
-  // When video ends while presenting, advance to the next slide
+  // When video ends while presenting, advance to the next slide (only if avatar speech is also done)
   useEffect(() => {
     const wasPlaying = prevVideoPlayingRef.current;
     prevVideoPlayingRef.current = videoPlaying;
     if (wasPlaying && !videoPlaying && presentingRef.current) {
+      // If avatar is still speaking, let advanceAfterSpeech handle the slide change
+      if (speechTimeoutRef.current || safetyTimeoutRef.current) return;
       const nextSlide = currentSlideRef.current + 1;
       if (nextSlide < presentation.slide_count) {
         onSlideChange(nextSlide);
@@ -281,6 +275,11 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     setStatus('Done speaking');
     // Auto-advance to next slide if in presenting mode
     if (presentingRef.current) {
+      // If a video is still playing, let the video-end handler advance instead
+      if (videoPlayingRef.current) {
+        setStatus('Speaking done — waiting for video to finish...');
+        return;
+      }
       const nextSlide = currentSlideRef.current + 1;
       if (nextSlide < presentation.slide_count) {
         console.log(`[Auto-advance] Moving to slide ${nextSlide + 1}`);
@@ -360,8 +359,9 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
           safetyTimeoutRef.current = null;
         }
         const elapsed = (Date.now() - speechStartTimeRef.current) / 1000;
-        const estimatedDuration = spokenTextLengthRef.current / 13;
-        const remaining = Math.min(Math.max(0, estimatedDuration - elapsed), 70);
+        // Use 10 chars/sec (avatar speaks ~150 wpm ≈ 10 chars/sec) + 3s WebRTC playout buffer
+        const estimatedDuration = spokenTextLengthRef.current / 10;
+        const remaining = Math.min(Math.max(3, estimatedDuration - elapsed + 3), 120);
         console.log(`[WS] Speech: ${estimatedDuration.toFixed(1)}s est, ${elapsed.toFixed(1)}s elapsed, wait ${remaining.toFixed(1)}s`);
         setStatus('Finishing speech...');
         speechTimeoutRef.current = setTimeout(() => {
@@ -433,13 +433,14 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   const speakSlide = useCallback(async (slideIndex: number) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     const slide = presentation.slides[slideIndex];
-    // If the slide has an embedded video, trigger auto-play and wait for it to finish
+    // If the slide has an embedded video, trigger auto-play and also speak the text
+    // (videos have no sound, so the avatar narrates over them)
     if (slide?.video_url) {
       if (presentingRef.current) {
-        setStatus(`▶ Playing video for slide ${slideIndex + 1}...`);
+        setStatus(`▶ Playing video for slide ${slideIndex + 1} — avatar speaking...`);
         onRequestVideoAutoPlay?.();
       }
-      return;
+      // Fall through to speak the slide text alongside the video
     }
     const text = slide?.notes || slide?.body || slide?.title || '';
     if (!text) {
@@ -477,7 +478,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
 
     // Safety timeout: if response.done never arrives, force advance after estimated duration + buffer
     if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
-    const safetyDuration = Math.min((speakText.length / 13) + 30, 120); // estimated + 30s buffer, max 2 min
+    const safetyDuration = Math.min((speakText.length / 10) + 30, 180); // estimated + 30s buffer, max 3 min
     safetyTimeoutRef.current = setTimeout(() => {
       safetyTimeoutRef.current = null;
       console.warn('[Safety] response.done not received — forcing advance after', safetyDuration.toFixed(0), 's');
