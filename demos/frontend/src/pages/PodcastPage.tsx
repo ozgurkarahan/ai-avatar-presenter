@@ -550,8 +550,24 @@ function ResultView({ job, turns, interviewer, expert, onNew }: {
           {job.outputs.srt_url && (
             <a href={job.outputs.srt_url} download style={secondaryBtn as any}>⬇ Transcript (SRT)</a>
           )}
-          <button onClick={onNew} style={{ ...secondaryBtn, marginLeft: 'auto' }}>+ New podcast</button>
+          <a href="/podcast/library" style={{ ...secondaryBtn, marginLeft: 'auto' } as any}>📚 Library</a>
+          <button onClick={onNew} style={secondaryBtn}>+ New podcast</button>
         </div>
+        {job.archive_state === 'archiving' && (
+          <div style={{ marginTop: 10, fontSize: 12, color: theme.muted }}>
+            💾 Saving to library…
+          </div>
+        )}
+        {job.archive_state === 'published' && (
+          <div style={{ marginTop: 10, fontSize: 12, color: '#15803d' }}>
+            ✓ Saved to library — <a href="/podcast/library" style={{ color: theme.brand, fontWeight: 600 }}>view all podcasts</a>
+          </div>
+        )}
+        {job.archive_state === 'failed' && (
+          <div style={{ marginTop: 10, fontSize: 12, color: '#b45309' }}>
+            ⚠ Could not save to library (video still downloadable above).
+          </div>
+        )}
       </Card>
       <Card title="Transcript">
         <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 6 }}>

@@ -135,6 +135,9 @@ class JobOutputs(BaseModel):
     duration_sec: Optional[float] = None
 
 
+ArchiveState = Literal["none", "archiving", "published", "failed"]
+
+
 class PodcastJob(BaseModel):
     id: str
     script_id: str
@@ -148,6 +151,34 @@ class PodcastJob(BaseModel):
     error: Optional[str] = None
     created_at: str
     updated_at: str
+    archive_state: ArchiveState = "none"
+    library_job_id: Optional[str] = None  # same as job.id once published
+
+
+# -----------------------------------------------------------------------------
+# Library
+# -----------------------------------------------------------------------------
+
+
+class LibrarySummary(BaseModel):
+    """Lightweight card for the library grid — no media URLs."""
+    job_id: str
+    title: str
+    document_title: str = ""
+    created_at: str
+    duration_sec: Optional[float] = None
+    language: str = "en-US"
+    style: str = "casual"
+    speaker_names: list[str] = Field(default_factory=list)
+    turn_count: int = 0
+    thumbnail_url: Optional[str] = None
+
+
+class LibraryItem(LibrarySummary):
+    """Full library item with signed media URLs; use when opening the player."""
+    mp4_url: Optional[str] = None
+    mp3_url: Optional[str] = None
+    srt_url: Optional[str] = None
 
 
 # -----------------------------------------------------------------------------

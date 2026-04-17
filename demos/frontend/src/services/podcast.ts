@@ -59,11 +59,33 @@ export interface RenderRequest {
 
 export interface JobProgress { stage: string; completed: number; total: number; message: string; }
 export interface JobOutputs { mp4_url?: string; mp3_url?: string; srt_url?: string; duration_sec?: number; }
+export type ArchiveState = 'none' | 'archiving' | 'published' | 'failed';
 export interface PodcastJob {
   id: string; script_id: string; roles: RenderRoles; layout: Layout;
   music: boolean; intro: boolean; state: JobState;
   progress: JobProgress; outputs: JobOutputs;
   error: string | null; created_at: string; updated_at: string;
+  archive_state?: ArchiveState;
+  library_job_id?: string | null;
+}
+
+// ---- Library ----------------------------------------------------------
+export interface LibrarySummary {
+  job_id: string;
+  title: string;
+  document_title: string;
+  created_at: string;
+  duration_sec: number | null;
+  language: string;
+  style: string;
+  speaker_names: string[];
+  turn_count: number;
+  thumbnail_url: string | null;
+}
+export interface LibraryItem extends LibrarySummary {
+  mp4_url: string | null;
+  mp3_url: string | null;
+  srt_url: string | null;
 }
 
 const API = '/api/podcast';
@@ -161,4 +183,20 @@ export async function startRender(req: RenderRequest): Promise<PodcastJob> {
 export async function getJob(id: string): Promise<PodcastJob> {
   const r = await fetch(`${API}/jobs/${id}`); if (!r.ok) throw new Error('job');
   return r.json();
+}
+
+// ---- Library ----------------------------------------------------------
+export async function listLibrary(): Promise<LibrarySummary[]> {
+  const r = await fetch(`${API}/library`);
+  if (!r.ok) throw new Error('library');
+  return r.json();
+}
+export async function getLibraryItem(jobId: string): Promise<LibraryItem> {
+  const r = await fetch(`${API}/library/${jobId}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+export async function deleteLibraryItem(jobId: string): Promise<void> {
+  const r = await fetch(`${API}/library/${jobId}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error(await r.text());
 }
