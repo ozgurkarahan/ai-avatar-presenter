@@ -21,8 +21,11 @@ export default function TopNav() {
         <NavLink to="/" end style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}>
           🎙️ Presenter
         </NavLink>
-        <NavLink to="/podcast" style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}>
+        <NavLink to="/podcast" end style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}>
           🎧 Podcast
+        </NavLink>
+        <NavLink to="/podcast/library" style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}>
+          📚 Library
         </NavLink>
       </nav>
     </div>

@@ -27,6 +27,8 @@ from services.podcast_models import (
     JobOutputs,
     JobProgress,
     JobState,
+    LibraryItem,
+    LibrarySummary,
     PodcastJob,
     RenderRequest,
     Script,
@@ -45,6 +47,16 @@ DOCUMENTS: dict[str, Document] = {}
 SCRIPTS: dict[str, Script] = {}
 JOBS: dict[str, PodcastJob] = {}
 _JOB_FILES: dict[str, dict[str, Path]] = {}
+
+_LIBRARY = None  # lazy singleton
+
+
+def _get_library(cfg: AzureConfig):
+    global _LIBRARY
+    if _LIBRARY is None:
+        from services.podcast_library import PodcastLibrary
+        _LIBRARY = PodcastLibrary(cfg)
+    return _LIBRARY
 
 
 # ---------------------------------------------------------------------------
@@ -231,9 +243,63 @@ def download_job_file(job_id: str, kind: str):
     return FileResponse(p, media_type=media, filename=p.name)
 
 
+# ---------------------------------------------------------------------------
+# Library
+# ---------------------------------------------------------------------------
+@router.get("/library", response_model=list[LibrarySummary])
+def list_library(cfg: AzureConfig = Depends(get_cfg)) -> list[LibrarySummary]:
+    """Return all previously-generated podcasts (newest first).
+
+    Each card has a thumbnail SAS URL only; full media URLs are minted by
+    `GET /library/{job_id}` when the user opens the player.
+    """
+    lib = _get_library(cfg)
+    if not lib.available:
+        return []
+    return [LibrarySummary(**item) for item in lib.list()]
+
+
+@router.get("/library/{job_id}", response_model=LibraryItem)
+def get_library_item(job_id: str, cfg: AzureConfig = Depends(get_cfg)) -> LibraryItem:
+    """Return a full library item with fresh signed URLs for mp4/mp3/srt."""
+    lib = _get_library(cfg)
+    if not lib.available:
+        raise HTTPException(503, "Library storage not available")
+    item = lib.get(job_id)
+    if not item:
+        raise HTTPException(404, f"Library item {job_id} not found")
+    return LibraryItem(**{
+        "job_id": item["job_id"],
+        "title": item["title"],
+        "document_title": item.get("document_title", ""),
+        "created_at": item["created_at"],
+        "duration_sec": item.get("duration_sec"),
+        "language": item.get("language", "en-US"),
+        "style": item.get("style", "casual"),
+        "speaker_names": item.get("speaker_names", []),
+        "turn_count": item.get("turn_count", 0),
+        "thumbnail_url": item.get("thumbnail_url"),
+        "mp4_url": item.get("mp4_url"),
+        "mp3_url": item.get("mp3_url"),
+        "srt_url": item.get("srt_url"),
+    })
+
+
+@router.delete("/library/{job_id}")
+def delete_library_item(job_id: str, cfg: AzureConfig = Depends(get_cfg)) -> dict:
+    lib = _get_library(cfg)
+    if not lib.available:
+        raise HTTPException(503, "Library storage not available")
+    ok = lib.delete(job_id)
+    if not ok:
+        raise HTTPException(404, "Not found or delete failed")
+    return {"deleted": job_id}
+
+
 async def _run_render_job(job_id: str, cfg: AzureConfig) -> None:
     from services.podcast_render import render_podcast
     from services.podcast_compose import compose_podcast
+    from services.podcast_library import LibraryFiles
 
     job = JOBS[job_id]
     script = SCRIPTS[job.script_id]
@@ -269,9 +335,43 @@ async def _run_render_job(job_id: str, cfg: AzureConfig) -> None:
             mp3_url=f"/api/podcast/jobs/{job.id}/file/mp3",
             srt_url=f"/api/podcast/jobs/{job.id}/file/srt",
         )
-        # Persist file locations for the download route.
+        # Persist file locations for the local download route.
         _JOB_FILES[job.id] = {"mp4": result.mp4, "mp3": result.mp3, "srt": result.srt}
         _update(JobState.done, "done", completed=len(clips), message="Ready")
+
+        # Archive to blob library (fire-and-forget semantics — failure doesn't
+        # fail the job, just marks archive_state=failed for UI feedback).
+        job.archive_state = "archiving"
+        job.updated_at = _now()
+        try:
+            lib = _get_library(cfg)
+            if lib.available:
+                title = (doc.title if doc else script.id) or script.id
+                manifest = await asyncio.to_thread(
+                    lib.publish,
+                    job.id,
+                    LibraryFiles(mp4=result.mp4, mp3=result.mp3, srt=result.srt),
+                    title=title,
+                    document_title=(doc.title if doc else ""),
+                    language=script.language,
+                    style=script.style,
+                    speaker_names=[job.roles.interviewer.display_name,
+                                   job.roles.expert.display_name],
+                    turn_count=len(script.turns),
+                    created_at=job.created_at,
+                )
+                if manifest:
+                    job.archive_state = "published"
+                    job.library_job_id = job.id
+                else:
+                    job.archive_state = "failed"
+            else:
+                job.archive_state = "failed"
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Library archive failed for %s", job_id)
+            job.archive_state = "failed"
+        finally:
+            job.updated_at = _now()
     except Exception as e:  # noqa: BLE001
         logger.exception("render job %s failed", job_id)
         _update(JobState.failed, "failed", error=str(e))
