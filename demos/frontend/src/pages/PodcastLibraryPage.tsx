@@ -192,36 +192,46 @@ function Card({ item, onOpen, onDelete, deleting }: {
           ⏱ {fmtDuration(item.duration_sec)}
         </div>
         <div style={{
-          position: 'absolute', inset: 0, display: 'flex',
-          alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.08)', opacity: 0, transition: 'opacity 0.2s',
-        }} className="hover-play">
-          <div style={{
-            width: 58, height: 58, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.95)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, color: theme.brand,
-          }}>▶</div>
+          position: 'absolute', top: 8, left: 8,
+          background: 'rgba(0, 51, 102, 0.9)', color: 'white',
+          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: 0.5,
+        }}>
+          🌍 {item.language}
         </div>
       </div>
       <div style={{ padding: 14, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, color: theme.text,
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: theme.text,
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden' }}>
+                      overflow: 'hidden', lineHeight: 1.3, minHeight: '2.6em' }}>
           {item.title}
         </div>
-        <div style={{ fontSize: 12, color: theme.muted, marginBottom: 8 }}>
-          {fmtDate(item.created_at)} · {item.turn_count} turns
+        {item.document_title && item.document_title !== item.title && (
+          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 6,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            📄 {item.document_title}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+          <Chip>{styleEmoji(item.style)} {item.style}</Chip>
+          <Chip>💬 {item.turn_count} turns</Chip>
+        </div>
+        <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8 }}>
+          📅 {fmtDate(item.created_at)}
         </div>
         <div style={{ fontSize: 12, color: theme.muted, marginTop: 'auto',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>🎤 {item.speaker_names.join(' + ') || '—'}</span>
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      borderTop: `1px solid ${theme.border}`, paddingTop: 8 }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            🎤 {item.speaker_names.join(' + ') || '—'}
+          </span>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
             disabled={deleting}
             style={{
               background: 'transparent', border: 'none', color: '#ef4444',
-              cursor: deleting ? 'wait' : 'pointer', fontSize: 13, padding: 4,
+              cursor: deleting ? 'wait' : 'pointer', fontSize: 14, padding: 4,
+              flexShrink: 0, marginLeft: 6,
             }}
             title="Delete"
           >
@@ -231,6 +241,26 @@ function Card({ item, onOpen, onDelete, deleting }: {
       </div>
     </motion.div>
   );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      background: theme.cardAlt, color: theme.brand,
+      padding: '3px 9px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+      border: `1px solid ${theme.border}`,
+    }}>{children}</span>
+  );
+}
+
+function styleEmoji(style: string): string {
+  switch (style) {
+    case 'casual': return '☕';
+    case 'formal': return '🎩';
+    case 'debate': return '⚖️';
+    case 'explainer': return '🎓';
+    default: return '🎙️';
+  }
 }
 
 function PlayerModal({ item, loading, onClose }: {
@@ -282,10 +312,20 @@ function PlayerModal({ item, loading, onClose }: {
             </div>
             <div style={{ padding: 18, background: theme.card, color: theme.text }}>
               <h3 style={{ margin: 0, fontSize: 18 }}>{item.title}</h3>
-              <div style={{ color: theme.muted, fontSize: 13, marginTop: 4 }}>
-                {fmtDate(item.created_at)} · {fmtDuration(item.duration_sec)} · {item.language} · {item.style}
+              {item.document_title && item.document_title !== item.title && (
+                <div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>
+                  Source: {item.document_title}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                <Chip>📅 {fmtDate(item.created_at)}</Chip>
+                <Chip>⏱ {fmtDuration(item.duration_sec)}</Chip>
+                <Chip>🌍 {item.language}</Chip>
+                <Chip>{styleEmoji(item.style)} {item.style}</Chip>
+                <Chip>💬 {item.turn_count} turns</Chip>
+                <Chip>🎤 {item.speaker_names.join(' + ')}</Chip>
               </div>
-              <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {item.mp4_url && (
                   <a href={item.mp4_url} download={`${item.title}.mp4`} style={btn('primary')}>
                     ⬇ Download MP4

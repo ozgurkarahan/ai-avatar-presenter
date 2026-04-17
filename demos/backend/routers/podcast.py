@@ -117,11 +117,16 @@ async def ingest_document(
 
     try:
         if file:
-            suffix = Path(file.filename or "").suffix.lower() or ".txt"
+            original_name = file.filename or ""
+            suffix = Path(original_name).suffix.lower() or ".txt"
             tmp_dir = Path("data/uploads/podcast"); tmp_dir.mkdir(parents=True, exist_ok=True)
             tmp_path = tmp_dir / f"{uuid.uuid4().hex}{suffix}"
             tmp_path.write_bytes(await file.read())
             doc = ingest(str(tmp_path))
+            # Preserve the original filename as the display title (ingest sees
+            # the uuid-renamed temp file).
+            if original_name:
+                doc.title = Path(original_name).stem
         else:
             doc = ingest(url)
     except Exception as e:  # noqa: BLE001
