@@ -70,14 +70,46 @@ AVATARS: list[AvatarOption] = [
 ]
 
 VOICES: list[VoiceOption] = [
+    # English (US)
     VoiceOption(id="en-US-Andrew:DragonHDLatestNeural", display_name="Andrew (HD)",
                 language="en-US", gender="male", hd=True),
     VoiceOption(id="en-US-Ava:DragonHDLatestNeural", display_name="Ava (HD)",
                 language="en-US", gender="female", hd=True),
+    # French (FR)
+    VoiceOption(id="fr-FR-Remy:DragonHDLatestNeural", display_name="Rémy (HD)",
+                language="fr-FR", gender="male", hd=True),
     VoiceOption(id="fr-FR-Vivienne:DragonHDLatestNeural", display_name="Vivienne (HD)",
                 language="fr-FR", gender="female", hd=True),
-    VoiceOption(id="fr-FR-Remy:DragonHDLatestNeural", display_name="Remy (HD)",
-                language="fr-FR", gender="male", hd=True),
+    # Spanish (ES)
+    VoiceOption(id="es-ES-Tristan:DragonHDLatestNeural", display_name="Tristán (HD)",
+                language="es-ES", gender="male", hd=True),
+    VoiceOption(id="es-ES-Ximena:DragonHDLatestNeural", display_name="Ximena (HD)",
+                language="es-ES", gender="female", hd=True),
+    # German (DE)
+    VoiceOption(id="de-DE-Florian:DragonHDLatestNeural", display_name="Florian (HD)",
+                language="de-DE", gender="male", hd=True),
+    VoiceOption(id="de-DE-Seraphina:DragonHDLatestNeural", display_name="Seraphina (HD)",
+                language="de-DE", gender="female", hd=True),
+    # Italian (IT)
+    VoiceOption(id="it-IT-Alessio:DragonHDLatestNeural", display_name="Alessio (HD)",
+                language="it-IT", gender="male", hd=True),
+    VoiceOption(id="it-IT-Isabella:DragonHDLatestNeural", display_name="Isabella (HD)",
+                language="it-IT", gender="female", hd=True),
+    # Portuguese (Brazil)
+    VoiceOption(id="pt-BR-Macerio:DragonHDLatestNeural", display_name="Macério (HD)",
+                language="pt-BR", gender="male", hd=True),
+    VoiceOption(id="pt-BR-Thalita:DragonHDLatestNeural", display_name="Thalita (HD)",
+                language="pt-BR", gender="female", hd=True),
+    # Chinese (Mandarin, Simplified)
+    VoiceOption(id="zh-CN-Xiaochen:DragonHDLatestNeural", display_name="晓辰 Xiaochen (HD)",
+                language="zh-CN", gender="female", hd=True),
+    VoiceOption(id="zh-CN-Yunfan:DragonHDLatestNeural", display_name="云帆 Yunfan (HD)",
+                language="zh-CN", gender="male", hd=True),
+    # Japanese
+    VoiceOption(id="ja-JP-Masaru:DragonHDLatestNeural", display_name="Masaru (HD)",
+                language="ja-JP", gender="male", hd=True),
+    VoiceOption(id="ja-JP-Nanami:DragonHDLatestNeural", display_name="Nanami (HD)",
+                language="ja-JP", gender="female", hd=True),
 ]
 
 
