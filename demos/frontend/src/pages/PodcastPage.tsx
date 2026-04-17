@@ -257,8 +257,14 @@ function SetupPhase(p: SetupProps) {
             </Field>
             <Field label="Language">
               <select value={p.language} onChange={(e) => p.onLanguage(e.target.value)} style={selectStyle}>
-                <option value="en-US">English (US)</option>
-                <option value="fr-FR">French (FR)</option>
+                <option value="en-US">🇬🇧 English (US)</option>
+                <option value="fr-FR">🇫🇷 Français</option>
+                <option value="es-ES">🇪🇸 Español</option>
+                <option value="de-DE">🇩🇪 Deutsch</option>
+                <option value="it-IT">🇮🇹 Italiano</option>
+                <option value="pt-BR">🇧🇷 Português (Brasil)</option>
+                <option value="zh-CN">🇨🇳 中文 (简体)</option>
+                <option value="ja-JP">🇯🇵 日本語</option>
               </select>
             </Field>
           </div>

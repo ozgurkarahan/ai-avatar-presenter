@@ -19,7 +19,8 @@ log = logging.getLogger(__name__)
 
 LANGUAGE_NAMES = {
     "en-US": "English", "fr-FR": "French", "es-ES": "Spanish",
-    "de-DE": "German", "it-IT": "Italian", "pt-BR": "Portuguese",
+    "de-DE": "German", "it-IT": "Italian", "pt-BR": "Brazilian Portuguese",
+    "zh-CN": "Mandarin Chinese (Simplified)", "ja-JP": "Japanese",
 }
 
 STYLE_DIRECTIVES = {
