@@ -1,0 +1,392 @@
+"""UC2 ffmpeg composition — slide-first with avatar picture-in-picture.
+
+For each slide:
+  [slide image] scaled to 1920x1080 as full-frame background
+  [avatar WebM] 360x360 PiP in the bottom-right with a rounded/circular mask
+  [subtitles]   burnt-in ASS karaoke timed to the narration
+
+Per-segment render then concat via concat FILTER (never -c copy — that
+produces audible clicks at AAC frame boundaries).
+
+Final outputs: final.mp4 (H.264+AAC), final.mp3, final.srt, plus a
+thumbnail JPEG picked from the first slide.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import re
+import shutil
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
+from services.static_models import SlideNarration, StaticDocument, StaticScript
+from services.static_render import SlideClip
+
+log = logging.getLogger(__name__)
+
+VIDEO_W = 1920
+VIDEO_H = 1080
+FPS = 25
+
+# Avatar PiP (bottom-right).
+PIP_W = 360
+PIP_H = 360
+PIP_MARGIN = 40  # distance from the right/bottom edges
+
+
+def _find_font() -> Optional[str]:
+    for c in [
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        r"C:\Windows\Fonts\arial.ttf",
+        r"C:\Windows\Fonts\segoeui.ttf",
+    ]:
+        if Path(c).exists():
+            return c
+    return None
+
+
+_FONT = _find_font()
+
+
+def _font_arg() -> str:
+    if not _FONT:
+        return ""
+    p = _FONT.replace("\\", "/").replace(":", "\\:")
+    return f":fontfile='{p}'"
+
+
+@dataclass
+class StaticComposeResult:
+    mp4: Path
+    mp3: Path
+    srt: Path
+    thumbnail: Optional[Path]
+    duration_sec: float
+
+
+def compose_static(
+    clips: list[SlideClip],
+    document: StaticDocument,
+    script: StaticScript,
+    out_dir: Path,
+) -> StaticComposeResult:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if not clips:
+        raise ValueError("compose_static requires at least one clip")
+
+    _require_tool("ffmpeg")
+    _require_tool("ffprobe")
+
+    clips_sorted = sorted(clips, key=lambda c: c.slide_index)
+    narr_by_idx = {n.slide_index: n for n in script.narrations}
+    slide_ref_by_idx = {s.index: s for s in document.slides}
+
+    # 1) Probe durations.
+    durations = [_probe_duration(Path(c.blob_url)) for c in clips_sorted]
+
+    # 2) Resolve slide image path per clip (fallback to black card).
+    fallback = out_dir / "_fallback_slide.png"
+    if not fallback.exists():
+        _make_fallback_slide(fallback, document.title)
+
+    slide_paths: list[Path] = []
+    for clip in clips_sorted:
+        ref = slide_ref_by_idx.get(clip.slide_index)
+        p = Path(ref.image_ref) if ref and ref.image_ref else None
+        slide_paths.append(p if (p and p.exists()) else fallback)
+
+    # 3) ASS karaoke subs.
+    ass_path = out_dir / "subs.ass"
+    _write_ass(ass_path, clips_sorted, durations, narr_by_idx)
+
+    # 4) Render each segment.
+    segment_paths: list[Path] = []
+    for i, (clip, dur) in enumerate(zip(clips_sorted, durations)):
+        seg_out = out_dir / f"seg_{i:03d}.mp4"
+        _render_segment(
+            clip_path=Path(clip.blob_url),
+            slide_path=slide_paths[i],
+            duration=dur,
+            out=seg_out,
+        )
+        segment_paths.append(seg_out)
+
+    # 5) Concat segments + burn subs + loudnorm.
+    body = out_dir / "_body.mp4"
+    _concat(segment_paths, body)
+
+    final_mp4 = out_dir / "final.mp4"
+    _finalize(body, ass_path, final_mp4)
+
+    final_mp3 = out_dir / "final.mp3"
+    _extract_mp3(final_mp4, final_mp3)
+
+    final_srt = out_dir / "final.srt"
+    _write_srt(final_srt, clips_sorted, durations, narr_by_idx)
+
+    total_dur = float(sum(durations))
+
+    # 6) Thumbnail from the first slide image (not the video — faster + sharper).
+    thumb_path = out_dir / "thumb.jpg"
+    if not _make_thumbnail(slide_paths[0], thumb_path):
+        thumb_path = None  # type: ignore[assignment]
+
+    return StaticComposeResult(
+        mp4=final_mp4,
+        mp3=final_mp3,
+        srt=final_srt,
+        thumbnail=thumb_path,
+        duration_sec=total_dur,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-segment
+# ---------------------------------------------------------------------------
+
+def _render_segment(
+    clip_path: Path,
+    slide_path: Path,
+    duration: float,
+    out: Path,
+) -> None:
+    """One 1920x1080 MP4 segment: slide background + avatar PiP bottom-right.
+
+    The PiP mask is a soft-edged circle carved with `geq`. We keep audio from
+    the avatar clip as the segment's audio track.
+    """
+    # Inputs:
+    #   0 = slide image (looped)
+    #   1 = avatar WebM (has audio)
+    inputs = [
+        "-loop", "1", "-t", f"{duration:.3f}", "-i", str(slide_path),
+        "-i", str(clip_path),
+    ]
+
+    # Slide scaled to full frame; avatar scaled to PIP_W x PIP_H with a
+    # circular alpha mask, overlaid in the bottom-right corner.
+    fc = (
+        f"[0:v]scale={VIDEO_W}:{VIDEO_H}:force_original_aspect_ratio=decrease,"
+        f"pad={VIDEO_W}:{VIDEO_H}:(ow-iw)/2:(oh-ih)/2:color=#0B1220,"
+        f"setsar=1,fps={FPS}[bg];"
+        f"[1:v]scale={PIP_W}:{PIP_H}:force_original_aspect_ratio=increase,"
+        f"crop={PIP_W}:{PIP_H},format=yuva420p,"
+        # Circular soft mask: keep alpha inside radius, fade at edge.
+        f"geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+        f"a='if(lte(hypot(X-{PIP_W//2},Y-{PIP_H//2}),{PIP_W//2 - 4}),255,"
+        f"if(lte(hypot(X-{PIP_W//2},Y-{PIP_H//2}),{PIP_W//2}),"
+        f"255*({PIP_W//2}-hypot(X-{PIP_W//2},Y-{PIP_H//2}))/4,0))',"
+        f"setsar=1,fps={FPS}[pip];"
+        f"[bg][pip]overlay=W-w-{PIP_MARGIN}:H-h-{PIP_MARGIN}:shortest=0[vout];"
+        f"[1:a]anull[aout]"
+    )
+
+    cmd = [
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        *inputs,
+        "-filter_complex", fc,
+        "-map", "[vout]", "-map", "[aout]",
+        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+        "-r", str(FPS),
+        "-t", f"{duration:.3f}",
+        str(out),
+    ]
+    _run(cmd)
+
+
+def _concat(parts: list[Path], out: Path) -> None:
+    """Concat via filter (re-encode) — never -c copy (AAC boundary clicks)."""
+    if len(parts) == 1:
+        shutil.copyfile(parts[0], out)
+        return
+    inputs: list[str] = []
+    for p in parts:
+        inputs += ["-i", str(p)]
+    n = len(parts)
+    stream_refs = "".join(f"[{i}:v][{i}:a]" for i in range(n))
+    fc = f"{stream_refs}concat=n={n}:v=1:a=1[vout][aout]"
+    _run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        *inputs,
+        "-filter_complex", fc,
+        "-map", "[vout]", "-map", "[aout]",
+        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+        "-r", str(FPS),
+        str(out),
+    ])
+
+
+def _finalize(src: Path, ass_path: Path, out: Path) -> None:
+    ass_arg = ass_path.resolve().as_posix().replace(":", "\\:")
+    fc_video = f"[0:v]subtitles='{ass_arg}'[vout]"
+    fc_audio = "[0:a]loudnorm=I=-16:TP=-1.5:LRA=11[aout]"
+    _run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src),
+        "-filter_complex", f"{fc_video};{fc_audio}",
+        "-map", "[vout]", "-map", "[aout]",
+        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k",
+        "-shortest",
+        str(out),
+    ])
+
+
+def _extract_mp3(src: Path, out: Path) -> None:
+    _run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-i", str(src), "-vn", "-acodec", "libmp3lame", "-q:a", "2", str(out),
+    ])
+
+
+def _make_thumbnail(slide_path: Path, out: Path) -> bool:
+    try:
+        _run([
+            "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+            "-i", str(slide_path),
+            "-vf", "scale=640:-2",
+            "-frames:v", "1", "-q:v", "3",
+            str(out),
+        ])
+        return out.exists() and out.stat().st_size > 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _make_fallback_slide(out: Path, title: str) -> None:
+    vf = (
+        f"drawtext=text='{_esc(title)}':fontcolor=white:fontsize=72{_font_arg()}:"
+        "x=(w-text_w)/2:y=(h-text_h)/2"
+    )
+    _run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-f", "lavfi", "-i", f"color=c=#0B1220:s={VIDEO_W}x{VIDEO_H}:d=0.04",
+        "-vf", vf,
+        "-frames:v", "1", str(out),
+    ])
+
+
+# ---------------------------------------------------------------------------
+# Subtitles (ASS karaoke + SRT)
+# ---------------------------------------------------------------------------
+
+ASS_HEADER = """[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Karaoke,Arial,44,&H00FFFFFF&,&H0000C8FF&,&H00000000&,&H80000000&,1,0,0,0,100,100,0,0,1,2,1,2,80,80,80,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+
+
+def _write_ass(
+    path: Path,
+    clips: list[SlideClip],
+    durations: list[float],
+    narr_by_idx: dict[int, SlideNarration],
+) -> None:
+    lines = [ASS_HEADER]
+    cursor = 0.0
+    for clip, dur in zip(clips, durations):
+        n = narr_by_idx.get(clip.slide_index)
+        text = (n.narration if n else "").strip()
+        if not text:
+            cursor += dur
+            continue
+        words = text.split()
+        per = max(0.001, dur / max(1, len(words)))
+        kara = "".join(f"{{\\k{int(per * 100)}}}{_ass_esc(w)} " for w in words)
+        start_ts = _ass_time(cursor)
+        end_ts = _ass_time(cursor + dur)
+        lines.append(f"Dialogue: 0,{start_ts},{end_ts},Karaoke,,0,0,0,,{kara.strip()}")
+        cursor += dur
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _write_srt(
+    path: Path,
+    clips: list[SlideClip],
+    durations: list[float],
+    narr_by_idx: dict[int, SlideNarration],
+) -> None:
+    out_lines: list[str] = []
+    cursor = 0.0
+    for n_idx, (clip, dur) in enumerate(zip(clips, durations), start=1):
+        narr = narr_by_idx.get(clip.slide_index)
+        text = (narr.narration if narr else "").strip()
+        out_lines.append(str(n_idx))
+        out_lines.append(f"{_srt_time(cursor)} --> {_srt_time(cursor + dur)}")
+        out_lines.append(text)
+        out_lines.append("")
+        cursor += dur
+    path.write_text("\n".join(out_lines), encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Tiny utilities
+# ---------------------------------------------------------------------------
+
+def _run(cmd: list[str]) -> None:
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        log.error("ffmpeg failed: %s\nSTDERR: %s", " ".join(cmd[:3]), proc.stderr[-2000:])
+        raise RuntimeError(f"ffmpeg/ffprobe failed: {proc.stderr[-500:]}")
+
+
+def _require_tool(name: str) -> None:
+    if shutil.which(name) is None:
+        raise RuntimeError(f"required tool missing on PATH: {name}")
+
+
+def _probe_duration(path: Path) -> float:
+    out = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    data = json.loads(out.stdout)
+    return float(data.get("format", {}).get("duration", 0.0) or 0.0)
+
+
+_DRAWTEXT_ESC = str.maketrans({
+    "\\": "\\\\", ":": "\\:", "'": "\u2019", "%": "\\%",
+})
+
+
+def _esc(text: str) -> str:
+    return (text or "").translate(_DRAWTEXT_ESC)
+
+
+def _ass_esc(word: str) -> str:
+    return re.sub(r"[{}\\]", "", word)
+
+
+def _ass_time(t: float) -> str:
+    h = int(t // 3600)
+    m = int((t % 3600) // 60)
+    s = t % 60
+    return f"{h}:{m:02d}:{s:05.2f}"
+
+
+def _srt_time(t: float) -> str:
+    h = int(t // 3600)
+    m = int((t % 3600) // 60)
+    s = int(t % 60)
+    ms = int((t - int(t)) * 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+__all__ = ["compose_static", "StaticComposeResult"]

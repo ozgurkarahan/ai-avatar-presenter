@@ -68,6 +68,10 @@ app = FastAPI(
 from routers.podcast import router as podcast_router
 app.include_router(podcast_router)
 
+# UC2 — Static video (single-narrator slide-first)
+from routers.static_video import router as static_video_router
+app.include_router(static_video_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],

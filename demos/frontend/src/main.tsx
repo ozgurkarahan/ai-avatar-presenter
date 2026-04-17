@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App';
 import PodcastPage from './pages/PodcastPage';
 import PodcastLibraryPage from './pages/PodcastLibraryPage';
+import StaticVideoPage from './pages/StaticVideoPage';
+import StaticVideoLibraryPage from './pages/StaticVideoLibraryPage';
 import TopNav from './components/TopNav';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -14,6 +16,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/" element={<App />} />
         <Route path="/podcast" element={<PodcastPage />} />
         <Route path="/podcast/library" element={<PodcastLibraryPage />} />
+        <Route path="/video" element={<StaticVideoPage />} />
+        <Route path="/video/library" element={<StaticVideoLibraryPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

@@ -27,6 +27,12 @@ export default function TopNav() {
         <NavLink to="/podcast/library" style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}>
           📚 Library
         </NavLink>
+        <NavLink to="/video" end style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}>
+          🎬 Video Generator
+        </NavLink>
+        <NavLink to="/video/library" style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}>
+          🎞️ Video Library
+        </NavLink>
       </nav>
     </div>
   );
