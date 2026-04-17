@@ -7,44 +7,43 @@ param openAiAccountName string
 @description('Name of the Azure AI Services account (Speech/Avatar)')
 param aiServicesAccountName string
 
-@description('Name of the Cosmos DB account')
-param cosmosAccountName string
-
 @description('Name of the Storage account')
 param storageAccountName string
 
-// Cognitive Services Speech User — allows token issuance and TTS
+@description('Name of the Azure Container Registry')
+param acrName string
+
+// Cognitive Services Speech User — token issuance + TTS + Batch Avatar
 var cognitiveServicesSpeechUserRole = 'f2dc8367-1007-4938-bd23-fe263f013447'
 
-// Cognitive Services OpenAI User — allows chat completions and embeddings
+// Cognitive Services OpenAI User — chat completions + embeddings
 var cognitiveServicesOpenAiUserRole = '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
 
-// Cognitive Services User — broad access for cognitive services
+// Cognitive Services User — broad access for cognitive services APIs
 var cognitiveServicesUserRole = 'a97b65f3-24c7-4388-baec-2e87135dc908'
-
-// Cosmos DB Built-in Data Contributor
-var cosmosDbDataContributorRole = '00000000-0000-0000-0000-000000000002'
 
 // Storage Blob Data Contributor
 var storageBlobDataContributorRole = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 
-resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
+// AcrPull
+var acrPullRole = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+
+resource aiServices 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
   name: aiServicesAccountName
 }
 
-resource openAiAccount 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
+resource openAiAccount 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = {
   name: openAiAccountName
-}
-
-resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing = {
-  name: cosmosAccountName
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: storageAccountName
 }
 
-// AI Services: Speech User (token issuance + TTS)
+resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' existing = {
+  name: acrName
+}
+
 resource aiServicesSpeechRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(aiServices.id, principalId, cognitiveServicesSpeechUserRole)
   scope: aiServices
@@ -55,7 +54,6 @@ resource aiServicesSpeechRole 'Microsoft.Authorization/roleAssignments@2022-04-0
   }
 }
 
-// AI Services: Cognitive Services User (broad access for avatar APIs)
 resource aiServicesCogUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(aiServices.id, principalId, cognitiveServicesUserRole)
   scope: aiServices
@@ -66,7 +64,6 @@ resource aiServicesCogUserRole 'Microsoft.Authorization/roleAssignments@2022-04-
   }
 }
 
-// OpenAI: OpenAI User (chat completions + embeddings)
 resource openAiUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(openAiAccount.id, principalId, cognitiveServicesOpenAiUserRole)
   scope: openAiAccount
@@ -77,23 +74,21 @@ resource openAiUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-// Cosmos DB: Data Contributor (read/write documents)
-resource cosmosDataContributor 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = {
-  parent: cosmosAccount
-  name: guid(cosmosAccount.id, principalId, cosmosDbDataContributorRole)
-  properties: {
-    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDbDataContributorRole}'
-    principalId: principalId
-    scope: cosmosAccount.id
-  }
-}
-
-// Storage: Blob Data Contributor (read/write blobs)
 resource storageBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storageAccount.id, principalId, storageBlobDataContributorRole)
   scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRole)
+    principalId: principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource acrPullAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(acr.id, principalId, acrPullRole)
+  scope: acr
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRole)
     principalId: principalId
     principalType: 'ServicePrincipal'
   }

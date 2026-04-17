@@ -1,315 +1,440 @@
 # AI Presenter — Architecture Document
 
+> **RFI Context**: This PoC demonstrates Microsoft's response to **RFI — AI Avatar Solution** for Acme DSI Groupe. It addresses **Use Case 1 (Silver level)** — interactive learning with avatars over PowerPoint slides — and **Use Case 2** — automated batch video generation.
+
 ## System Overview
 
-The AI Presenter is a web-based application that allows users to upload PowerPoint presentations and have an AI avatar present them with multilingual text-to-speech. The system supports real-time presentation (avatar speaks as user navigates slides) and batch generation (pre-render full presentation video).
+The AI Presenter is a web-based application that allows users to upload PowerPoint presentations and have a photorealistic AI avatar present them with multilingual text-to-speech. The system supports:
+
+- **Real-time presentation** — avatar speaks as user navigates slides via WebRTC (VoiceLive API)
+- **Batch video generation** — pre-render full presentation video (Batch Avatar Synthesis API)
+- **Slide Q&A** — RAG-based question answering over slide content
+- **Multilingual translation** — automatic translation into 10 languages with Cosmos DB caching
+- **Agent chat** — LLM function-calling agent for conversational slide interaction
+- **Persistent storage** — presentations survive container restarts via Cosmos DB + Blob Storage
+- **Teams integration** — embeddable as a Microsoft Teams Static Tab
 
 ---
 
 ## Component Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        CLIENT (Browser)                             │
-│                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
-│  │  PPT Upload   │  │ Slide Viewer │  │  Avatar Display          │  │
-│  │  Component    │  │ + Navigator  │  │  (WebRTC via VoiceLive)  │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────────┬─────────────┘  │
-│         │                 │                        │                │
-│  ┌──────┴─────────────────┴────────────────────────┴─────────────┐  │
-│  │              Q&A Chat Panel                                   │  │
-│  └───────────────────────────┬───────────────────────────────────┘  │
-│                              │                                      │
-│         Azure Speech SDK JS  │  REST API (fetch)                    │
-└──────────────────────────────┼──────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          CLIENT (Browser / Teams Tab)                     │
+│                                                                          │
+│  ┌──────────────┐  ┌───────────────┐  ┌────────────────────────────┐    │
+│  │  PPT Upload   │  │  Slide Viewer  │  │  Avatar Panel (WebRTC)     │    │
+│  │  Component    │  │  + Navigator   │  │  VoiceLive + DragonHD TTS  │    │
+│  └──────┬───────┘  └───────┬───────┘  └──────────────┬─────────────┘    │
+│         │                  │                          │                   │
+│  ┌──────┴──────────────────┴──────────────────────────┴───────────────┐  │
+│  │  Presentation List │ Language Selector │ Q&A Chat │ Agent Chat     │  │
+│  └───────────────────────────┬────────────────────────────────────────┘  │
+│                              │                                           │
+│         REST /api/*          │   WebSocket /ws/voice                     │
+└──────────────────────────────┼───────────────────────────────────────────┘
                                │
                                ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                     BACKEND (FastAPI on App Service)                  │
-│                                                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐ │
-│  │                     API Router (app.py)                          │ │
-│  │                                                                  │ │
-│  │  POST /api/upload          → PPT Parser Service                  │ │
-│  │  GET  /api/presentations   → List uploaded presentations         │ │
-│  │  GET  /api/slides/{id}     → Get slide data (text, notes, image) │ │
-│  │  POST /api/translate       → Translation Service                 │ │
-│  │  GET  /api/avatar/token    → Get Speech SDK auth token           │ │
-│  │  POST /api/avatar/batch    → Batch Avatar Synthesis              │ │
-│  │  POST /api/qa              → Slide Q&A Service                   │ │
-│  └──────────┬──────────┬──────────┬──────────┬─────────────────────┘ │
-│             │          │          │          │                        │
-│  ┌──────────▼───┐ ┌───▼────────┐ ┌▼─────────▼──┐ ┌──────────────┐  │
-│  │ PPT Parser   │ │ Translation│ │ Avatar       │ │ Q&A (RAG)    │  │
-│  │ Service      │ │ Service    │ │ Service      │ │ Service      │  │
-│  │              │ │            │ │              │ │              │  │
-│  │ python-pptx  │ │ GPT-4.1   │ │ VoiceLive    │ │ Embeddings + │  │
-│  │ + LibreOffice│ │ chat API  │ │ WebSocket    │ │ numpy vector │  │
-│  │ + pdf2image  │ │ translate  │ │ + WebRTC     │ │ + GPT-4.1    │  │
-│  └──────┬───────┘ └─────┬─────┘ └──────┬──────┘ └──────┬───────┘  │
-│         │               │              │               │            │
-└─────────┼───────────────┼──────────────┼───────────────┼────────────┘
-          │               │              │               │
-          ▼               ▼              ▼               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                        AZURE SERVICES                                │
-│                                                                      │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │ Azure AI Speech   │  │ Azure OpenAI      │  │ In-Memory        │   │
-│  │ (Sweden Central)  │  │ (Sweden Central)  │  │ Vector Store     │   │
-│  │                   │  │                   │  │                   │   │
-│  │ • TTS Neural      │  │ • GPT-4.1         │  │ • numpy cosine    │   │
-│  │   Voices          │  │   (translation,   │  │   similarity      │   │
-│  │ • VoiceLive       │  │    Q&A generation) │  │ • text-embedding- │   │
-│  │   Avatar API      │  │ • text-embedding-  │  │   3-small vectors │   │
-│  │ • WebRTC          │  │   3-small          │  │                   │   │
-│  │   streaming       │  │   (RAG embeddings) │  │                   │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘   │
-│                                                                      │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐   │
-│  │ Azure Blob       │  │ Azure Container  │  │ LibreOffice +    │   │
-│  │ Storage           │  │ Apps             │  │ Poppler          │   │
-│  │                   │  │                   │  │                   │   │
-│  │ • PPT files       │  │ • FastAPI backend │  │ • PPTX → PDF     │   │
-│  │ • Generated       │  │ • React static    │  │ • PDF → PNG      │   │
-│  │   videos          │  │   files           │  │   slide images   │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘   │
-└──────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                   BACKEND (FastAPI on Azure Container Apps)               │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │                      API Router (app.py)                           │  │
+│  │                                                                    │  │
+│  │  POST /api/upload                → PPT Parser + Persist            │  │
+│  │  GET  /api/presentations         → List (Cosmos DB → in-memory)    │  │
+│  │  GET  /api/slides/{id}           → Get slides + SAS image URLs     │  │
+│  │  GET  /api/slides/{id}/{img}     → Serve slide image (disk/Blob)   │  │
+│  │  DEL  /api/presentations/{id}    → Delete (Cosmos + Blob + disk)   │  │
+│  │  POST /api/presentations/{id}/translate-notes → Batch translate     │  │
+│  │  GET  /api/presentations/{id}/translations-status → Progress       │  │
+│  │  POST /api/translate             → Single-text translation         │  │
+│  │  GET  /api/avatar/token          → Speech token + ICE/TURN creds   │  │
+│  │  POST /api/avatar/batch          → Batch Avatar Synthesis          │  │
+│  │  GET  /api/avatar/batch/{job_id} → Batch job status                │  │
+│  │  POST /api/qa                    → Slide Q&A (RAG)                 │  │
+│  │  POST /api/agent/chat            → Agent chat (function-calling)   │  │
+│  │  WS   /ws/voice                  → VoiceLive WebSocket proxy       │  │
+│  └───┬──────────┬──────────┬──────────┬──────────┬──────────┬────────┘  │
+│      │          │          │          │          │          │            │
+│  ┌───▼────┐ ┌──▼───────┐ ┌▼────────┐ ┌▼───────┐ ┌▼───────┐ ┌▼───────┐ │
+│  │ PPTX   │ │ Translat.│ │ Avatar  │ │ Q&A    │ │Voice   │ │Storage │ │
+│  │ Parser │ │ Service  │ │ Service │ │(RAG)   │ │Proxy   │ │Service │ │
+│  │        │ │          │ │         │ │        │ │        │ │        │ │
+│  │python  │ │ GPT-4.1  │ │VoiceLive│ │Embed + │ │WSS →   │ │CosmosDB│ │
+│  │-pptx   │ │ + detect │ │WebSocket│ │numpy   │ │Azure   │ │+ Blob  │ │
+│  │+Libre  │ │ + cache  │ │+ batch  │ │cosine  │ │Voice   │ │+ SAS   │ │
+│  │Office  │ │          │ │+ token  │ │+ GPT   │ │Live    │ │tokens  │ │
+│  └────────┘ └──────────┘ └─────────┘ └────────┘ └────────┘ └────────┘ │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          AZURE SERVICES                                  │
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐   │
+│  │ Azure AI Services │  │ Azure OpenAI      │  │ Azure Cosmos DB      │   │
+│  │ (Speech/Avatar)   │  │ (S0)              │  │ (Serverless)         │   │
+│  │                   │  │                   │  │                      │   │
+│  │ • VoiceLive API   │  │ • GPT-4.1         │  │ • presentations      │   │
+│  │   (WebRTC avatar) │  │   (translation,   │  │   container          │   │
+│  │ • DragonHD TTS    │  │    Q&A, agent)    │  │ • Slide metadata     │   │
+│  │   voices (6 native│  │ • text-embedding- │  │ • Translated notes   │   │
+│  │   + 4 multilingual│  │   3-small         │  │   cache              │   │
+│  │ • Batch Synthesis │  │   (RAG embeddings)│  │                      │   │
+│  │ • ICE/TURN relay  │  │                   │  │                      │   │
+│  └──────────────────┘  └──────────────────┘  └──────────────────────┘   │
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────┐   │
+│  │ Azure Blob        │  │ Azure Container  │  │ Azure Container      │   │
+│  │ Storage (Std LRS) │  │ Apps             │  │ Registry (Basic)     │   │
+│  │                   │  │                   │  │                      │   │
+│  │ • Slide images    │  │ • FastAPI backend │  │ • Docker images      │   │
+│  │   (PNG, SAS URLs) │  │ • React static   │  │ • Multi-stage build  │   │
+│  │ • Original PPTX   │  │ • System-assigned │  │                      │   │
+│  │   files           │  │   Managed Identity│  │                      │   │
+│  │ • Embedded videos │  │ • Auto-scale 1-3  │  │                      │   │
+│  └──────────────────┘  └──────────────────┘  └──────────────────────┘   │
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────┐                             │
+│  │ Log Analytics     │  │ In-Memory Vector │                             │
+│  │ Workspace         │  │ Store (numpy)    │                             │
+│  │                   │  │                   │                             │
+│  │ • Container logs  │  │ • Cosine search   │                             │
+│  │ • 30-day retention│  │ • Ephemeral       │                             │
+│  └──────────────────┘  └──────────────────┘                             │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## RFI Use Case Mapping
+
+| RFI Requirement | Implementation | Status |
+|-----------------|---------------|--------|
+| **UC1 Basic** — Voice conversation with avatar from knowledge base | Agent chat (`/api/agent/chat`) + VoiceLive WebRTC | ✅ Implemented |
+| **UC1 Silver** — Avatar overlaid on PPT slides with Q&A | SlideViewer + AvatarPanel + Q&A RAG pipeline | ✅ Implemented |
+| **UC1 Gold** — Multi-deck AI slide selection | Not yet implemented | 🔲 Roadmap |
+| **UC2** — Automated batch video generation | Batch Avatar Synthesis API (`/api/avatar/batch`) | ✅ Implemented |
+| **UC3** — Podcast-style video generation | Not yet implemented | 🔲 Roadmap |
+| **Multilingual** (37+ languages) | 10 languages (6 native DragonHD + 4 multilingual fallback) | ✅ Partial |
+| **LMS/SCORM integration** | Not yet implemented | 🔲 Roadmap |
+| **SGChat/M365 Copilot integration** | Agent Framework + Teams Static Tab | ✅ Partial |
+| **GDPR compliance** | Managed Identity, no keys in client, Azure-hosted | ✅ PoC level |
 
 ---
 
 ## Data Flows
 
-### Flow 1: Upload & Parse PowerPoint
+### Flow 1: Upload & Parse PowerPoint (with Persistence)
 
 ```
 User → [Upload .pptx] → Frontend → POST /api/upload → Backend
-  → python-pptx extracts:
-    • Slide count
-    • Per-slide: title, body text, speaker notes
-  → LibreOffice headless renders slides to images:
-    • soffice --headless --convert-to pdf {file.pptx}
-    • pdf2image.convert_from_path(pdf, poppler_path=...)
-    • Each PIL Image → saved as PNG to data/slides/{id}/{index}.png
-  → Store slide images on disk (data/slides/)
-  → Index slide content in vector store (in-memory numpy embeddings)
-  → Return presentation ID + slide metadata (including image_url) to Frontend
+  1. Validate file (ZIP header, Content_Types.xml)
+  2. python-pptx extracts: slide count, titles, body text, speaker notes
+  3. Extract embedded videos (MP4/WMV) from PPTX media
+  4. LibreOffice headless → PPTX to PDF → pdf2image → PNGs
+  5. Save PNGs to local disk (data/slides/{id}/)
+  6. Upload PNGs to Azure Blob Storage (slide-images container)
+  7. Upload original PPTX to Blob Storage
+  8. Save metadata to Cosmos DB (id, filename, slides[])
+  9. Generate embeddings → index in numpy vector store (for Q&A)
+  10. Kick off background batch translation (9 languages, async)
+  → Return presentation with SAS-signed image URLs to Frontend
 ```
 
-### Flow 2: Real-Time Avatar Presentation
+### Flow 2: Real-Time Avatar Presentation (VoiceLive)
 
 ```
 User → [Selects slide + language] → Frontend
-  → Frontend connects WebSocket to /ws/voice (backend proxy)
-  → Backend connects to Azure VoiceLive API:
-    wss://{resource}.cognitiveservices.azure.com/voice-live/realtime
-  → Backend sends session.update with AvatarConfig (lisa/casual-sitting)
-  → Azure returns ICE servers (TURN credentials)
-  → Frontend sets up WebRTC RTCPeerConnection with ICE servers
-  → Frontend sends SDP offer via session.avatar.connect
-  → Azure returns SDP answer, WebRTC connects
-  → Avatar video + audio streams to browser
-  → User navigates to next slide → repeat
+  1. Frontend opens WebSocket to /ws/voice
+  2. Backend proxies to Azure VoiceLive API:
+     wss://{resource}.cognitiveservices.azure.com/voice-live/realtime
+  3. Backend sends session.update with:
+     - Avatar: lisa / casual-sitting
+     - Voice: DragonHD (native per language, e.g. fr-FR-Vivienne)
+     - Modalities: text + audio + avatar
+     - VAD: azure_semantic_vad
+  4. Azure returns ICE servers (TURN credentials)
+  5. Frontend WebRTC handshake → avatar video streams to browser
+  6. User navigates slides → Frontend sends text via conversation.item.create
+  7. Avatar speaks slide notes in target language
 ```
 
 ### Flow 3: Batch Video Generation
 
 ```
 User → [Click "Generate Video"] → Frontend → POST /api/avatar/batch → Backend
-  → For each slide:
-    1. Get speaker notes
-    2. Translate if target language ≠ source (via GPT-4o)
-    3. Build SSML with voice for target language
-    4. Call Azure Speech Batch Avatar API
-    5. Poll for completion, download MP4
-  → Stitch slide videos (or return individual)
-  → Store in Blob Storage
-  → Return download URL to Frontend
+  1. Collect speaker notes (or body/title fallback) for all slides
+  2. Translate notes if target language ≠ source (via GPT-4.1)
+  3. Build SSML with voice name for target language
+  4. PUT /avatar/batchsyntheses/{job_id} to Azure Speech API
+  5. Azure renders avatar video asynchronously
+  6. Client polls GET /api/avatar/batch/{job_id} for status
+  7. Azure stores MP4 → return download URL
 ```
 
-### Flow 4: Slide Q&A
+### Flow 4: Slide Q&A (RAG)
 
 ```
-User → [Types question about current slide] → Frontend → POST /api/qa → Backend
-  → Generate embedding for question (Azure OpenAI text-embedding-3-small)
-  → Search in-memory numpy vector store (cosine similarity, filtered by presentation)
-  → Retrieve top-k relevant slide chunks
-  → Build prompt: system context + slide chunks + user question
-  → Call GPT-4.1 for answer
-  → Return answer to Frontend (optionally, avatar speaks it)
+User → [Types question] → Frontend → POST /api/qa → Backend
+  1. Generate embedding for question (text-embedding-3-small)
+  2. Cosine similarity search in numpy vector store
+  3. Retrieve top-3 relevant slide chunks (filtered by presentation)
+  4. Build RAG prompt: system context + slide chunks + question
+  5. Call GPT-4.1 for grounded answer
+  → Return answer + source slide indices
 ```
 
-### Flow 5: Translation
+### Flow 5: Translation (with Caching)
 
 ```
-Backend → Translation Service
-  → Input: speaker notes text + target language (fr-FR / es-ES)
-  → Call Azure OpenAI GPT-4o:
-    System: "You are a professional translator. Translate the following text to {language}. Preserve formatting and tone."
-    User: "{speaker notes text}"
-  → Return translated text
+On Upload:
+  → Background task translates all slide notes into 9 languages
+  → Each translation cached in Cosmos DB (slides[].translated_notes.{lang})
+  → Frontend polls /translations-status for progress
+
+On Demand:
+  → POST /api/translate for single text
+  → POST /api/presentations/{id}/translate-notes for a language
+  → If cached in Cosmos → return instantly
+  → If not cached → translate via GPT-4.1 → cache → return
+```
+
+### Flow 6: Agent Chat (Function-Calling)
+
+```
+User → [Types message] → Frontend → POST /api/agent/chat → Backend
+  1. Build message list with system prompt + slide context
+  2. Call GPT-4.1 with tool definitions:
+     - translate_slide_notes, detect_text_language
+     - ask_about_slides, generate_avatar_speech_ssml
+     - prepare_slide_for_presentation
+  3. LLM decides which tools to call (up to 5 iterations)
+  4. Execute tool calls, append results
+  5. Return final assistant response
 ```
 
 ---
 
 ## API Contract
 
-### `POST /api/upload`
-Upload a PowerPoint file. Renders slides as PNG images via LibreOffice.
-- **Request**: `multipart/form-data` with `.pptx` file
-- **Response**: `{ "id": "uuid", "filename": "...", "slide_count": 12, "slides": [...] }`
+### Presentation Management
 
-### `GET /api/presentations`
-List all uploaded presentations.
-- **Response**: `[{ "id": "uuid", "filename": "...", "slide_count": 12, "created_at": "..." }]`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/upload` | Upload `.pptx`, parse, render, persist |
+| `GET` | `/api/presentations` | List all presentations (Cosmos DB → in-memory) |
+| `GET` | `/api/slides/{id}` | Get slides with fresh SAS image URLs |
+| `GET` | `/api/slides/{id}/{filename}` | Serve slide image or video (disk → Blob fallback) |
+| `DELETE` | `/api/presentations/{id}` | Delete from Cosmos + Blob + disk |
+| `POST` | `/api/presentations/{id}/share` | Share presentation (placeholder) |
 
-### `GET /api/slides/{presentation_id}/{filename}`
-Serve a rendered slide PNG image.
-- **Response**: `image/png` binary data (327-854KB per slide)
+### Translation
 
-### `GET /api/slides/{presentation_id}`
-Get all slides for a presentation.
-- **Response**: `{ "slides": [{ "index": 0, "title": "...", "body": "...", "notes": "...", "image_url": "/api/slides/{id}/0.png" }] }`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/translate` | Translate single text with language detection |
+| `POST` | `/api/presentations/{id}/translate-notes` | Batch-translate notes for a language (cached) |
+| `GET` | `/api/presentations/{id}/translations-status` | Background translation progress |
 
-### `POST /api/translate`
-Translate text to target language.
-- **Request**: `{ "text": "...", "target_language": "fr-FR" }`
-- **Response**: `{ "translated_text": "...", "source_language": "en-US" }`
+### Avatar
 
-### `GET /api/avatar/token`
-Get a Speech SDK authentication token for the frontend.
-- **Response**: `{ "token": "...", "region": "westeurope" }`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/avatar/token` | Speech JWT + AAD token + ICE/TURN credentials |
+| `POST` | `/api/avatar/batch` | Submit batch avatar synthesis job |
+| `GET` | `/api/avatar/batch/{job_id}` | Poll batch job status |
+| `WS` | `/ws/voice` | WebSocket proxy → Azure VoiceLive API |
 
-### `POST /api/avatar/batch`
-Generate batch avatar video for a presentation.
-- **Request**: `{ "presentation_id": "uuid", "target_language": "fr-FR", "avatar": "lisa" }`
-- **Response**: `{ "job_id": "uuid", "status": "processing" }`
+### AI & Q&A
 
-### `GET /api/avatar/batch/{job_id}`
-Check batch generation status.
-- **Response**: `{ "status": "completed", "video_url": "..." }`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/qa` | RAG-based slide Q&A |
+| `POST` | `/api/agent/chat` | Multi-turn agent chat with function-calling |
 
-### `POST /api/qa`
-Ask a question about slide content.
-- **Request**: `{ "presentation_id": "uuid", "slide_index": 3, "question": "What is the main point?" }`
-- **Response**: `{ "answer": "...", "source_slides": [3] }`
+### System
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Health check |
 
 ---
 
-## Voice Configuration
+## Voice Configuration (DragonHD)
 
-| Language | Voice Name | Gender | Style |
-|----------|-----------|--------|-------|
-| English (US) | `en-US-AvaMultilingualNeural` | Female | Conversational |
-| French (FR) | `fr-FR-DeniseNeural` | Female | Conversational |
-| Spanish (ES) | `es-ES-ElviraNeural` | Female | Conversational |
+The system uses Azure AI Speech **DragonHD** voices for maximum quality and natural prosody.
 
-Alternative multilingual approach: Use `en-US-AvaMultilingualNeural` for all languages (it supports multilingual synthesis from a single voice).
+| Language | Voice Name | Type |
+|----------|-----------|------|
+| English (US) | `en-US-Ava:DragonHDLatestNeural` | Native DragonHD |
+| French (FR) | `fr-FR-Vivienne:DragonHDLatestNeural` | Native DragonHD |
+| Spanish (ES) | `es-ES-Ximena:DragonHDLatestNeural` | Native DragonHD |
+| German (DE) | `de-DE-Seraphina:DragonHDLatestNeural` | Native DragonHD |
+| Japanese (JP) | `ja-JP-Nanami:DragonHDLatestNeural` | Native DragonHD |
+| Chinese (CN) | `zh-CN-Xiaochen:DragonHDLatestNeural` | Native DragonHD |
+| Italian (IT) | `en-US-Ava:DragonHDLatestNeural` | Multilingual fallback |
+| Portuguese (BR) | `en-US-Ava:DragonHDLatestNeural` | Multilingual fallback |
+| Korean (KR) | `en-US-Ava:DragonHDLatestNeural` | Multilingual fallback |
+| Arabic (SA) | `en-US-Ava:DragonHDLatestNeural` | Multilingual fallback |
 
 ---
 
 ## Avatar Configuration
 
-For the PoC, use Microsoft's standard prebuilt avatars:
+Standard prebuilt avatars (no Microsoft approval required):
 
-| Avatar | Description | Use Case |
-|--------|------------|----------|
-| `lisa` | Professional female | Default presenter |
-| `harry` | Professional male | Alternative presenter |
-
-Standard avatars require no Microsoft approval and are available immediately in supported regions.
+| Avatar | Character | Style | Use Case |
+|--------|-----------|-------|----------|
+| `lisa` | Professional female | `casual-sitting` | Default presenter |
+| `harry` | Professional male | — | Alternative presenter |
 
 ---
 
-## Deployment Architecture
+## Deployment Architecture (Azure)
 
 ```
 Resource Group: rg-<environment-name>
 Region: Sweden Central (swedencentral)
 
-├── Azure AI Speech / AIServices (S0)
-│   └── Endpoint: https://<your-ai-services>.cognitiveservices.azure.com
-│   └── VoiceLive API (avatar WebRTC streaming)
+├── Azure AI Services (S0) — ais-{token}
+│   ├── VoiceLive API (real-time avatar via WebRTC)
+│   ├── Batch Avatar Synthesis API
+│   ├── TTS Neural Voices (DragonHD)
+│   └── ICE/TURN relay for WebRTC
 │
-├── Azure OpenAI (S0)
-│   ├── Deployment: gpt-4.1 (chat + translation + Q&A)
-│   └── Deployment: text-embedding-3-small (RAG embeddings)
+├── Azure OpenAI (S0) — oai-{token}
+│   ├── Deployment: gpt-4.1 (GlobalStandard, 80 TPM)
+│   │   └── Translation, Q&A generation, agent chat
+│   └── Deployment: text-embedding-3-small (GlobalStandard, 120 TPM)
+│       └── RAG embeddings for slide content
 │
-├── In-Memory Vector Store (numpy)
-│   └── Cosine similarity search over slide embeddings
-│   └── Ephemeral — resets on container restart
+├── Azure Cosmos DB (Serverless) — cosmos-{token}
+│   └── Database: ai-presenter
+│       └── Container: presentations (partition key: /id)
+│           ├── Presentation metadata (filename, slide_count)
+│           ├── Slide data (title, body, notes, image_url)
+│           └── Cached translations (translated_notes per language)
 │
-├── Azure Storage Account (Standard LRS)
-│   ├── Container: presentations (PPT files)
-│   └── Container: videos (generated avatar videos)
+├── Azure Storage Account (Standard LRS) — st{token}
+│   └── Container: slide-images (private, no public access)
+│       ├── {presentation_id}/{index}.png — rendered slide images
+│       └── {presentation_id}/{filename}.pptx — original files
+│       └── Access: SAS tokens via User Delegation Key (24h expiry)
 │
-└── Azure Container Apps (target deployment)
-    ├── Python 3.12 + FastAPI + React static build
-    ├── LibreOffice (libreoffice-impress) for slide rendering
-    ├── Poppler (poppler-utils) for PDF → PNG
-    └── fonts-liberation for proper text rendering
+├── Azure Container Registry (Basic) — cr{token}
+│   └── Docker images (multi-stage: Node.js build + Python runtime)
+│
+├── Azure Container Apps — ca-{token}
+│   ├── Environment: cae-{token}
+│   ├── Identity: System-assigned Managed Identity
+│   ├── Ingress: external, port 8000, HTTPS only
+│   ├── Scale: 1-3 replicas (HTTP concurrency: 50 req/replica)
+│   ├── Resources: 1 vCPU, 2 GiB RAM per container
+│   └── Runtime: Gunicorn + Uvicorn + FastAPI + React static
+│       ├── LibreOffice Impress (headless, PPTX → PDF)
+│       ├── Poppler (PDF → PNG)
+│       └── Liberation fonts
+│
+├── Log Analytics Workspace — cae-{token}-logs
+│   └── Container App logs (30-day retention)
+│
+└── RBAC Role Assignments (Managed Identity → resources)
+    ├── Cognitive Services Speech User → AI Services
+    ├── Cognitive Services User → AI Services
+    ├── Cognitive Services OpenAI User → OpenAI
+    ├── Cosmos DB Built-in Data Contributor → Cosmos DB
+    └── Storage Blob Data Contributor → Storage Account
 ```
 
 ---
 
-## Security Considerations (PoC Scope)
+## Security (PoC Scope)
 
-- Speech SDK tokens issued by backend (short-lived, not exposing keys to client)
-- Blob Storage access via backend only (no public container access)
-- Azure OpenAI accessed via backend only (key stored in App Service config)
-- CORS configured for App Service domain only
-- No user authentication for PoC (single-tenant demo)
+| Aspect | Implementation |
+|--------|---------------|
+| **Authentication** | Azure Managed Identity (no keys in environment) |
+| **Speech tokens** | Backend exchanges AAD token → short-lived Speech JWT |
+| **Blob access** | SAS tokens via User Delegation Key (24h read-only) |
+| **OpenAI access** | Managed Identity → Cognitive Services OpenAI User role |
+| **Cosmos DB** | Managed Identity → Built-in Data Contributor role |
+| **Network** | HTTPS only ingress, no public blob access |
+| **Client isolation** | CORS configured, CSP `frame-ancestors *` for Teams |
+| **User auth** | None (single-tenant PoC demo) |
 
 ---
 
 ## Directory Structure
 
 ```
-ai-presenter - Copilot/
-├── AGENT.md                    ← Project overview & deliverables
-├── run-local.ps1               ← One-command local dev startup
+ai-presenter/
+├── AGENT.md                           ← Project overview & deliverables
+├── Dockerfile                         ← Multi-stage Docker build
+├── azure.yaml                         ← Azure Developer CLI (azd) config
+├── run-local.ps1                      ← One-command local dev startup
 ├── docs/
-│   ├── feasibility.md
-│   ├── architecture.md         ← this document
-│   └── teams-integration.md    ← V2 analysis
+│   ├── architecture.md                ← This document
+│   ├── deep-dive-azure.md             ← Full Azure deployment walkthrough
+│   ├── deploy-copilot.md              ← Parallel deployment guide
+│   ├── feasibility.md                 ← Feasibility assessment
+│   ├── teams-integration.md           ← Teams embedding analysis
+│   └── diagrams/
+│       ├── azure-architecture.drawio           ← Azure resource topology
+│       ├── uc1-silver-ingestion-sequence.drawio ← Upload + persist flow
+│       ├── uc1-silver-runtime-sequence.drawio   ← Runtime presentation flow
+│       ├── uc1-bronze-voicerag-sequence.drawio  ← VoiceLive + Q&A flow
+│       ├── uc2-batch-video-sequence.drawio      ← Batch video generation
+│       └── agent-chat-sequence.drawio           ← Agent function-calling flow
 ├── demos/
 │   ├── backend/
-│   │   ├── app.py              ← FastAPI app (REST + WebSocket)
-│   │   ├── config.py           ← Azure service configuration
-│   │   ├── requirements.txt    ← Python dependencies
-│   │   ├── Dockerfile          ← Container build (LibreOffice + poppler)
-│   │   ├── .env                ← Local dev environment variables
+│   │   ├── app.py                     ← FastAPI app (REST + WebSocket + Agent)
+│   │   ├── config.py                  ← Azure service configuration
+│   │   ├── agent_app.py               ← Azure AI Foundry agent entry point
+│   │   ├── agent_tools.py             ← Agent tool definitions
+│   │   ├── requirements.txt           ← Python dependencies
+│   │   ├── .env / .env.example        ← Environment variables
 │   │   ├── data/
-│   │   │   ├── uploads/        ← Uploaded PPTX files
-│   │   │   └── slides/         ← Rendered PNG slide images
+│   │   │   ├── uploads/               ← Uploaded PPTX files (local cache)
+│   │   │   └── slides/                ← Rendered PNG images (local cache)
 │   │   └── services/
-│   │       ├── pptx_parser.py  ← PPT parsing + LibreOffice image rendering
-│   │       ├── voice_proxy.py  ← WebSocket proxy for VoiceLive avatar API
-│   │       ├── translation.py  ← GPT-4.1 translation
-│   │       └── qa.py           ← Slide Q&A (numpy RAG)
+│   │       ├── pptx_parser.py         ← PPTX parsing + LibreOffice rendering
+│   │       ├── voice_proxy.py         ← WebSocket proxy → VoiceLive API
+│   │       ├── translation.py         ← GPT-4.1 translation + detection
+│   │       ├── avatar.py              ← Speech tokens, batch synthesis, SSML
+│   │       ├── qa.py                  ← RAG Q&A (numpy vector search)
+│   │       └── storage.py             ← Cosmos DB + Blob Storage persistence
 │   └── frontend/
 │       ├── package.json
-│       ├── vite.config.ts      ← Proxy config for /api and /ws
+│       ├── vite.config.ts             ← Dev proxy for /api and /ws
 │       ├── src/
-│       │   ├── App.tsx
+│       │   ├── App.tsx                ← Root component with Teams theme
 │       │   ├── components/
-│       │   │   ├── PptUpload.tsx
-│       │   │   ├── SlideViewer.tsx    ← Slide display (PNG images + text fallback)
-│       │   │   ├── AvatarPanel.tsx    ← WebRTC avatar video/audio
-│       │   │   ├── LanguageSelector.tsx
-│       │   │   └── QaChat.tsx
+│       │   │   ├── PptUpload.tsx       ← File upload UI
+│       │   │   ├── PresentationList.tsx← Saved presentations (CRUD)
+│       │   │   ├── SlideViewer.tsx     ← Slide display + navigation
+│       │   │   ├── AvatarPanel.tsx     ← WebRTC avatar video/audio
+│       │   │   ├── LanguageSelector.tsx← Language picker (10 languages)
+│       │   │   └── QaChat.tsx          ← Q&A chat + Agent chat
 │       │   └── services/
-│       │       └── api.ts
+│       │       ├── api.ts             ← API client (all endpoints)
+│       │       └── teams.ts           ← Teams SDK integration helpers
 │       └── public/
-├── infra/
-│   ├── main.bicep              ← All Azure resources
-│   ├── main.parameters.json
+│           └── teams/                 ← Teams manifest + icons
+├── infra/                             ← Azure Bicep IaC
+│   ├── main.bicep                     ← Orchestrator (subscription-scoped)
+│   ├── main.parameters.json           ← Default deployment params
+│   ├── main.parameters.copilot.json   ← Parallel instance params
 │   └── modules/
-│       ├── speech.bicep
-│       ├── openai.bicep
-│       ├── storage.bicep
-│       └── appservice.bicep
-└── azure.yaml                  ← azd configuration
+│       ├── ai-services.bicep          ← Azure AI Services (Speech/Avatar)
+│       ├── openai.bicep               ← Azure OpenAI + model deployments
+│       ├── cosmos.bicep               ← Cosmos DB (Serverless)
+│       ├── storage.bicep              ← Blob Storage account
+│       ├── containerapp.bicep         ← Container App + ACR + Log Analytics
+│       └── roles.bicep                ← RBAC role assignments (5 roles)
+├── scripts/
+│   └── package-teams-app.ps1          ← Teams app packaging
+└── tests/
+    └── playwright.config.ts           ← E2E test config
 ```

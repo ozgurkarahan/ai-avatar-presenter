@@ -10,6 +10,9 @@ Desktop.ini
 *.swo
 *~
 
+# Git Worktrees
+.worktree/
+
 # Claude Code
 .claude/
 
@@ -49,3 +52,13 @@ demos/backend/test_upload.pptx
 
 # Teams build artifact
 teams-app-package.zip
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+scripts/.env
+output/
+infra/uc3/main.json

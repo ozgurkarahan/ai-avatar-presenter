@@ -1,0 +1,96 @@
+<mxfile host="app.diagrams.net" modified="2026-04-06T22:03:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="agent-chat" name="Agent Chat — Function-Calling">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Agent Chat — Function-Calling Sequence" style="text;html=1;align=center;fontSize=16;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="170" y="10" width="400" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- PARTICIPANTS -->
+        <mxCell id="p-user" value="User" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="30" y="60" width="100" height="980" as="geometry" />
+        </mxCell>
+        <mxCell id="p-fe" value="Frontend&#xa;(React)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#E1BEE7;strokeColor=#7B1FA2;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="60" width="100" height="980" as="geometry" />
+        </mxCell>
+        <mxCell id="p-be" value="Backend&#xa;(FastAPI)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#C8E6C9;strokeColor=#43A047;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="380" y="60" width="100" height="980" as="geometry" />
+        </mxCell>
+        <mxCell id="p-llm" value="Azure OpenAI&#xa;(GPT-4.1)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F8BBD0;strokeColor=#E91E63;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="570" y="60" width="100" height="980" as="geometry" />
+        </mxCell>
+
+        <!-- AGENT CHAT -->
+        <mxCell id="n1" value="AGENT CHAT WITH FUNCTION-CALLING" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E3F2FD;strokeColor=#90CAF9;fontColor=#1565C0;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="30" y="130" width="640" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="1. Type message in chat" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="80" y="180" as="sourcePoint" /><mxPoint x="250" y="180" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m2" value="2. POST /api/agent/chat {messages, presentation_id, slide_index}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="220" as="sourcePoint" /><mxPoint x="430" y="220" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m3" value="3. Build messages: system prompt + slide context + history" style="html=1;verticalAlign=bottom;endArrow=block;curved=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="440" y="260" as="sourcePoint" /><mxPoint x="440" y="280" as="targetPoint" />
+            <Array as="points"><mxPoint x="480" y="270" /></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Loop box -->
+        <mxCell id="loop1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#F8BBD0;dashed=1;dashPattern=5 3;" vertex="1" parent="1">
+          <mxGeometry x="390" y="300" width="310" height="460" as="geometry" />
+        </mxCell>
+        <mxCell id="loop1-label" value="loop [Up to 5 tool-calling iterations]" style="text;html=1;fontSize=9;fontColor=#C62828;fontStyle=3;align=left;" vertex="1" parent="1">
+          <mxGeometry x="395" y="303" width="220" height="16" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m4" value="4. chat.completions.create&#xa;    (tools: 5 functions, tool_choice: auto)" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="340" as="sourcePoint" /><mxPoint x="620" y="340" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m5" value="5. Response" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="620" y="390" as="sourcePoint" /><mxPoint x="430" y="390" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Alt box inside loop -->
+        <mxCell id="alt1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#A5D6A7;dashed=1;dashPattern=5 3;" vertex="1" parent="1">
+          <mxGeometry x="400" y="410" width="290" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="alt1-label" value="alt [LLM returns tool_calls]" style="text;html=1;fontSize=9;fontColor=#2E7D32;fontStyle=3;align=left;" vertex="1" parent="1">
+          <mxGeometry x="405" y="413" width="180" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- Tool dispatch note -->
+        <mxCell id="tools-note" value="6. Execute tool(s):&#xa;  - translate_slide_notes&#xa;  - detect_text_language&#xa;  - ask_about_slides&#xa;  - generate_avatar_speech_ssml&#xa;  - prepare_slide_for_presentation" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#F1F8E9;strokeColor=#AED581;fontColor=#33691E;fontSize=8;align=left;" vertex="1" parent="1">
+          <mxGeometry x="415" y="440" width="200" height="95" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m7" value="7. Append tool results — next iteration" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="555" as="sourcePoint" /><mxPoint x="620" y="555" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Divider for else -->
+        <mxCell id="alt-div" value="" style="endArrow=none;dashed=1;dashPattern=3 3;strokeColor=#A5D6A7;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="400" y="600" as="sourcePoint" /><mxPoint x="690" y="600" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="alt-else" value="else [LLM returns final answer]" style="text;html=1;fontSize=9;fontColor=#666666;fontStyle=2;align=left;" vertex="1" parent="1">
+          <mxGeometry x="405" y="603" width="200" height="16" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m8" value="8. Return {reply: &quot;...&quot;}" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="430" y="640" as="sourcePoint" /><mxPoint x="250" y="640" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Final response -->
+        <mxCell id="m9" value="9. Display assistant response" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="800" as="sourcePoint" /><mxPoint x="80" y="800" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

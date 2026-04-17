@@ -10,10 +10,23 @@ param acrName string
 @description('Location for the resource')
 param location string
 
-@description('Container image to deploy')
-param containerImage string
+@description('Tags to apply to every resource')
+param tags object
 
-@description('Azure Speech endpoint')
+@description('Container image to deploy (placeholder until real image is pushed)')
+param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+
+@description('Target container port')
+param targetPort int = 8000
+
+@description('Log Analytics workspace customer/workspace id')
+param logAnalyticsCustomerId string
+
+@description('Log Analytics workspace primary shared key')
+@secure()
+param logAnalyticsPrimarySharedKey string
+
+@description('Azure Speech / AI Services endpoint')
 param speechEndpoint string
 
 @description('Azure Speech region')
@@ -28,61 +41,51 @@ param openAiEndpoint string
 @description('Azure OpenAI chat deployment name')
 param openAiChatDeployment string
 
-@description('Azure OpenAI embedding deployment name')
-param openAiEmbeddingDeployment string
-
 @description('Azure Cosmos DB endpoint')
 param cosmosEndpoint string
+
+@description('Azure Cosmos DB database name')
+param cosmosDatabaseName string
 
 @description('Azure Storage Account name')
 param storageAccountName string
 
 @description('Azure Blob container name')
-param blobContainerName string = 'slide-images'
+param blobContainerName string
 
-resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: acrName
   location: location
+  tags: tags
   sku: {
     name: 'Basic'
   }
   properties: {
-    adminUserEnabled: true
-  }
-  tags: {
-    project: 'ai-presenter'
+    adminUserEnabled: false
   }
 }
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: '${envName}-logs'
-  location: location
-  properties: {
-    sku: { name: 'PerGB2018' }
-    retentionInDays: 30
-  }
-}
-
-resource containerEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
+resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: envName
   location: location
+  tags: tags
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
-        customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalytics.listKeys().primarySharedKey
+        customerId: logAnalyticsCustomerId
+        sharedKey: logAnalyticsPrimarySharedKey
       }
     }
   }
-  tags: {
-    project: 'ai-presenter'
-  }
 }
 
-resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
+resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
+  tags: union(tags, {
+    'azd-service-name': 'backend'
+  })
   identity: {
     type: 'SystemAssigned'
   }
@@ -91,20 +94,10 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
     configuration: {
       ingress: {
         external: true
-        targetPort: 8000
+        targetPort: targetPort
         transport: 'auto'
         allowInsecure: false
       }
-      secrets: [
-        { name: 'acr-password', value: acr.listCredentials().passwords[0].value }
-      ]
-      registries: [
-        {
-          server: acr.properties.loginServer
-          username: acr.listCredentials().username
-          passwordSecretRef: 'acr-password'
-        }
-      ]
     }
     template: {
       containers: [
@@ -121,10 +114,9 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'AZURE_SPEECH_RESOURCE_ID', value: speechResourceId }
             { name: 'AZURE_OPENAI_ENDPOINT', value: openAiEndpoint }
             { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: openAiChatDeployment }
-            { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: openAiEmbeddingDeployment }
             { name: 'AZURE_USE_MANAGED_IDENTITY', value: 'true' }
-            { name: 'USE_LOCAL_SEARCH', value: 'true' }
             { name: 'AZURE_COSMOS_ENDPOINT', value: cosmosEndpoint }
+            { name: 'AZURE_COSMOS_DATABASE', value: cosmosDatabaseName }
             { name: 'AZURE_BLOB_ACCOUNT_NAME', value: storageAccountName }
             { name: 'AZURE_BLOB_CONTAINER', value: blobContainerName }
           ]
@@ -146,13 +138,11 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
       }
     }
   }
-  tags: {
-    'azd-service-name': 'backend'
-    project: 'ai-presenter'
-  }
 }
 
 output url string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output name string = containerApp.name
 output principalId string = containerApp.identity.principalId
+output acrName string = acr.name
+output acrId string = acr.id
 output acrLoginServer string = acr.properties.loginServer

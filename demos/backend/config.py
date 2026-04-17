@@ -27,6 +27,7 @@ class AzureConfig:
     cosmos_key: str = ""
     cosmos_database: str = "ai-presenter"
     blob_connection_string: str = ""
+    blob_account_name: str = ""
     blob_container: str = "slide-images"
 
 
@@ -50,5 +51,6 @@ def load_config() -> AzureConfig:
         cosmos_key=os.environ.get("AZURE_COSMOS_KEY", ""),
         cosmos_database=os.environ.get("AZURE_COSMOS_DATABASE", "ai-presenter"),
         blob_connection_string=os.environ.get("AZURE_BLOB_CONNECTION_STRING", ""),
+        blob_account_name=os.environ.get("AZURE_BLOB_ACCOUNT_NAME", ""),
         blob_container=os.environ.get("AZURE_BLOB_CONTAINER", "slide-images"),
     )

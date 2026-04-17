@@ -22,10 +22,31 @@ VOICE_MAP = {
 AVATAR_MAP = {
     "lisa": "lisa",
     "harry": "harry",
+    "jeff": "jeff",
+    "lori": "lori",
+    "max": "max",
+    "meg": "meg",
+}
+
+# Azure Batch Avatar Synthesis: each character supports a specific set of styles.
+# Mismatched style → 400 "style X is not supported for avatar character Y".
+# Ref: https://learn.microsoft.com/azure/ai-services/speech-service/batch-synthesis-avatar
+AVATAR_STYLES = {
+    "lisa": "casual-sitting",
+    "harry": "business",
+    "jeff": "business",
+    "lori": "casual",
+    "max": "business",
+    "meg": "business",
 }
 
 DEFAULT_AVATAR = "lisa"
-DEFAULT_AVATAR_STYLE = "graceful-sitting"
+DEFAULT_AVATAR_STYLE = "casual-sitting"
+
+
+def style_for(avatar: str) -> str:
+    """Pick a valid talkingAvatarStyle for the given character."""
+    return AVATAR_STYLES.get(avatar, DEFAULT_AVATAR_STYLE)
 
 
 @dataclass
@@ -134,13 +155,18 @@ def get_speech_token(config: AzureConfig) -> dict:
 
 
 def build_ssml(text: str, language: str, voice: Optional[str] = None) -> str:
-    """Build SSML for avatar synthesis."""
+    """Build SSML for avatar synthesis.
+
+    Includes a 250 ms leading <break> because Azure batch avatar synthesis
+    consistently clips the first ~100 ms of spoken audio; the explicit pause
+    preserves the first word (e.g. "Today", "Hello").
+    """
     voice_name = voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
     return (
         f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         f'xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="{language}">'
         f'<voice name="{voice_name}">'
-        f"{text}"
+        f'<break time="250ms"/>{text}'
         f"</voice></speak>"
     )
 
@@ -166,7 +192,7 @@ def submit_batch_synthesis(
         "inputs": [{"content": ssml}],
         "avatarConfig": {
             "talkingAvatarCharacter": avatar_char,
-            "talkingAvatarStyle": DEFAULT_AVATAR_STYLE,
+            "talkingAvatarStyle": style_for(avatar_char),
             "videoFormat": "mp4",
             "videoCodec": "h264",
             "subtitleType": "soft_embedded",

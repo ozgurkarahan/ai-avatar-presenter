@@ -15,6 +15,8 @@ RUN apt-get update && \
         libreoffice-impress \
         poppler-utils \
         fonts-liberation \
+        ffmpeg \
+        libass9 \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user

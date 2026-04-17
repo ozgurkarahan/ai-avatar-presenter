@@ -49,7 +49,13 @@ class PresentationStore:
 
         # Blob Storage
         try:
-            if self._config.blob_connection_string and not self._config.use_managed_identity:
+            if self._config.use_managed_identity and self._config.blob_account_name:
+                # Managed identity: construct client from account name
+                account_url = f"https://{self._config.blob_account_name}.blob.core.windows.net"
+                self._blob_client = BlobServiceClient(account_url, credential=credential)
+                self._account_name = self._config.blob_account_name
+                self._credential = credential
+            elif self._config.blob_connection_string and not self._config.use_managed_identity:
                 self._blob_client = BlobServiceClient.from_connection_string(
                     self._config.blob_connection_string
                 )

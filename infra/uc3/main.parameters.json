@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "uc3-podcast"
+    },
+    "location": {
+      "value": "westeurope"
+    },
+    "resourceGroupName": {
+      "value": "rg-uc3-podcast"
+    },
+    "chatModelName": {
+      "value": "gpt-4.1"
+    },
+    "chatModelCapacity": {
+      "value": 50
+    },
+    "embeddingModelName": {
+      "value": "text-embedding-3-small"
+    },
+    "embeddingModelCapacity": {
+      "value": 20
+    },
+    "deployEmbedding": {
+      "value": true
+    },
+    "cosmosDatabaseName": {
+      "value": "podcast-demo"
+    },
+    "cosmosContainerName": {
+      "value": "jobs"
+    },
+    "blobContainerName": {
+      "value": "podcasts"
+    },
+    "blobRetentionDays": {
+      "value": 30
+    }
+  }
+}
