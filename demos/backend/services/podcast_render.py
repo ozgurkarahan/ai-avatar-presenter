@@ -34,6 +34,7 @@ from services.avatar import (
     _get_speech_auth_header,
     _get_speech_base_url,
     build_ssml,
+    style_for,
 )
 from services.podcast_models import (
     DialogueTurn,
@@ -81,6 +82,44 @@ class _TurnJob:
     error: Optional[str] = None
 
 
+def _request_with_429_retry(
+    method: str,
+    url: str,
+    *,
+    headers: dict,
+    json_body: Optional[dict] = None,
+    timeout: int = 30,
+    max_retries: int = 6,
+) -> requests.Response:
+    """HTTP call that retries on 429 honoring Retry-After (seconds or HTTP-date).
+
+    Batch avatar synthesis throttles at ~5 concurrent jobs per resource; the
+    service returns 429 with a Retry-After header. We back off exponentially
+    from 5s up to 60s if no header is provided.
+    """
+    delay = 5.0
+    last: Optional[requests.Response] = None
+    for attempt in range(max_retries):
+        r = requests.request(method, url, headers=headers, json=json_body, timeout=timeout)
+        last = r
+        if r.status_code != 429:
+            r.raise_for_status()
+            return r
+        ra = r.headers.get("Retry-After")
+        wait: float
+        try:
+            wait = float(ra) if ra else delay
+        except ValueError:
+            wait = delay
+        wait = max(wait, 2.0)
+        log.warning("429 from %s (attempt %d/%d) — sleeping %.1fs", url, attempt + 1, max_retries, wait)
+        time.sleep(wait)
+        delay = min(delay * 1.7, 60.0)
+    assert last is not None
+    last.raise_for_status()
+    return last
+
+
 def _submit_turn(cfg: AzureConfig, turn: DialogueTurn, role: RoleConfig, language: str) -> _TurnJob:
     """Submit one batch synthesis job with a single SSML input.
 
@@ -100,7 +139,7 @@ def _submit_turn(cfg: AzureConfig, turn: DialogueTurn, role: RoleConfig, languag
         "inputs": [{"content": ssml}],
         "avatarConfig": {
             "talkingAvatarCharacter": avatar_char,
-            "talkingAvatarStyle": DEFAULT_AVATAR_STYLE,
+            "talkingAvatarStyle": style_for(avatar_char),
             "videoFormat": "webm",
             "videoCodec": "vp9",
             "subtitleType": "soft_embedded",
@@ -109,8 +148,7 @@ def _submit_turn(cfg: AzureConfig, turn: DialogueTurn, role: RoleConfig, languag
         },
     }
     headers = {**_get_speech_auth_header(cfg), "Content-Type": "application/json"}
-    r = requests.put(url, headers=headers, json=payload, timeout=30)
-    r.raise_for_status()
+    _request_with_429_retry("PUT", url, headers=headers, json_body=payload, timeout=30)
     log.info("submitted batch turn=%d speaker=%s job=%s", turn.idx, turn.speaker, job_id)
     return _TurnJob(turn=turn, role=role, job_id=job_id)
 
@@ -124,6 +162,15 @@ def _poll_turn(cfg: AzureConfig, tj: _TurnJob, timeout: int, interval: int) -> _
     deadline = time.time() + timeout
     while time.time() < deadline:
         r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code == 429:
+            ra = r.headers.get("Retry-After")
+            try:
+                wait = float(ra) if ra else float(interval)
+            except ValueError:
+                wait = float(interval)
+            log.warning("429 polling turn=%d — sleeping %.1fs", tj.turn.idx, max(wait, 2.0))
+            time.sleep(max(wait, 2.0))
+            continue
         r.raise_for_status()
         data = r.json()
         status = data.get("status", "unknown")
@@ -214,7 +261,7 @@ def render_podcast(
     work_dir: Optional[Path] = None,
     timeout: int = 900,
     poll_interval: int = 5,
-    max_parallel: int = 4,
+    max_parallel: int = 1,
 ) -> list[ClipManifest]:
     """Render every dialogue turn into a transparent-WebM clip.
 
@@ -254,9 +301,11 @@ def render_podcast(
                     pass
 
     manifests: list[ClipManifest] = []
+    failed: list[tuple[int, str]] = []
     for tj in sorted(finished, key=lambda t: t.turn.idx):
         if tj.error or not tj.video_url:
             log.error("turn %d failed: %s", tj.turn.idx, tj.error)
+            failed.append((tj.turn.idx, tj.error or "no video url"))
             continue
         local_video = _download(tj.video_url, work_dir / f"turn_{tj.turn.idx:03d}.webm")
         word_timings: list[dict] = []
@@ -274,4 +323,11 @@ def render_podcast(
             duration_sec=tj.duration_sec,
             word_timings=word_timings,
         ))
+
+    if failed:
+        # Fail loud — silent drops produce unusable videos where one speaker
+        # is missing entirely. The PoC should surface the problem instead.
+        details = "; ".join(f"turn {i}: {err}" for i, err in failed)
+        raise RuntimeError(f"{len(failed)}/{len(finished)} avatar turns failed: {details}")
+
     return manifests

@@ -104,9 +104,28 @@ def compose_podcast(
     # 2) Resolve a slide image per turn (fallback to a generated black frame).
     slide_paths = _resolve_slide_paths(document, script, out_dir)
 
-    # 3) Render the ASS karaoke subtitle file.
+    # 2b) Extract one neutral still frame per speaker — used as the idle
+    #     visual so the off-mic avatar doesn't keep gesturing and lip-syncing
+    #     during the other speaker's turn.
+    idle_frames: dict[str, Optional[Path]] = {}
+    for speaker in ("interviewer", "expert"):
+        idle_frames[speaker] = None
+        for clip in clips_sorted:
+            if clip.speaker == speaker:
+                fp = out_dir / f"_idle_{speaker}.png"
+                try:
+                    _extract_frame(Path(clip.blob_url), fp, at_sec=0.1)
+                    idle_frames[speaker] = fp
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("idle frame extract failed for %s: %s", speaker, exc)
+                break
+
+    # 3) Render the ASS karaoke subtitle file. Account for the intro-card
+    #    offset + first-segment lead-in so karaoke timing stays synced with
+    #    spoken audio after concat.
     ass_path = out_dir / "subs.ass"
-    _write_ass(ass_path, clips_sorted, durations, turn_by_idx, roles)
+    ass_offset = INTRO_SEC if intro else 0.0
+    _write_ass(ass_path, clips_sorted, durations, turn_by_idx, roles, offset=ass_offset)
 
     # 4) Build per-turn segment videos, then concat. A single-monolithic
     #    filtergraph for N turns blows past ffmpeg's stack on long podcasts;
@@ -116,14 +135,17 @@ def compose_podcast(
         turn = turn_by_idx.get(clip.turn_idx)
         slide_path = slide_paths[i]
         seg_out = out_dir / f"seg_{i:03d}.mp4"
+        active_speaker = turn.speaker if turn else clip.speaker
+        idle_speaker = "expert" if active_speaker == "interviewer" else "interviewer"
         _render_segment(
             clip_path=Path(clip.blob_url),
-            partner_clip=_partner_clip(clips_sorted, i),
+            idle_frame=idle_frames.get(idle_speaker),
             slide_path=slide_path,
             duration=dur,
-            active_speaker=turn.speaker if turn else clip.speaker,
+            active_speaker=active_speaker,
             roles=roles,
             out=seg_out,
+            lead_in=0.0,
         )
         segment_paths.append(seg_out)
 
@@ -159,7 +181,7 @@ def compose_podcast(
         durations,
         turn_by_idx,
         roles,
-        offset=INTRO_SEC if intro else 0.0,
+        offset=ass_offset,
     )
 
     return ComposeResult(mp4=final_mp4, mp3=final_mp3, srt=final_srt)
@@ -171,19 +193,25 @@ def compose_podcast(
 
 def _render_segment(
     clip_path: Path,
-    partner_clip: Optional[Path],
+    idle_frame: Optional[Path],
     slide_path: Path,
     duration: float,
     active_speaker: str,
     roles: RenderRoles,
     out: Path,
+    lead_in: float = 0.0,
 ) -> None:
     """Render a single dialogue segment to MP4.
 
     Layout:
       [slide] scaled to 1920x810 → top
-      [active_avatar] over a 960x270 panel, full opacity, glow
-      [idle_avatar (or static frame if missing)] 960x270, 55% opacity
+      [active_avatar] (live WebM, has audio) over a 960x270 panel
+      [idle_avatar] a STATIC PNG of the other speaker (dimmed) — we do not
+        loop the other speaker's previous video because that makes them
+        appear to gesture/lip-sync during the active speaker's turn.
+
+    If `lead_in > 0`, leading silence is added to the audio so the first
+    spoken word isn't clipped by the intro-to-speech transition.
     """
     interviewer_active = active_speaker == "interviewer"
     active_label = roles.interviewer.display_name if interviewer_active else roles.expert.display_name
@@ -191,32 +219,46 @@ def _render_segment(
     active_role_name = "Interviewer" if interviewer_active else "Expert"
     idle_role_name = "Expert" if interviewer_active else "Interviewer"
 
+    total_dur = duration + lead_in
+
     # Inputs:
-    #   0 = slide image (looped to duration)
+    #   0 = slide image (looped to total_dur)
     #   1 = active speaker WebM (transparent, has audio)
-    #   2 = idle speaker WebM OR null video
+    #   2 = idle speaker STILL IMAGE or transparent fallback
     inputs = [
-        "-loop", "1", "-t", f"{duration:.3f}", "-i", str(slide_path),
+        "-loop", "1", "-t", f"{total_dur:.3f}", "-i", str(slide_path),
         "-i", str(clip_path),
     ]
-    if partner_clip and partner_clip.exists():
-        inputs += ["-stream_loop", "-1", "-t", f"{duration:.3f}", "-i", str(partner_clip)]
+    if idle_frame and idle_frame.exists():
+        inputs += ["-loop", "1", "-t", f"{total_dur:.3f}", "-i", str(idle_frame)]
         idle_input = "[2:v]"
     else:
-        # Lavfi solid color as idle fallback.
-        inputs += ["-f", "lavfi", "-t", f"{duration:.3f}", "-i", "color=c=black@0.0:s=960x270:r=25"]
+        inputs += ["-f", "lavfi", "-t", f"{total_dur:.3f}", "-i", "color=c=black@0.0:s=960x270:r=25"]
         idle_input = "[2:v]"
+
+    # Prepend a blank frame to the active avatar video if lead_in > 0 so its
+    # lip-sync stays aligned with the (delayed) audio.
+    if lead_in > 0:
+        active_v = (
+            f"[1:v]tpad=start_duration={lead_in:.3f}:start_mode=clone,"
+            f"scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
+            f"setsar=1,fps={FPS}[av_a];"
+        )
+        active_a = f"[1:a]adelay={int(lead_in * 1000)}|{int(lead_in * 1000)}[aout]"
+    else:
+        active_v = (
+            f"[1:v]scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
+            f"setsar=1,fps={FPS}[av_a];"
+        )
+        active_a = "[1:a]anull[aout]"
 
     # Build complex filter.
     fc = (
         f"[0:v]scale={VIDEO_W}:{SLIDE_H},setsar=1,fps={FPS}[slide];"
-        # Active avatar: scale to fit 960x270 keeping aspect; overlay handles centering.
-        f"[1:v]scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
-        f"setsar=1,fps={FPS}[av_a];"
-        f"{idle_input}scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
-        f"setsar=1,fps={FPS},format=yuva420p,colorchannelmixer=aa=0.55[av_i];"
-        # Bottom band background.
-        f"color=c=#0B1220:s={VIDEO_W}x{AVATAR_BAND_H}:r={FPS}:d={duration:.3f}[band];"
+        + active_v
+        + f"{idle_input}scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
+          f"setsar=1,fps={FPS},format=yuva420p,colorchannelmixer=aa=0.55[av_i];"
+        + f"color=c=#0B1220:s={VIDEO_W}x{AVATAR_BAND_H}:r={FPS}:d={total_dur:.3f}[band];"
     )
 
     if interviewer_active:
@@ -242,33 +284,32 @@ def _render_segment(
         f"color=#1F2937@0.7:t=fill,"
         f"drawtext=text='{_esc(idle_label)} \\u00b7 {idle_role_name}':"
         f"x={idle_x}:y={AVATAR_BAND_H - 44}:fontcolor=white:fontsize=20{_font_arg()}[bandfinal];"
-        f"[slide][bandfinal]vstack=inputs=2[vout]"
+        f"[slide][bandfinal]vstack=inputs=2[vout];"
+        + active_a
     )
 
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
         *inputs,
         "-filter_complex", fc,
-        "-map", "[vout]", "-map", "1:a?",
+        "-map", "[vout]", "-map", "[aout]",
         "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
         "-r", str(FPS),
-        "-t", f"{duration:.3f}",
+        "-t", f"{total_dur:.3f}",
         str(out),
     ]
     _run(cmd)
 
 
-def _partner_clip(clips: list[ClipManifest], i: int) -> Optional[Path]:
-    """Return the most recent clip from the *other* speaker, for idle visual."""
-    speaker = clips[i].speaker
-    for j in range(i - 1, -1, -1):
-        if clips[j].speaker != speaker:
-            return Path(clips[j].blob_url)
-    for j in range(i + 1, len(clips)):
-        if clips[j].speaker != speaker:
-            return Path(clips[j].blob_url)
-    return None
+def _extract_frame(video: Path, out_png: Path, at_sec: float = 0.1) -> Path:
+    """Grab one frame from `video` at `at_sec` seconds, save as PNG."""
+    _run([
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+        "-ss", f"{at_sec:.3f}", "-i", str(video),
+        "-frames:v", "1", "-q:v", "2", str(out_png),
+    ])
+    return out_png
 
 
 # ---------------------------------------------------------------------------
@@ -276,19 +317,38 @@ def _partner_clip(clips: list[ClipManifest], i: int) -> Optional[Path]:
 # ---------------------------------------------------------------------------
 
 def _concat(parts: list[Path], out: Path) -> None:
-    """Concatenate MP4s losslessly via the demuxer."""
+    """Concatenate MP4 segments with FULL re-encode.
+
+    The concat *demuxer* with `-c copy` produces clicks at AAC frame
+    boundaries AND can desync when segments have slightly different PTS
+    origins. Using the concat *filter* (via `-filter_complex`) resamples
+    timestamps from zero and eliminates both artifacts.
+
+    Cost: re-encode time (≈1× realtime). For a <10-min podcast this is
+    acceptable and far preferable to audible noise.
+    """
     if len(parts) == 1:
         shutil.copyfile(parts[0], out)
         return
-    list_file = out.with_suffix(".txt")
-    list_file.write_text(
-        "\n".join(f"file '{p.resolve().as_posix()}'" for p in parts),
-        encoding="utf-8",
-    )
+
+    inputs: list[str] = []
+    for p in parts:
+        inputs += ["-i", str(p)]
+
+    n = len(parts)
+    # [0:v][0:a][1:v][1:a]...concat=n=N:v=1:a=1[vout][aout]
+    stream_refs = "".join(f"[{i}:v][{i}:a]" for i in range(n))
+    fc = f"{stream_refs}concat=n={n}:v=1:a=1[vout][aout]"
+
     _run([
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-        "-f", "concat", "-safe", "0", "-i", str(list_file),
-        "-c", "copy", str(out),
+        *inputs,
+        "-filter_complex", fc,
+        "-map", "[vout]", "-map", "[aout]",
+        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+        "-r", str(FPS),
+        str(out),
     ])
 
 
@@ -342,7 +402,8 @@ def _render_card(out: Path, title: str, duration: float) -> None:
         "-map", "[v]", "-map", "0:a",
         "-t", f"{duration:.3f}",
         "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+        "-r", str(FPS),
         str(out),
     ])
 
@@ -407,9 +468,10 @@ def _write_ass(
     durations: list[float],
     turn_by_idx: dict[int, "DialogueTurn"],
     roles: RenderRoles,
+    offset: float = 0.0,
 ) -> None:
     lines = [ASS_HEADER]
-    cursor = 0.0
+    cursor = offset
     for clip, dur in zip(clips, durations):
         turn = turn_by_idx.get(clip.turn_idx)
         text = (turn.text if turn else "").strip()
