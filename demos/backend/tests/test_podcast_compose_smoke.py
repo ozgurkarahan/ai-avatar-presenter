@@ -67,14 +67,17 @@ def test_compose_smoke(tmp_path: Path) -> None:
         slide_notes=["", ""],
         source_kind="pptx",
     )
-    script = Script(turns=[
-        DialogueTurn(idx=0, speaker="interviewer", text="Hello and welcome.", slideIdx=0),
-        DialogueTurn(idx=1, speaker="expert", text="Glad to be here today.", slideIdx=0),
-        DialogueTurn(idx=2, speaker="interviewer", text="Tell us more.", slideIdx=1),
-    ])
+    script = Script(
+        id="scr-smoke", document_id="doc-smoke",
+        turns=[
+            DialogueTurn(idx=0, speaker="interviewer", text="Hello and welcome.", slide_idx=0),
+            DialogueTurn(idx=1, speaker="expert", text="Glad to be here today.", slide_idx=0),
+            DialogueTurn(idx=2, speaker="interviewer", text="Tell us more.", slide_idx=1),
+        ],
+    )
     roles = RenderRoles(
-        interviewer=RoleConfig(avatar="harry", voice="x", displayName="Dr. Harry Chen"),
-        expert=RoleConfig(avatar="lisa", voice="y", displayName="Dr. Lisa Patel"),
+        interviewer=RoleConfig(avatar="harry", voice="x", display_name="Dr. Harry Chen"),
+        expert=RoleConfig(avatar="lisa", voice="y", display_name="Dr. Lisa Patel"),
     )
     clips = [
         ClipManifest(turn_idx=i, speaker=t.speaker, blob_url=str(clip_paths[i]),
