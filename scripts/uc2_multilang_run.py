@@ -13,7 +13,9 @@ import asyncio, json, sys, time
 from pathlib import Path
 import httpx
 
-BASE = "http://localhost:8000/api/static-video"
+import os
+_BASE_URL = os.environ.get("UC2_API", "http://localhost:8000")
+BASE = f"{_BASE_URL}/api/static-video"
 PPTX = Path(__file__).resolve().parent.parent / "output" / "uc2-test-deck.pptx"
 
 # language -> (display, style, focus hint)
@@ -102,7 +104,7 @@ async def main():
     global T0
     T0 = time.time()
     async with httpx.AsyncClient(timeout=httpx.Timeout(None, read=600)) as session:
-        r = await session.get("http://localhost:8000/api/health")
+        r = await session.get(f"{_BASE_URL}/api/health")
         if r.status_code != 200:
             print("backend not healthy", r.status_code); sys.exit(1)
         results = await asyncio.gather(

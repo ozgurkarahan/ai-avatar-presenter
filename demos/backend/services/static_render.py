@@ -38,6 +38,32 @@ log = logging.getLogger(__name__)
 # Default avatar for UC2 single-narrator picture-in-picture.
 DEFAULT_AVATAR = "lisa"
 
+# Voice → avatar gender match. Picks "harry" (business) for male voices,
+# "lisa" (casual-sitting) for female. Keyed by voice substring so it works
+# for full DragonHD ids ("en-US-Andrew:DragonHDLatestNeural") and short
+# names alike. Extend as more voices are added to VOICES catalog.
+_MALE_VOICE_NAMES = {
+    "Andrew", "Remy", "Tristan", "Florian", "Alessio",
+    "Macerio", "Yunfan", "Masaru",
+}
+_FEMALE_VOICE_NAMES = {
+    "Ava", "Vivienne", "Ximena", "Seraphina", "Isabella",
+    "Thalita", "Xiaochen", "Nanami",
+}
+
+
+def avatar_for_voice(voice: str, fallback: str = DEFAULT_AVATAR) -> str:
+    """Return an avatar character whose gender matches the voice."""
+    if not voice:
+        return fallback
+    for name in _MALE_VOICE_NAMES:
+        if name in voice:
+            return "harry"
+    for name in _FEMALE_VOICE_NAMES:
+        if name in voice:
+            return "lisa"
+    return fallback
+
 
 class SlideClip(BaseModel):
     slide_index: int
@@ -102,6 +128,8 @@ def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
     url = f"{base}/avatar/batchsyntheses/{job_id}?api-version=2024-08-01"
 
     voice = n.voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
+    # Override caller's avatar if it would mismatch the voice gender.
+    avatar = avatar_for_voice(voice, fallback=avatar)
     avatar_char = AVATAR_MAP.get(avatar, avatar)
     ssml = build_ssml(n.narration, language, voice=voice)
 
