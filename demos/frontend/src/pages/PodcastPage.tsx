@@ -50,7 +50,24 @@ export default function PodcastPage() {
   const [layout] = useState<Layout>('split_screen_with_slides');
 
   useEffect(() => { listAvatars().then(setAvatars).catch(() => {}); }, []);
-  useEffect(() => { listVoices(language).then(setVoices).catch(() => {}); }, [language]);
+  useEffect(() => {
+    listVoices(language).then((vs) => {
+      setVoices(vs);
+      if (vs.length === 0) return;
+      // Auto-swap interviewer/expert voices when the selected language changes,
+      // unless the user's current voice already matches the new language.
+      const intOk = vs.some(v => v.id === interviewer.voice);
+      const expOk = vs.some(v => v.id === expert.voice);
+      if (intOk && expOk) return;
+      const male = vs.find(v => v.gender === 'male');
+      const female = vs.find(v => v.gender === 'female');
+      const intPick = male ?? vs[0];
+      const expPick = female && female.id !== intPick.id ? female : vs.find(v => v.id !== intPick.id) ?? vs[0];
+      if (!intOk) setInterviewer(prev => ({ ...prev, voice: intPick.id }));
+      if (!expOk) setExpert(prev => ({ ...prev, voice: expPick.id }));
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
 
   useEffect(() => {
     if (!job || ['done', 'failed', 'cancelled'].includes(job.state)) return;
