@@ -1,6 +1,8 @@
 # UC3 — Podcast-Style Dual-Avatar Video Generation — Design
 
-**Status:** Draft v2 — incorporates rubber-duck critique (2026-04-17)
+**Status:** Draft v3 — pivoted to presales-PoC posture (2026-04-17)
+
+> **Demo-quality PoC, not production.** This doc has been re-scoped away from production robustness (workers, idempotent manifests, global semaphores, chunk-reduce) toward **customer-facing polish**: split-screen layout with live speaker highlight, scrolling subtitles under each avatar, waveform pulse, premium HD voices, branded intro/outro, sample prompt gallery, streaming script generation. The goal is to make Acme say "yes" in the demo.
 **Branch:** `feat/uc3-podcast-dual-avatar`
 **RFI:** RFI — Acme AI Avatar Solution
 **Inspiration:** NotebookLM "Audio Overview"

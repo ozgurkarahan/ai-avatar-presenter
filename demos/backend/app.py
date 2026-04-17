@@ -64,6 +64,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# UC3 — Podcast dual-avatar router
+from routers.podcast import router as podcast_router
+app.include_router(podcast_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],
@@ -187,6 +191,27 @@ async def upload_presentation(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only .pptx files are supported")
 
     content = await file.read()
+
+    # Validate file content is a real PPTX (ZIP with [Content_Types].xml)
+    import zipfile, io as _io
+    if not content[:4] == b"PK\x03\x04":
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file: not a valid .pptx file. Please upload a PowerPoint (.pptx) file, not .ppt or other formats.",
+        )
+    try:
+        with zipfile.ZipFile(_io.BytesIO(content)) as zf:
+            if "[Content_Types].xml" not in zf.namelist():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid file: ZIP archive does not contain PowerPoint data. Please upload a .pptx file.",
+                )
+    except zipfile.BadZipFile:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file: corrupted or incomplete .pptx file. Please re-export from PowerPoint and try again.",
+        )
+
     try:
         presentation = parse_pptx(content, file.filename, config.libreoffice_path if config else "soffice")
     except Exception as e:
@@ -972,6 +997,44 @@ async def slide_qa(req: QaRequest):
         config, openai_client, req.question, req.presentation_id, req.slide_index
     )
     return QaResponse(answer=result["answer"], source_slides=result["source_slides"])
+
+
+# --- Teams Tab Configuration Page (for meeting tabs) ---
+
+from fastapi.responses import HTMLResponse
+
+
+@app.get("/teams-config", response_class=HTMLResponse)
+async def teams_config():
+    """Serve the Teams tab configuration page for meeting/channel tabs."""
+    return HTMLResponse(content="""<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Presenter — Tab Configuration</title>
+    <script src="https://res.cdn.office.net/teams-js/2.7.1/js/MicrosoftTeams.min.js"></script>
+</head>
+<body style="font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;">
+    <div style="text-align:center;">
+        <h2>AI Presenter</h2>
+        <p>Click Save to add AI Presenter to this meeting.</p>
+    </div>
+    <script>
+        (async () => {
+            await microsoftTeams.app.initialize();
+            microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
+                microsoftTeams.pages.config.setConfig({
+                    suggestedDisplayName: "AI Presenter",
+                    entityId: "presenter-meeting",
+                    contentUrl: window.location.origin,
+                    websiteUrl: window.location.origin
+                });
+                saveEvent.notifySuccess();
+            });
+            microsoftTeams.pages.config.setValidityState(true);
+        })();
+    </script>
+</body>
+</html>""")
 
 
 # --- Static Files (Frontend SPA) ---
