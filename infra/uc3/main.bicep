@@ -30,6 +30,9 @@ param embeddingModelCapacity int = 20
 @description('Whether to deploy the embedding model (optional for UC3)')
 param deployEmbedding bool = true
 
+@description('Whether to deploy Cosmos DB (PoC uses in-memory state; disable to skip)')
+param deployCosmos bool = false
+
 @description('Cosmos DB database name')
 param cosmosDatabaseName string = 'podcast-demo'
 
@@ -103,7 +106,7 @@ module aiServices 'modules/ai-services.bicep' = {
   }
 }
 
-module cosmos 'modules/cosmos.bicep' = {
+module cosmos 'modules/cosmos.bicep' = if (deployCosmos) {
   name: 'uc3-cosmos'
   scope: rg
   params: {
@@ -144,8 +147,8 @@ module containerapp 'modules/containerapp.bicep' = {
     speechResourceId: aiServices.outputs.resourceId
     openAiEndpoint: openai.outputs.endpoint
     openAiChatDeployment: chatModelName
-    cosmosEndpoint: cosmos.outputs.endpoint
-    cosmosDatabaseName: cosmos.outputs.databaseName
+    cosmosEndpoint: deployCosmos ? cosmos.outputs.endpoint : ''
+    cosmosDatabaseName: deployCosmos ? cosmos.outputs.databaseName : ''
     storageAccountName: storage.outputs.name
     blobContainerName: storage.outputs.containerName
   }
@@ -171,10 +174,10 @@ output AZURE_OPENAI_EMBEDDING_DEPLOYMENT string = deployEmbedding ? embeddingMod
 output AZURE_SPEECH_ENDPOINT string = aiServices.outputs.endpoint
 output AZURE_SPEECH_REGION string = location
 output AZURE_SPEECH_RESOURCE_ID string = aiServices.outputs.resourceId
-output AZURE_COSMOS_ENDPOINT string = cosmos.outputs.endpoint
-output AZURE_COSMOS_DATABASE string = cosmos.outputs.databaseName
-output AZURE_COSMOS_CONTAINER string = cosmos.outputs.containerName
-output AZURE_COSMOS_ACCOUNT_NAME string = cosmos.outputs.name
+output AZURE_COSMOS_ENDPOINT string = deployCosmos ? cosmos.outputs.endpoint : ''
+output AZURE_COSMOS_DATABASE string = deployCosmos ? cosmos.outputs.databaseName : ''
+output AZURE_COSMOS_CONTAINER string = deployCosmos ? cosmos.outputs.containerName : ''
+output AZURE_COSMOS_ACCOUNT_NAME string = deployCosmos ? cosmos.outputs.name : ''
 output AZURE_BLOB_ACCOUNT_NAME string = storage.outputs.name
 output AZURE_BLOB_CONTAINER string = storage.outputs.containerName
 output AZURE_CONTAINER_APP_URL string = containerapp.outputs.url
@@ -186,4 +189,4 @@ output AZURE_USE_MANAGED_IDENTITY string = 'true'
 // Reminder: Cosmos DB data-plane role cannot be assigned via ARM/Bicep.
 // Run the command below after deployment so the Container App's managed identity
 // can read/write Cosmos documents.
-output COSMOS_RBAC_HINT string = 'az cosmosdb sql role assignment create --account-name ${cosmos.outputs.name} --resource-group ${rg.name} --scope "/" --principal-id ${containerapp.outputs.principalId} --role-definition-id 00000000-0000-0000-0000-000000000002'
+output COSMOS_RBAC_HINT string = deployCosmos ? 'az cosmosdb sql role assignment create --account-name ${cosmos.outputs.name} --resource-group ${rg.name} --scope "/" --principal-id ${containerapp.outputs.principalId} --role-definition-id 00000000-0000-0000-0000-000000000002' : ''
