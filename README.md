@@ -9,16 +9,30 @@
 
 ---
 
+## 🧭 Use cases
+
+The app bundles three complementary use cases, each exposed as its own section of the top nav:
+
+| # | Segment | Route | What it does |
+|---|---|---|---|
+| **UC1** | 🎙️ Live Avatar | `/` | Upload a `.pptx`, a photorealistic avatar presents each slide in real time via WebRTC with multilingual TTS and slide-level Q&A |
+| **UC2** | 🎬 Static Video | `/video` + `/video/library` | Automated pre-rendered narrated MP4 from a `.pptx` (slide-first pipeline + Batch Avatar). Outputs MP4 / MP3 / SRT. [Design →](docs/uc2-static-video.md) |
+| **UC3** | 🎧 Podcast | `/podcast` + `/podcast/library` | Turn any document into a two-host podcast conversation with distinct AI avatars. [Design →](docs/uc3-podcast-design.md) |
+
+The top nav is grouped into pills `UC1 · Live Avatar`, `UC2 · Static Video`, `UC3 · Podcast` with hover tooltips on every link.
+
 ## ✨ Features
 
 - **📂 PowerPoint Upload** — Upload `.pptx` files; slides are automatically parsed and rendered as images
-- **🧑‍💼 AI Avatar Presenter** — A photorealistic avatar narrates each slide using Azure AI Speech (VoiceLive)
-- **🌍 Multilingual TTS** — Translate and present in English, French, or Spanish via GPT-4.1 translation
-- **❓ Slide Q&A** — Ask questions about slide content using RAG with in-memory vector search (numpy + embeddings)
-- **🎥 Real-Time Streaming** — Avatar delivered via WebRTC for low-latency video/audio
+- **🧑‍💼 Live AI Avatar (UC1)** — A photorealistic avatar narrates each slide using Azure AI Speech (VoiceLive / WebRTC)
+- **🎬 Static Video Generation (UC2)** — Automated narrated MP4 per `.pptx`, slide-first pipeline (one batch-avatar job per slide + ffmpeg compose), multilingual, voice-aware avatar selection, published library
+- **🎧 Podcast Generator (UC3)** — Dual-avatar conversational video from any document
+- **🌍 Multilingual TTS** — DragonHD voices across 10+ languages, Cosmos-cached translations via GPT-4.1
+- **❓ Slide Q&A** — RAG with in-memory vector search (numpy + embeddings)
+- **🎥 Real-Time Streaming** — WebRTC low-latency video/audio for UC1
 - **🖼️ Slide Rendering** — High-quality PNG generation from PPTX via LibreOffice headless + Poppler
 - **🚀 One-Click Deployment** — Deploy to Azure Container Apps with `azd up`
-- **📎 Teams Integration** — Embed the app as a Microsoft Teams Static Tab with theme support (dark/light/contrast)
+- **📎 Teams Integration** — Embed as a Microsoft Teams Static Tab with theme support (dark/light/contrast)
 
 ---
 
@@ -324,11 +338,14 @@ ai-presenter/
 
 ## 📚 Documentation
 
-Detailed technical documentation is available in the [`docs/`](docs/) directory:
+Detailed technical documentation is available in the [`docs/`](docs/) directory — start at the [**docs index**](docs/index.md) for the full map.
 
 | Document | Description |
 |----------|-------------|
+| [**Docs Index**](docs/index.md) | Full navigation map of all docs & diagrams |
 | [Architecture](docs/architecture.md) | Component architecture, data flows, API contract, deployment topology |
+| [UC2 · Static Video](docs/uc2-static-video.md) | Slide-first pipeline, voice→avatar matching, deployment, MCAPS gotchas |
+| [UC3 · Podcast Design](docs/uc3-podcast-design.md) | Dual-avatar podcast generator design |
 | [Deep Dive: Azure Deployment](docs/deep-dive-azure.md) | Full technical walkthrough — infrastructure, Bicep modules, security, CI/CD |
 | [Teams Integration](docs/teams-integration.md) | Feasibility analysis and architecture options for Teams embedding |
 | [Deploy Copilot Instance](docs/deploy-copilot.md) | Guide for deploying a parallel "copilot" instance to Azure |
