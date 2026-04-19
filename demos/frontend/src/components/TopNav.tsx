@@ -1,135 +1,76 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 
-type NavItem = {
-  to: string;
-  end?: boolean;
-  icon: string;
-  label: string;
-  desc: string;
-};
-
-type NavGroup = {
-  title: string;
-  tag: string;
-  items: NavItem[];
-};
+type NavItem = { to: string; end?: boolean; icon: string; label: string; desc: string };
+type NavGroup = { title: string; tag: string; items: NavItem[] };
 
 const groups: NavGroup[] = [
   {
     title: 'AI Presenter',
     tag: 'Legacy',
     items: [
-      {
-        to: '/',
-        end: true,
-        icon: '🎙️',
-        label: 'Presenter',
-        desc: 'Original single-deck presenter (kept for compatibility).',
-      },
+      { to: '/', end: true, icon: '🎙️', label: 'Presenter', desc: 'Original single-deck presenter (kept for compatibility).' },
     ],
   },
   {
     title: 'Learning Hub',
     tag: 'UC1',
     items: [
-      {
-        to: '/uc1',
-        end: true,
-        icon: '🏠',
-        label: 'Hub',
-        desc: 'UC1 Learning Hub home — pick Learn or Decks.',
-      },
-      {
-        to: '/uc1/learn',
-        icon: '🎓',
-        label: 'Learn',
-        desc: 'Ask anything across all decks; the avatar presents the right slide.',
-      },
-      {
-        to: '/uc1/decks',
-        icon: '📚',
-        label: 'Decks',
-        desc: 'Upload, browse, tag, and manage your training decks.',
-      },
+      { to: '/uc1', end: true, icon: '🏠', label: 'Hub', desc: 'UC1 Learning Hub home — pick Learn or Decks.' },
+      { to: '/uc1/learn', icon: '🎓', label: 'Learn', desc: 'Ask anything across all decks; the avatar presents the right slide.' },
+      { to: '/uc1/decks', icon: '📚', label: 'Decks', desc: 'Upload, browse, tag, and manage your training decks.' },
     ],
   },
   {
     title: 'Static Video',
     tag: 'UC2',
     items: [
-      {
-        to: '/video',
-        end: true,
-        icon: '🎬',
-        label: 'Generate',
-        desc: 'Build a pre-rendered avatar video from a .pptx — pick voice, language, avatar style.',
-      },
-      {
-        to: '/video/library',
-        icon: '🎞️',
-        label: 'Library',
-        desc: 'Browse and play previously generated static videos stored in Azure Blob.',
-      },
+      { to: '/video', end: true, icon: '🎬', label: 'Generate', desc: 'Build a pre-rendered avatar video from a .pptx.' },
+      { to: '/video/library', icon: '🎞️', label: 'Library', desc: 'Browse and play previously generated static videos.' },
     ],
   },
   {
     title: 'Podcast',
     tag: 'UC3',
     items: [
-      {
-        to: '/podcast',
-        end: true,
-        icon: '🎧',
-        label: 'Create',
-        desc: 'Convert a document into a two-host podcast conversation with AI voices.',
-      },
-      {
-        to: '/podcast/library',
-        icon: '📚',
-        label: 'Library',
-        desc: 'Browse and play previously generated podcasts.',
-      },
+      { to: '/podcast', end: true, icon: '🎧', label: 'Create', desc: 'Convert a document into a two-host podcast conversation.' },
+      { to: '/podcast/library', icon: '📚', label: 'Library', desc: 'Browse previously generated podcasts.' },
     ],
   },
 ];
 
-const tabStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  color: 'rgba(255,255,255,0.82)',
-  textDecoration: 'none',
-  padding: '6px 12px',
-  borderRadius: 8,
-  fontSize: 13,
-  fontWeight: 600,
-  whiteSpace: 'nowrap',
-  transition: 'background 0.15s, color 0.15s',
-};
-const activeStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.22)',
-  color: 'white',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-};
-
-const groupBoxStyle: React.CSSProperties = {
-  display: 'flex',
+const pillStyle: React.CSSProperties = {
+  display: 'inline-flex',
   alignItems: 'center',
   gap: 4,
-  padding: '4px 8px 4px 10px',
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.12)',
-  borderRadius: 10,
+  color: 'rgba(255,255,255,0.82)',
+  textDecoration: 'none',
+  padding: '4px 9px',
+  borderRadius: 5,
+  fontSize: 12.5,
+  fontWeight: 500,
+  whiteSpace: 'nowrap',
 };
-const groupLabelStyle: React.CSSProperties = {
-  color: 'rgba(255,255,255,0.55)',
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: 0.8,
-  textTransform: 'uppercase',
-  marginRight: 6,
-  userSelect: 'none',
+const pillActiveStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.22)',
+  color: 'white',
+  fontWeight: 600,
+};
+const tagStyle: React.CSSProperties = {
+  fontSize: 9,
+  fontWeight: 800,
+  letterSpacing: 0.7,
+  padding: '2px 5px',
+  borderRadius: 3,
+  background: 'rgba(255,255,255,0.12)',
+  color: 'rgba(255,255,255,0.7)',
+  marginRight: 4,
+};
+const sepStyle: React.CSSProperties = {
+  width: 1,
+  height: 18,
+  background: 'rgba(255,255,255,0.18)',
+  margin: '0 2px',
 };
 
 export default function TopNav() {
@@ -137,50 +78,34 @@ export default function TopNav() {
     <div
       style={{
         background: 'linear-gradient(135deg, #003366 0%, #005599 100%)',
-        padding: '10px 28px',
+        padding: '6px 18px',
         display: 'flex',
         alignItems: 'center',
-        gap: 14,
+        gap: 6,
         flexWrap: 'wrap',
       }}
     >
-      <div
-        style={{
-          color: 'white',
-          fontWeight: 800,
-          fontSize: 15,
-          letterSpacing: 0.5,
-          marginRight: 8,
-        }}
-      >
+      <div style={{ color: 'white', fontWeight: 700, fontSize: 13, letterSpacing: 0.2, marginRight: 8 }}>
         Acme · AI Avatar Suite
       </div>
-      {groups.map((g) => {
-        const muted = g.tag === 'Legacy';
-        return (
-        <div
-          key={g.tag}
-          style={{ ...groupBoxStyle, opacity: muted ? 0.72 : 1 }}
-          title={`${g.tag} — ${g.title}${muted ? ' (deprecated)' : ''}`}
-        >
-          <span style={groupLabelStyle}>
-            {g.tag} · {g.title}
-          </span>
+      {groups.map((g, idx) => (
+        <React.Fragment key={g.tag}>
+          {idx > 0 && <div style={sepStyle} aria-hidden />}
+          <span style={tagStyle} title={g.title}>{g.tag}</span>
           {g.items.map((it) => (
             <NavLink
               key={it.to}
               to={it.to}
               end={it.end}
-              title={it.desc}
-              style={({ isActive }) => ({ ...tabStyle, ...(isActive ? activeStyle : {}) })}
+              title={`${it.label} — ${it.desc}`}
+              style={({ isActive }) => ({ ...pillStyle, ...(isActive ? pillActiveStyle : {}) })}
             >
               <span aria-hidden>{it.icon}</span>
               <span>{it.label}</span>
             </NavLink>
           ))}
-        </div>
-        );
-      })}
+        </React.Fragment>
+      ))}
     </div>
   );
 }

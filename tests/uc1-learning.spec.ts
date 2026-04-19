@@ -71,34 +71,34 @@ test.describe('UC1 — navigation links', () => {
 
   test('TopNav: Hub pill navigates to /uc1', async ({ page }) => {
     await page.goto(`${BASE_URL}/uc1/decks`);
-    await page.getByRole('link', { name: /^🏠 Hub|Hub$/ }).first().click();
-    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/uc1$`));
+    await page.getByRole('link', { name: /Hub/ }).first().click();
+    await expect(page).toHaveURL(/\/uc1$/);
     await expect(page.getByRole('heading', { name: /training library/i })).toBeVisible();
   });
 
   test('TopNav: Learn pill navigates to /uc1/learn', async ({ page }) => {
     await page.goto(`${BASE_URL}/uc1`);
-    await page.getByRole('link', { name: /Learn$/ }).first().click();
+    await page.getByRole('link', { name: /Learn/ }).first().click();
     await expect(page).toHaveURL(/\/uc1\/learn$/);
     await expect(page.getByPlaceholder(/Ask anything/i)).toBeVisible();
   });
 
   test('TopNav: Decks pill navigates to /uc1/decks', async ({ page }) => {
     await page.goto(`${BASE_URL}/uc1`);
-    await page.getByRole('link', { name: /Decks$/ }).first().click();
+    await page.getByRole('link', { name: /Decks/ }).first().click();
     await expect(page).toHaveURL(/\/uc1\/decks$/);
     await expect(page.getByRole('heading', { name: /Training decks/i })).toBeVisible();
   });
 
   test('TopNav: UC2 Generate pill navigates to /video (non-regression)', async ({ page }) => {
     await page.goto(`${BASE_URL}/uc1`);
-    await page.getByRole('link', { name: /Generate$/ }).first().click();
+    await page.getByRole('link', { name: /Generate/ }).first().click();
     await expect(page).toHaveURL(/\/video(\/)?$/);
   });
 
   test('TopNav: UC3 Create pill navigates to /podcast (non-regression)', async ({ page }) => {
     await page.goto(`${BASE_URL}/uc1`);
-    await page.getByRole('link', { name: /Create$/ }).first().click();
+    await page.getByRole('link', { name: /Create/ }).first().click();
     await expect(page).toHaveURL(/\/podcast(\/)?$/);
   });
 
