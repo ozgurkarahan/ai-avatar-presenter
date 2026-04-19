@@ -8,6 +8,8 @@ interface Props {
   onSlideChange: (index: number) => void;
   videoPlaying?: boolean;
   onRequestVideoAutoPlay?: () => void;
+  selectedAvatar?: string;
+  selectedVoice?: string;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -81,7 +83,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay }: Props) {
+export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice }: Props) {
   const [connected, setConnected] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -143,6 +145,10 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   useEffect(() => { presentingRef.current = presenting; }, [presenting]);
   useEffect(() => { languageRef.current = language; }, [language]);
   useEffect(() => { pausedRef.current = paused; }, [paused]);
+  const selectedAvatarRef = useRef(selectedAvatar);
+  const selectedVoiceRef = useRef(selectedVoice);
+  useEffect(() => { selectedAvatarRef.current = selectedAvatar; }, [selectedAvatar]);
+  useEffect(() => { selectedVoiceRef.current = selectedVoice; }, [selectedVoice]);
   const prevLanguageRef = useRef(language);
 
   // When language changes while connected, tear down the session and reconnect with new language
@@ -390,12 +396,20 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
       ws.onopen = () => {
         console.log('[WS] Connected, sending session config with language:', languageRef.current);
         setStatus('Configuring avatar session...');
+        const avatarId = selectedAvatarRef.current || 'lisa';
+        const avatarStyleMap: Record<string, string> = {
+          lisa: 'casual-sitting', harry: 'business', meg: 'formal', max: 'casual',
+        };
+        const sessionConfig: Record<string, unknown> = {
+          avatar: { character: avatarId, style: avatarStyleMap[avatarId] ?? 'casual-sitting' },
+          language: languageRef.current,
+        };
+        if (selectedVoiceRef.current) {
+          sessionConfig.voice = selectedVoiceRef.current;
+        }
         ws.send(JSON.stringify({
           type: 'session.update',
-          session: {
-            avatar: { character: 'lisa', style: 'casual-sitting' },
-            language: languageRef.current,
-          },
+          session: sessionConfig,
         }));
       };
 

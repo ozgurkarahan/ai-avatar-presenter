@@ -291,6 +291,23 @@ class PresentationStore:
             logger.error("Failed to list presentations: %s", e)
             return []
 
+    def list_uc1_decks(self) -> list[dict]:
+        """List UC1 Learning Hub decks (source='uc1') with metadata."""
+        self._ensure_init()
+        if not self._cosmos_container:
+            return []
+        try:
+            query = (
+                "SELECT c.id, c.filename, c.slide_count, c.language, "
+                "c.uploaded_at, c.tags, c.source FROM c WHERE c.source = 'uc1'"
+            )
+            return list(self._cosmos_container.query_items(
+                query=query, enable_cross_partition_query=True
+            ))
+        except Exception as e:
+            logger.error("Failed to list UC1 decks: %s", e)
+            return []
+
     def delete_presentation(self, presentation_id: str) -> bool:
         """Delete a presentation from Cosmos DB."""
         self._ensure_init()

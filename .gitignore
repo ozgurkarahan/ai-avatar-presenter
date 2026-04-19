@@ -62,3 +62,7 @@ teams-app-package.zip
 scripts/.env
 output/
 infra/uc3/main.json
+
+# UC1 Azure AI Search admin key (local only)
+.uc1_search_key.tmp
+

@@ -72,6 +72,10 @@ app.include_router(podcast_router)
 from routers.static_video import router as static_video_router
 app.include_router(static_video_router)
 
+# UC1 Learning Hub — multi-deck search + present
+from routers.uc1 import router as uc1_router
+app.include_router(uc1_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],

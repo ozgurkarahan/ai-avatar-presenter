@@ -29,6 +29,9 @@ class AzureConfig:
     blob_connection_string: str = ""
     blob_account_name: str = ""
     blob_container: str = "slide-images"
+    search_endpoint: str = ""
+    search_key: str = ""
+    search_index: str = "uc1-decks"
 
 
 def load_config() -> AzureConfig:
@@ -53,4 +56,7 @@ def load_config() -> AzureConfig:
         blob_connection_string=os.environ.get("AZURE_BLOB_CONNECTION_STRING", ""),
         blob_account_name=os.environ.get("AZURE_BLOB_ACCOUNT_NAME", ""),
         blob_container=os.environ.get("AZURE_BLOB_CONTAINER", "slide-images"),
+        search_endpoint=os.environ.get("AZURE_SEARCH_ENDPOINT", ""),
+        search_key=os.environ.get("AZURE_SEARCH_KEY", ""),
+        search_index=os.environ.get("AZURE_SEARCH_INDEX", "uc1-decks"),
     )
