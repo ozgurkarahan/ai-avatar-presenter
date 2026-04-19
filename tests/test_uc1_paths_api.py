@@ -255,9 +255,10 @@ def test_recommend_happy_path(client: httpx.Client, deck_ids) -> None:
     assert body["title"]
     assert isinstance(body["steps"], list)
     assert 2 <= len(body["steps"]) <= 4
-    catalog = set(deck_ids)
+    # Validate against FULL catalog (GPT may pick any deck, not just the ones this test uploaded)
+    catalog_ids = {d["deck_id"] for d in client.get("/api/uc1/decks").json()}
     for i, s in enumerate(body["steps"]):
-        assert s["deck_id"] in catalog
+        assert s["deck_id"] in catalog_ids
         assert s["order"] == i
         assert s["deck_title"]
         assert isinstance(s["slide_count"], int)
