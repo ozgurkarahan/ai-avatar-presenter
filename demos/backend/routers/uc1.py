@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from config import AzureConfig, load_config
@@ -121,7 +121,11 @@ def _doc_to_summary(doc: dict) -> DeckSummary:
 # Endpoints
 # ---------------------------------------------------------------------------
 @router.post("/upload", response_model=UploadResponse)
-async def upload_deck(file: UploadFile = File(...), cfg: AzureConfig = Depends(get_cfg)) -> UploadResponse:
+async def upload_deck(
+    file: UploadFile = File(...),
+    language: Optional[str] = Form(None),
+    cfg: AzureConfig = Depends(get_cfg),
+) -> UploadResponse:
     if not file.filename or not file.filename.lower().endswith(".pptx"):
         raise HTTPException(status_code=400, detail="Only .pptx files are supported")
 
@@ -166,7 +170,7 @@ async def upload_deck(file: UploadFile = File(...), cfg: AzureConfig = Depends(g
         presentation.slide_images = []
 
     # Persist metadata in Cosmos under source='uc1'
-    language = "en-US"  # TODO: detect language from body text
+    lang = (language or "").strip() or "en-US"
     tags: list[str] = []
     uploaded_at = datetime.now(timezone.utc).isoformat()
     doc = {
@@ -174,7 +178,7 @@ async def upload_deck(file: UploadFile = File(...), cfg: AzureConfig = Depends(g
         "source": "uc1",
         "filename": presentation.filename,
         "slide_count": presentation.slide_count,
-        "language": language,
+        "language": lang,
         "uploaded_at": uploaded_at,
         "tags": tags,
         "slides": [
@@ -210,7 +214,7 @@ async def upload_deck(file: UploadFile = File(...), cfg: AzureConfig = Depends(g
                     slide_title=s.title or f"Slide {s.index + 1}",
                     body=s.body or "",
                     notes=s.notes or "",
-                    language=language,
+                    language=lang,
                 )
                 for s in presentation.slides
             ]
