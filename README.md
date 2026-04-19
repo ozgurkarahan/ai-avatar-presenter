@@ -15,16 +15,18 @@ The app bundles three complementary use cases, each exposed as its own section o
 
 | # | Segment | Route | What it does |
 |---|---|---|---|
-| **UC1** | 🎙️ Live Avatar | `/` | Upload a `.pptx`, a photorealistic avatar presents each slide in real time via WebRTC with multilingual TTS and slide-level Q&A |
+| **UC1 (legacy)** | 🎙️ Live Avatar | `/` | Upload a single `.pptx`, a photorealistic avatar presents each slide in real time via WebRTC with multilingual TTS and slide-level Q&A |
+| **UC1 (Hub)** | 🎓 Learning Hub | `/uc1` | Multi-deck corpus with Azure AI Search (hybrid vector + keyword), **Learning Paths** (multi-deck sequences with per-step progress) and **AI-powered path recommendation** (GPT-4.1 picks a coherent deck sequence for any topic). [Design →](docs/uc1-learning-hub.md) |
 | **UC2** | 🎬 Static Video | `/video` + `/video/library` | Automated pre-rendered narrated MP4 from a `.pptx` (slide-first pipeline + Batch Avatar). Outputs MP4 / MP3 / SRT. [Design →](docs/uc2-static-video.md) |
 | **UC3** | 🎧 Podcast | `/podcast` + `/podcast/library` | Turn any document into a two-host podcast conversation with distinct AI avatars. [Design →](docs/uc3-podcast-design.md) |
 
-The top nav is grouped into pills `UC1 · Live Avatar`, `UC2 · Static Video`, `UC3 · Podcast` with hover tooltips on every link.
+The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `UC2 · Static Video`, `UC3 · Podcast` with hover tooltips on every link.
 
 ## ✨ Features
 
 - **📂 PowerPoint Upload** — Upload `.pptx` files; slides are automatically parsed and rendered as images
-- **🧑‍💼 Live AI Avatar (UC1)** — A photorealistic avatar narrates each slide using Azure AI Speech (VoiceLive / WebRTC)
+- **🧑‍💼 Live AI Avatar (UC1 legacy)** — A photorealistic avatar narrates each slide using Azure AI Speech (VoiceLive / WebRTC)
+- **🎓 Learning Hub (UC1)** — Multi-deck catalog with Azure AI Search (hybrid vector + keyword), Learning Paths (Cosmos-persisted multi-deck sequences with resume + per-step progress), AI path recommendation using GPT-4.1 JSON mode, zero-click avatar auto-start between path steps
 - **🎬 Static Video Generation (UC2)** — Automated narrated MP4 per `.pptx`, slide-first pipeline (one batch-avatar job per slide + ffmpeg compose), multilingual, voice-aware avatar selection, published library
 - **🎧 Podcast Generator (UC3)** — Dual-avatar conversational video from any document
 - **🌍 Multilingual TTS** — DragonHD voices across 10+ languages, Cosmos-cached translations via GPT-4.1
@@ -245,6 +247,8 @@ Then sideload `teams-app-package.zip` in Teams:
 
 ## 📡 API Reference
 
+### UC1 (legacy) — Live Avatar
+
 | Method | Endpoint                       | Description                              |
 | ------ | ------------------------------ | ---------------------------------------- |
 | `POST` | `/api/upload`                  | Upload a `.pptx` file for processing     |
@@ -253,17 +257,80 @@ Then sideload `teams-app-package.zip` in Teams:
 | `GET`  | `/api/slides/{id}/{n}.png`     | Serve a rendered slide image (PNG)       |
 | `DELETE`| `/api/presentations/{id}`     | Delete presentation + assets             |
 | `POST` | `/api/presentations/{id}/translate-notes` | Batch-translate notes (cached) |
-| `GET`  | `/api/presentations/{id}/translations-status` | Translation progress    |
 | `POST` | `/api/translate`               | Translate text to a target language       |
 | `GET`  | `/api/avatar/token`            | Get Speech SDK authentication token      |
 | `POST` | `/api/avatar/batch`            | Start batch avatar video synthesis       |
-| `GET`  | `/api/avatar/batch/{job_id}`   | Check batch synthesis job status         |
 | `POST` | `/api/qa`                      | Ask a question about slide content (RAG) |
-| `POST` | `/api/agent/chat`              | Multi-turn agent chat (function-calling) |
 | `WS`   | `/ws/voice`                    | WebSocket proxy for VoiceLive avatar     |
-| `GET`  | `/api/health`                  | Health check endpoint                    |
+
+### UC1 Learning Hub — Corpus, Search & Paths
+
+| Method | Endpoint                                      | Description                                                                       |
+| ------ | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `POST` | `/api/uc1/upload`                             | Ingest a `.pptx` into the UC1 corpus (Azure AI Search indexing)                   |
+| `GET`  | `/api/uc1/decks`                              | List all decks in the corpus (returns `deck_id`, not `id`)                        |
+| `DELETE`| `/api/uc1/decks/{deck_id}?force=true`         | Remove a deck from corpus + index                                                 |
+| `POST` | `/api/uc1/learn/search`                       | Hybrid vector + keyword search across all decks                                   |
+| `POST` | `/api/uc1/paths`                              | Create a Learning Path (multi-deck sequence with intro/language)                  |
+| `GET`  | `/api/uc1/paths`                              | List Learning Paths                                                               |
+| `GET`  | `/api/uc1/paths/{id}`                         | Get a Learning Path with hydrated deck info                                       |
+| `DELETE`| `/api/uc1/paths/{id}`                         | Delete a Learning Path                                                            |
+| `POST` | `/api/uc1/paths/{id}/progress`                | Update progress (resume slide, completed steps)                                   |
+| `POST` | `/api/uc1/paths/recommend`                    | **AI path recommendation** — GPT-4.1 JSON mode picks a coherent deck sequence for a topic+language (no persistence) |
+
+### UC2 Static Video & UC3 Podcast
+
+| Method | Endpoint                                      | Description                                                                       |
+| ------ | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `POST` | `/api/static-video/ingest`                    | Ingest PPTX / PDF / image → slide list                                            |
+| `POST` | `/api/static-video/script/{doc_id}`           | Streaming NDJSON script generation (GPT-4.1)                                      |
+| `POST` | `/api/static-video/render/{doc_id}`           | Start render job (batch avatar + ffmpeg compose)                                  |
+| `GET`  | `/api/static-video/jobs/{job_id}`             | Poll job state                                                                    |
+| `GET`  | `/api/static-video/jobs/{job_id}/file/{kind}` | Download `mp4` / `mp3` / `srt` / `thumb`                                          |
+| `GET`  | `/api/static-video/library`                   | Published videos                                                                  |
+| `POST` | `/api/podcast/ingest`                         | Ingest a document into a podcast-ready Document                                   |
+| `POST` | `/api/podcast/script/stream`                  | SSE dialogue generation (2-speaker)                                               |
+| `POST` | `/api/podcast/render`                         | Start dual-avatar render job                                                      |
+| `GET`  | `/api/podcast/jobs/{job_id}`                  | Poll podcast job state                                                            |
+| `GET`  | `/api/podcast/jobs/{job_id}/file/{kind}`      | Download `mp4` / `mp3` / `srt`                                                    |
+| `GET`  | `/api/podcast/library`                        | Published podcasts                                                                |
+| `GET`  | `/api/health`                                 | Health check                                                                      |
 
 > Full interactive API documentation is available at `/docs` (Swagger UI) when the server is running.
+
+---
+
+## 🧪 Testing
+
+The repository ships two end-to-end runners that drive the real deployed stack (Azure Speech, OpenAI, Cosmos, ffmpeg compose). They are standalone scripts, not pytest, so the output is demo-friendly.
+
+| Script | Scope | Last validated |
+|---|---|---|
+| `tests/e2e_rfi.py` | Reset DB → upload 9 RFI fixture decks → UC1 hub / search / paths / progress / AI recommend → UC2 & UC3 smoke | 30/30 passed on `uc1v10` |
+| `tests/e2e_render.py` | Full render pipeline for UC2 (PPTX → MP4) and UC3 (PPTX → MP3) including TTS + compose | 10/10 passed (5.9 MB mp4 in 370s, 854 KB mp3 in 265s) |
+
+```powershell
+# Run the RFI suite (cheap, ~1 min)
+python tests/e2e_rfi.py --base-url https://<your-container-app>
+
+# Run the full render suite (expensive: ~10 min + TTS tokens)
+python tests/e2e_render.py --base-url https://<your-container-app>
+
+# Regenerate the 9 RFI fixture decks from source-of-truth Python
+python tests/fixtures/rfi/_generate.py
+```
+
+Fixtures live in `tests/fixtures/rfi/` — 3 coherent thematic groups (Safety FR, Sustainability EN, AI ES), 3 decks each, 5 slides each with 2-sentence speaker notes. See `tests/fixtures/rfi/README.md`.
+
+Unit + Playwright suites:
+
+```powershell
+# Backend pytest (UC1 paths API incl. AI recommend)
+cd demos/backend && pytest ../../tests/test_uc1_paths_api.py
+
+# Frontend Playwright (UC1 Learning Paths UI regressions)
+npx playwright test tests/uc1-learning-paths.spec.ts
+```
 
 ---
 
@@ -344,6 +411,7 @@ Detailed technical documentation is available in the [`docs/`](docs/) directory 
 |----------|-------------|
 | [**Docs Index**](docs/index.md) | Full navigation map of all docs & diagrams |
 | [Architecture](docs/architecture.md) | Component architecture, data flows, API contract, deployment topology |
+| [UC1 · Learning Hub](docs/uc1-learning-hub.md) | Hub, hybrid search, Learning Paths, AI path recommendation, path player auto-start |
 | [UC2 · Static Video](docs/uc2-static-video.md) | Slide-first pipeline, voice→avatar matching, deployment, MCAPS gotchas |
 | [UC3 · Podcast Design](docs/uc3-podcast-design.md) | Dual-avatar podcast generator design |
 | [Deep Dive: Azure Deployment](docs/deep-dive-azure.md) | Full technical walkthrough — infrastructure, Bicep modules, security, CI/CD |

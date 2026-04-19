@@ -8,8 +8,9 @@ A quick, opinionated map of what's in `docs/`. Start with whichever bucket match
 
 | # | Use case | Where |
 |---|---|---|
-| **UC1** | Live avatar presenter over a PowerPoint (WebRTC, real-time Q&A) | [architecture.md](architecture.md), [diagrams/images/uc1-silver-runtime-sequence.png](diagrams/images/uc1-silver-runtime-sequence.png) |
-| **UC2** | Automated static video generation from a PowerPoint (batch, multilingual) | [**uc2-static-video.md**](uc2-static-video.md) ← new |
+| **UC1 legacy** | Live avatar presenter over a single PowerPoint (WebRTC, real-time Q&A) | [architecture.md](architecture.md), [diagrams/images/uc1-silver-runtime-sequence.png](diagrams/images/uc1-silver-runtime-sequence.png) |
+| **UC1 Learning Hub** | Multi-deck corpus with hybrid search + Learning Paths + AI recommendation | [**uc1-learning-hub.md**](uc1-learning-hub.md) ← new |
+| **UC2** | Automated static video generation from a PowerPoint (batch, multilingual) | [**uc2-static-video.md**](uc2-static-video.md) |
 | **UC3** | Podcast-style dual-avatar video from any document | [uc3-podcast-design.md](uc3-podcast-design.md) |
 
 ---
@@ -53,7 +54,10 @@ PNGs are rendered from draw.io sources in [`diagrams/`](diagrams/).
 
 ## 🔍 Looking for…
 
+- **Where is the UC1 Learning Hub code?** → `demos/backend/routers/uc1.py` + `routers/uc1_paths.py` + `services/uc1_search.py` + `demos/frontend/src/pages/Uc1*.tsx`
 - **Where is the UC2 code?** → `demos/backend/routers/static_video.py` + `services/static_*.py` + `demos/frontend/src/pages/StaticVideo*.tsx`
-- **Where are the test scripts?** → `scripts/make_test_pptx.py`, `scripts/uc2_multilang_run.py`
+- **Where is the UC3 code?** → `demos/backend/routers/podcast.py` + `services/podcast_*.py` + `demos/frontend/src/pages/PodcastPage.tsx`
+- **Where are the E2E test scripts?** → `tests/e2e_rfi.py` (UC1 + smoke, 30 checks) and `tests/e2e_render.py` (UC2 + UC3 full render, 10 checks)
+- **Where are the RFI fixtures?** → `tests/fixtures/rfi/` — 9 decks, 3 thematic groups (Safety FR, Sustainability EN, AI ES); regenerate with `python tests/fixtures/rfi/_generate.py`
 - **How do I add a new language?** → extend `LANGS` in `scripts/uc2_multilang_run.py` and `VOICES`/`LANGUAGES` in `demos/backend/routers/static_video.py`
 - **Where are the voice → avatar rules?** → `demos/backend/services/static_render.py` → `avatar_for_voice()`
