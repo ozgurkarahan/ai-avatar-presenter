@@ -37,4 +37,21 @@ test.describe('UC1 — Learning Paths', () => {
     await expect(page.getByTestId('recommend-topic')).toBeVisible();
     await expect(page.getByTestId('recommend-generate')).toBeVisible();
   });
+
+  test('path player language selector is readable on white banner', async ({ page, request }) => {
+    // Find any existing path via the API and open it — skip if none.
+    const resp = await request.get(`${BASE_URL}/api/uc1/paths`);
+    expect(resp.ok()).toBeTruthy();
+    const paths = await resp.json();
+    test.skip(!paths.length, 'No paths to open — skip player banner check');
+    await page.goto(`${BASE_URL}/uc1/paths/${paths[0].id}`);
+    // Presentation settings banner is visible
+    await expect(page.getByText('Presentation settings', { exact: false })).toBeVisible();
+    // The language <select> inside the banner must have dark-ish text (light variant) — not white-on-white
+    const select = page.locator('select').filter({ hasText: /English|French|Spanish|German/ }).first();
+    await expect(select).toBeVisible();
+    const color = await select.evaluate((el) => getComputedStyle(el).color);
+    // color is rgb(...) — verify it's NOT pure white
+    expect(color).not.toBe('rgb(255, 255, 255)');
+  });
 });
