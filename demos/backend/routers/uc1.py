@@ -274,8 +274,27 @@ def get_deck(deck_id: str, cfg: AzureConfig = Depends(get_cfg)) -> DeckDetail:
 
 
 @router.delete("/decks/{deck_id}")
-def delete_deck(deck_id: str, cfg: AzureConfig = Depends(get_cfg)) -> dict:
+def delete_deck(deck_id: str, force: bool = False, cfg: AzureConfig = Depends(get_cfg)) -> dict:
     store = _store(cfg)
+    broken_paths: list[str] = []
+    if store and store.cosmos_available:
+        refs = store.paths_referencing_deck(deck_id)
+        if refs and not force:
+            titles = ", ".join(p.get("title", p.get("id", "")) for p in refs)
+            raise HTTPException(
+                status_code=409,
+                detail=f"Deck is referenced by {len(refs)} learning path(s): {titles}. Use ?force=true to delete and break those paths.",
+            )
+        # force=true → mark each referencing path as broken
+        for p in refs:
+            p["status"] = "broken"
+            p["updated_at"] = datetime.now(timezone.utc).isoformat()
+            try:
+                store.save_uc1_path(p)
+                broken_paths.append(p["id"])
+            except Exception:
+                log.exception("Failed to mark path %s broken", p.get("id"))
+
     if store:
         try:
             store.delete_presentation(deck_id)
@@ -295,7 +314,7 @@ def delete_deck(deck_id: str, cfg: AzureConfig = Depends(get_cfg)) -> dict:
     except Exception:
         log.exception("Search delete failed for %s", deck_id)
 
-    return {"deck_id": deck_id, "removed_chunks": removed}
+    return {"deck_id": deck_id, "removed_chunks": removed, "broken_paths": broken_paths}
 
 
 @router.post("/learn/search", response_model=SearchResponse)

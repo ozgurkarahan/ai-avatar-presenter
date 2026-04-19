@@ -76,6 +76,9 @@ app.include_router(static_video_router)
 from routers.uc1 import router as uc1_router
 app.include_router(uc1_router)
 
+from routers.uc1_paths import router as uc1_paths_router
+app.include_router(uc1_paths_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],

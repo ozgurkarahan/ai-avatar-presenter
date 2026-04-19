@@ -53,9 +53,9 @@ def uploaded_decks(client) -> Iterator[dict[str, dict]]:
         assert r.status_code == 200, f"upload {filename} failed: {r.status_code} {r.text}"
         uploaded[filename] = r.json()
     yield uploaded
-    # Teardown
+    # Teardown — force=true so any referencing test paths don't block deletion
     for resp in uploaded.values():
         try:
-            client.delete(f"/api/uc1/decks/{resp['deck_id']}")
+            client.delete(f"/api/uc1/decks/{resp['deck_id']}?force=true")
         except Exception:
             pass

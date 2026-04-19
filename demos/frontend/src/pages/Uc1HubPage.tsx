@@ -21,6 +21,12 @@ const cards = [
     title: 'Decks',
     desc: 'Manage your training decks. Upload, tag, organize.',
   },
+  {
+    to: '/uc1/paths',
+    emoji: '🛤️',
+    title: 'Paths',
+    desc: 'Build sequenced learning journeys across multiple decks. Track progress, resume anytime.',
+  },
 ];
 
 export default function Uc1HubPage() {
