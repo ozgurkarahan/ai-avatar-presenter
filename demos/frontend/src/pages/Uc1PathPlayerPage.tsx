@@ -48,7 +48,7 @@ export default function Uc1PathPlayerPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<string>('lisa');
   const [started, setStarted] = useState(false);
 
-  // Load path + progress
+  // Load path + progress, and initialize language once from the first deck
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -59,9 +59,23 @@ export default function Uc1PathPlayerPage() {
         const pr = await getProgress(pathId, userId);
         if (cancelled) return;
         setProgress(pr);
-        // pre-position at resume step
         const idx = p.steps.findIndex((s) => s.deck_id === pr.resume_deck_id);
         if (idx >= 0) setCurrentStep(idx);
+        // Initialize language & voice from the first step's deck (one-time)
+        if (p.steps.length > 0) {
+          try {
+            const firstDeck = await getDeck(p.steps[0].deck_id);
+            if (cancelled) return;
+            if (firstDeck.language) {
+              setLanguage(firstDeck.language);
+              const match = UC1_VOICES.find((v) => v.language === firstDeck.language && v.gender === 'female');
+              if (match) {
+                setSelectedVoice(match.id);
+                setSelectedAvatar(avatarForVoice(match.id, 'lisa'));
+              }
+            }
+          } catch { /* non-fatal */ }
+        }
       } catch (e: any) {
         if (e?.status === 410) setGone(true);
         else setError(e?.message ?? String(e));
@@ -81,7 +95,8 @@ export default function Uc1PathPlayerPage() {
       .then((d) => {
         if (cancelled) return;
         setDeck(d);
-        if (d.language) setLanguage(d.language);
+        // NOTE: do NOT overwrite language here — the user picks voice/avatar/language
+        // once (in the banner) and it must stay stable across all steps of the path.
         // If this step matches resume and user clicked start, jump to resume slide
         if (started && progress && progress.resume_deck_id === step.deck_id) {
           setCurrentSlide(Math.max(0, Math.min(progress.resume_slide_index, (d.slides?.length ?? 1) - 1)));
@@ -243,13 +258,68 @@ export default function Uc1PathPlayerPage() {
           })}
         </div>
 
+        {/* Avatar + voice + language — always visible so user can configure before starting */}
+        <div
+          style={{
+            background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12,
+            padding: 14, marginBottom: 14, boxShadow: theme.shadow,
+            display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, color: theme.accent, textTransform: 'uppercase', letterSpacing: 1 }}>
+            Presentation settings
+          </div>
+          {started && presentation && (
+            <span style={{ fontSize: 12, color: theme.muted }}>
+              · {step?.deck_title} · Slide {currentSlide + 1} / {presentation.slide_count}
+            </span>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: theme.muted }}>Avatar</span>
+            <select
+              value={selectedAvatar}
+              onChange={(e) => setSelectedAvatar(e.target.value)}
+              style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, fontSize: 13 }}
+            >
+              {UC1_AVATARS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+            </select>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: theme.muted }}>Voice</span>
+            <select
+              value={selectedVoice}
+              onChange={(e) => onVoiceChange(e.target.value)}
+              style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, fontSize: 13, minWidth: 180 }}
+            >
+              {Array.from(voicesByLang.entries()).map(([lang, vs]) => (
+                <optgroup key={lang} label={UC1_LANGUAGE_LABELS[lang] ?? lang}>
+                  {vs.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.display_name} · {v.gender === 'male' ? '♂' : '♀'}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+
+          <LanguageSelector value={language} onChange={setLanguage} />
+        </div>
+
         {/* Start / Resume banner */}
         {!started && step && (
           <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 20, marginBottom: 14, textAlign: 'center', boxShadow: theme.shadow }}>
-            <div style={{ fontSize: 14, color: theme.muted, marginBottom: 10 }}>
+            <div style={{ fontSize: 14, color: theme.muted, marginBottom: 4 }}>
               {progress && progress.completed_count > 0
                 ? `Resume at step ${currentStep + 1}: ${step.deck_title}`
                 : `Ready to start with: ${step.deck_title}`}
+            </div>
+            <div style={{ fontSize: 12, color: theme.muted, marginBottom: 14 }}>
+              The avatar, voice and language above will be used for <b>all {path.steps.length} decks</b> in this path.
             </div>
             <button
               onClick={() => setStarted(true)}
@@ -260,58 +330,6 @@ export default function Uc1PathPlayerPage() {
             >
               {progress && progress.completed_count > 0 ? '▶ Resume' : '▶ Start'}
             </button>
-          </div>
-        )}
-
-        {/* Avatar + voice */}
-        {started && presentation && (
-          <div
-            style={{
-              background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12,
-              padding: 14, marginBottom: 14, boxShadow: theme.shadow,
-              display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap',
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 700, color: theme.brand }}>
-              {step?.deck_title ?? presentation.filename}
-            </div>
-            <span style={{ fontSize: 12, color: theme.muted }}>
-              Slide {currentSlide + 1} / {presentation.slide_count}
-            </span>
-
-            <div style={{ flex: 1 }} />
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <span style={{ fontWeight: 600, color: theme.muted }}>Avatar</span>
-              <select
-                value={selectedAvatar}
-                onChange={(e) => setSelectedAvatar(e.target.value)}
-                style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, fontSize: 13 }}
-              >
-                {UC1_AVATARS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
-              </select>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <span style={{ fontWeight: 600, color: theme.muted }}>Voice</span>
-              <select
-                value={selectedVoice}
-                onChange={(e) => onVoiceChange(e.target.value)}
-                style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, fontSize: 13, minWidth: 180 }}
-              >
-                {Array.from(voicesByLang.entries()).map(([lang, vs]) => (
-                  <optgroup key={lang} label={UC1_LANGUAGE_LABELS[lang] ?? lang}>
-                    {vs.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.display_name} · {v.gender === 'male' ? '♂' : '♀'}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
-
-            <LanguageSelector value={language} onChange={setLanguage} />
           </div>
         )}
 
