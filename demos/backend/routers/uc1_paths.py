@@ -87,6 +87,27 @@ class ProgressOut(BaseModel):
     resume_slide_index: int = 0
 
 
+class RecommendRequest(BaseModel):
+    topic: str = Field(..., min_length=3, max_length=500)
+    max_steps: int = Field(4, ge=2, le=8)
+    language: Optional[str] = None
+
+
+class RecommendedStep(BaseModel):
+    deck_id: str
+    deck_title: str
+    slide_count: int
+    order: int
+    rationale: str = ""
+
+
+class RecommendResponse(BaseModel):
+    title: str
+    description: str
+    steps: list[RecommendedStep]
+    explanation: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -322,3 +343,110 @@ def get_progress(path_id: str, user_id: str, cfg: AzureConfig = Depends(_cfg)) -
         raise HTTPException(status_code=404, detail="Path not found")
     progress = store.get_progress(user_id, path_id)
     return _build_progress_out(user_id, path_id, progress, path_doc)
+
+
+# ---------------------------------------------------------------------------
+# AI recommendation
+# ---------------------------------------------------------------------------
+import json as _json
+from services.translation import get_openai_client as _get_openai_client
+
+_RECOMMEND_SYSTEM_PROMPT = """You are an instructional designer. Given a catalog of training decks and a learner's topic of interest, propose an ORDERED learning path of 2-N decks that forms a coherent progression from introduction to advanced.
+
+Rules:
+- Use ONLY deck_ids from the catalog provided. Never invent a deck_id.
+- Order matters: earlier steps should provide foundations for later ones.
+- If fewer than 2 decks in the catalog are relevant to the topic, return an empty steps array.
+- Keep rationales short (≤ 120 chars each).
+- The path title must be concise (≤ 60 chars) and specific to the topic.
+
+Return STRICT JSON with this exact schema (no markdown, no prose):
+{
+  "title": "...",
+  "description": "...",
+  "explanation": "1-2 sentences on why this ordering",
+  "steps": [
+    {"deck_id": "<from catalog>", "rationale": "..."}
+  ]
+}"""
+
+
+@router.post("/recommend", response_model=RecommendResponse)
+def recommend_path(req: RecommendRequest, cfg: AzureConfig = Depends(_cfg)) -> RecommendResponse:
+    """Ask the LLM to propose an ordered learning path for the given topic.
+    Does NOT save — caller reviews and POSTs to / to create."""
+    store = _store(cfg)
+    decks = store.list_uc1_decks()
+    if req.language:
+        decks = [d for d in decks if d.get("language") == req.language]
+    if not decks:
+        raise HTTPException(status_code=400, detail="No decks in catalog to recommend from")
+
+    def _title(d: dict) -> str:
+        return (d.get("filename") or d.get("id") or "deck").rsplit(".", 1)[0]
+
+    catalog_lines = [
+        f'- deck_id="{d["id"]}" title="{_title(d)}" language={d.get("language", "?")} slides={d.get("slide_count", 0)}'
+        for d in decks
+    ]
+    user_prompt = (
+        f"Learner topic: {req.topic}\n"
+        f"Max steps: {req.max_steps}\n"
+        f"Language filter: {req.language or 'any'}\n\n"
+        f"Available decks:\n" + "\n".join(catalog_lines)
+    )
+
+    client = _get_openai_client(cfg)
+    if client is None:
+        raise HTTPException(status_code=503, detail="OpenAI client not configured")
+
+    try:
+        resp = client.chat.completions.create(
+            model=cfg.openai_chat_deployment,
+            messages=[
+                {"role": "system", "content": _RECOMMEND_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.2,
+        )
+        raw = resp.choices[0].message.content or "{}"
+        data = _json.loads(raw)
+    except _json.JSONDecodeError as e:
+        log.error("LLM returned non-JSON: %s", e)
+        raise HTTPException(status_code=502, detail="LLM returned invalid JSON")
+    except Exception as e:
+        log.exception("LLM recommendation failed")
+        raise HTTPException(status_code=502, detail=f"LLM request failed: {e}")
+
+    # Validate + hydrate
+    deck_map = {d["id"]: d for d in decks}
+    steps_raw = data.get("steps") or []
+    out_steps: list[RecommendedStep] = []
+    used: set[str] = set()
+    for i, s in enumerate(steps_raw[: req.max_steps]):
+        did = s.get("deck_id")
+        if not did or did not in deck_map or did in used:
+            continue
+        used.add(did)
+        deck = deck_map[did]
+        out_steps.append(RecommendedStep(
+            deck_id=did,
+            deck_title=_title(deck),
+            slide_count=int(deck.get("slide_count") or 0),
+            order=len(out_steps),
+            rationale=str(s.get("rationale", ""))[:200],
+        ))
+
+    if len(out_steps) < 2:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Not enough relevant decks found for topic '{req.topic}'. Try a broader topic or upload more decks.",
+        )
+
+    return RecommendResponse(
+        title=str(data.get("title") or f"Path: {req.topic}")[:100],
+        description=str(data.get("description") or "")[:500],
+        steps=out_steps,
+        explanation=str(data.get("explanation") or "")[:500],
+    )

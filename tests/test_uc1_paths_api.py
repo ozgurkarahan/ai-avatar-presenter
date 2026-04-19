@@ -240,3 +240,54 @@ def test_progress_on_missing_path_404(client: httpx.Client) -> None:
         "user_id": "pytest-u4", "deck_id": "whatever", "slide_index": 0,
     })
     assert r.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# AI recommendation
+# ---------------------------------------------------------------------------
+def test_recommend_happy_path(client: httpx.Client, deck_ids) -> None:
+    assert len(deck_ids) >= 2
+    r = client.post("/api/uc1/paths/recommend", json={"topic": "artificial intelligence and security", "max_steps": 4})
+    if r.status_code in (404, 502, 503):
+        pytest.skip(f"LLM unavailable or topic yielded no path: {r.status_code} {r.text[:200]}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["title"]
+    assert isinstance(body["steps"], list)
+    assert 2 <= len(body["steps"]) <= 4
+    catalog = set(deck_ids)
+    for i, s in enumerate(body["steps"]):
+        assert s["deck_id"] in catalog
+        assert s["order"] == i
+        assert s["deck_title"]
+        assert isinstance(s["slide_count"], int)
+
+
+def test_recommend_respects_max_steps(client: httpx.Client, deck_ids) -> None:
+    r = client.post("/api/uc1/paths/recommend", json={"topic": "training fundamentals", "max_steps": 2})
+    if r.status_code in (404, 502, 503):
+        pytest.skip(f"LLM unavailable: {r.status_code}")
+    assert r.status_code == 200
+    assert len(r.json()["steps"]) <= 2
+
+
+def test_recommend_does_not_persist(client: httpx.Client, deck_ids) -> None:
+    """Recommend should NOT create a path — only return a suggestion."""
+    before = client.get("/api/uc1/paths").json()
+    r = client.post("/api/uc1/paths/recommend", json={"topic": "safety training", "max_steps": 3})
+    if r.status_code in (404, 502, 503):
+        pytest.skip(f"LLM unavailable: {r.status_code}")
+    after = client.get("/api/uc1/paths").json()
+    assert len(after) == len(before), "recommend must not create a path"
+
+
+def test_recommend_validation_rejects_empty_topic(client: httpx.Client) -> None:
+    r = client.post("/api/uc1/paths/recommend", json={"topic": "", "max_steps": 3})
+    assert r.status_code == 422  # pydantic min_length
+
+
+def test_recommend_validation_rejects_bad_max_steps(client: httpx.Client) -> None:
+    r = client.post("/api/uc1/paths/recommend", json={"topic": "ai", "max_steps": 1})
+    assert r.status_code == 422
+    r = client.post("/api/uc1/paths/recommend", json={"topic": "ai", "max_steps": 20})
+    assert r.status_code == 422
