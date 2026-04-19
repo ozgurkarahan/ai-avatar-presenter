@@ -10,6 +10,8 @@ import Uc1HubPage from './pages/Uc1HubPage';
 import Uc1LearnPage from './pages/Uc1LearnPage';
 import Uc1DecksPage from './pages/Uc1DecksPage';
 import Uc1PresentPage from './pages/Uc1PresentPage';
+import Uc1PathsListPage from './pages/Uc1PathsListPage';
+import Uc1PathPlayerPage from './pages/Uc1PathPlayerPage';
 import TopNav from './components/TopNav';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -21,6 +23,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/uc1" element={<Uc1HubPage />} />
         <Route path="/uc1/learn" element={<Uc1LearnPage />} />
         <Route path="/uc1/decks" element={<Uc1DecksPage />} />
+        <Route path="/uc1/paths" element={<Uc1PathsListPage />} />
+        <Route path="/uc1/paths/:pathId" element={<Uc1PathPlayerPage />} />
         <Route path="/uc1/present/:deckId" element={<Uc1PresentPage />} />
         <Route path="/podcast" element={<PodcastPage />} />
         <Route path="/podcast/library" element={<PodcastLibraryPage />} />

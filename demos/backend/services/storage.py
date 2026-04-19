@@ -20,6 +20,7 @@ from config import AzureConfig
 logger = logging.getLogger(__name__)
 
 COSMOS_CONTAINER = "presentations"
+COSMOS_PROGRESS_CONTAINER = "uc1_progress"
 
 
 class PresentationStore:
@@ -30,6 +31,7 @@ class PresentationStore:
         self._blob_client: BlobServiceClient | None = None
         self._cosmos_db: Any = None
         self._cosmos_container: Any = None
+        self._progress_container: Any = None
         self._initialised = False
         self._credential: DefaultAzureCredential | None = None
         self._account_name: str | None = None
@@ -94,6 +96,10 @@ class PresentationStore:
                     self._cosmos_container = self._cosmos_db.create_container_if_not_exists(
                         id=COSMOS_CONTAINER,
                         partition_key=PartitionKey(path="/id"),
+                    )
+                    self._progress_container = self._cosmos_db.create_container_if_not_exists(
+                        id=COSMOS_PROGRESS_CONTAINER,
+                        partition_key=PartitionKey(path="/user_id"),
                     )
                     logger.info("Cosmos DB initialised (db=%s)", self._config.cosmos_database)
             except Exception as e:
@@ -342,6 +348,109 @@ class PresentationStore:
         except Exception as e:
             logger.error("Failed to delete slide images for %s: %s", presentation_id, e)
             return False
+
+    # ------------------------------------------------------------------
+    # UC1 Learning Paths (stored in `presentations` container, /id partition)
+    # ------------------------------------------------------------------
+
+    def list_uc1_paths(self) -> list[dict]:
+        self._ensure_init()
+        if not self._cosmos_container:
+            return []
+        try:
+            q = (
+                "SELECT c.id, c.title, c.description, c.status, c.steps, "
+                "c.created_at, c.updated_at FROM c WHERE c.source = 'uc1-path'"
+            )
+            return list(self._cosmos_container.query_items(query=q, enable_cross_partition_query=True))
+        except Exception as e:
+            logger.error("Failed to list UC1 paths: %s", e)
+            return []
+
+    def get_uc1_path(self, path_id: str) -> dict | None:
+        self._ensure_init()
+        if not self._cosmos_container:
+            return None
+        try:
+            doc = self._cosmos_container.read_item(item=path_id, partition_key=path_id)
+            if doc.get("source") != "uc1-path":
+                return None
+            return doc
+        except cosmos_exceptions.CosmosResourceNotFoundError:
+            return None
+        except Exception as e:
+            logger.error("Failed to read path %s: %s", path_id, e)
+            return None
+
+    def save_uc1_path(self, doc: dict) -> bool:
+        self._ensure_init()
+        if not self._cosmos_container:
+            return False
+        try:
+            self._cosmos_container.upsert_item(doc)
+            return True
+        except Exception as e:
+            logger.error("Failed to save path: %s", e)
+            return False
+
+    def delete_uc1_path(self, path_id: str) -> bool:
+        self._ensure_init()
+        if not self._cosmos_container:
+            return False
+        try:
+            self._cosmos_container.delete_item(item=path_id, partition_key=path_id)
+            return True
+        except cosmos_exceptions.CosmosResourceNotFoundError:
+            return False
+        except Exception as e:
+            logger.error("Failed to delete path %s: %s", path_id, e)
+            return False
+
+    def paths_referencing_deck(self, deck_id: str) -> list[dict]:
+        """Return all paths whose steps include the given deck_id."""
+        self._ensure_init()
+        if not self._cosmos_container:
+            return []
+        try:
+            q = (
+                "SELECT * FROM c "
+                "WHERE c.source = 'uc1-path' AND "
+                "EXISTS(SELECT VALUE s FROM s IN c.steps WHERE s.deck_id = @deck_id)"
+            )
+            params = [{"name": "@deck_id", "value": deck_id}]
+            return list(self._cosmos_container.query_items(
+                query=q, parameters=params, enable_cross_partition_query=True,
+            ))
+        except Exception as e:
+            logger.error("Failed to find paths for deck %s: %s", deck_id, e)
+            return []
+
+    # ------------------------------------------------------------------
+    # UC1 User progress (NEW container, /user_id partition)
+    # ------------------------------------------------------------------
+
+    def get_progress(self, user_id: str, path_id: str) -> dict | None:
+        self._ensure_init()
+        if not self._progress_container:
+            return None
+        doc_id = f"{user_id}:{path_id}"
+        try:
+            return self._progress_container.read_item(item=doc_id, partition_key=user_id)
+        except cosmos_exceptions.CosmosResourceNotFoundError:
+            return None
+        except Exception as e:
+            logger.error("Failed to read progress %s: %s", doc_id, e)
+            return None
+
+    def upsert_progress(self, doc: dict) -> dict | None:
+        self._ensure_init()
+        if not self._progress_container:
+            return None
+        try:
+            return self._progress_container.upsert_item(doc)
+        except Exception as e:
+            logger.error("Failed to upsert progress: %s", e)
+            return None
 
 
 def _extract_account_name(connection_string: str) -> str | None:

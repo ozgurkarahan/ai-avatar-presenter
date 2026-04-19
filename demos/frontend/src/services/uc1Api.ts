@@ -139,3 +139,138 @@ export const UC1_AVATARS: { id: string; label: string; style: string }[] = [
 export function styleForAvatar(avatarId: string): string {
   return UC1_AVATARS.find((a) => a.id === avatarId)?.style ?? 'casual-sitting';
 }
+
+
+// ======================= UC1 Learning Paths ===============================
+export interface PathStep {
+  order: number;
+  deck_id: string;
+  deck_title: string;
+  slide_count: number;
+  required: boolean;
+}
+
+export interface PathSummary {
+  id: string;
+  title: string;
+  description: string;
+  status: 'active' | 'broken';
+  step_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PathDetail extends PathSummary {
+  steps: PathStep[];
+}
+
+export interface PathStepInput {
+  deck_id: string;
+  order: number;
+  required?: boolean;
+}
+
+export interface PathCreateInput {
+  title: string;
+  description?: string;
+  steps: PathStepInput[];
+}
+
+export interface PathUpdateInput {
+  title?: string;
+  description?: string;
+  steps?: PathStepInput[];
+}
+
+export interface PathProgress {
+  user_id: string;
+  path_id: string;
+  last_deck_id: string;
+  last_slide_index: number;
+  resume_deck_id: string;
+  resume_slide_index: number;
+  completed_slides: Record<string, number[]>;
+  total_slides: number;
+  completed_count: number;
+  percent: number;
+  updated_at: string;
+}
+
+export interface ProgressPostInput {
+  user_id: string;
+  deck_id: string;
+  slide_index: number;
+  mark_completed?: boolean;
+}
+
+export async function listPaths(): Promise<PathSummary[]> {
+  const r = await fetch(`${API}/paths`);
+  if (!r.ok) throw new Error(await safeText(r));
+  return r.json();
+}
+
+export async function getPath(pathId: string): Promise<PathDetail> {
+  const r = await fetch(`${API}/paths/${pathId}`);
+  if (!r.ok) {
+    const msg = await safeText(r);
+    const err = new Error(msg) as Error & { status?: number };
+    err.status = r.status;
+    throw err;
+  }
+  return r.json();
+}
+
+export async function createPath(body: PathCreateInput): Promise<PathDetail> {
+  const r = await fetch(`${API}/paths`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await safeText(r));
+  return r.json();
+}
+
+export async function updatePath(pathId: string, body: PathUpdateInput): Promise<PathDetail> {
+  const r = await fetch(`${API}/paths/${pathId}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await safeText(r));
+  return r.json();
+}
+
+export async function deletePath(pathId: string): Promise<void> {
+  const r = await fetch(`${API}/paths/${pathId}`, { method: 'DELETE' });
+  if (!r.ok && r.status !== 204) throw new Error(await safeText(r));
+}
+
+export async function getProgress(pathId: string, userId: string): Promise<PathProgress> {
+  const r = await fetch(`${API}/paths/${pathId}/progress?user_id=${encodeURIComponent(userId)}`);
+  if (!r.ok) throw new Error(await safeText(r));
+  return r.json();
+}
+
+export async function postProgress(pathId: string, body: ProgressPostInput): Promise<PathProgress> {
+  const r = await fetch(`${API}/paths/${pathId}/progress`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await safeText(r));
+  return r.json();
+}
+
+const USER_ID_KEY = 'uc1.userId';
+export function getOrCreateUserId(): string {
+  try {
+    let id = localStorage.getItem(USER_ID_KEY);
+    if (!id) {
+      id = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      localStorage.setItem(USER_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'anonymous';
+  }
+}
