@@ -274,3 +274,39 @@ export function getOrCreateUserId(): string {
     return 'anonymous';
   }
 }
+
+
+// ======================= AI Path Recommendation ===========================
+export interface RecommendedStep {
+  deck_id: string;
+  deck_title: string;
+  slide_count: number;
+  order: number;
+  rationale: string;
+}
+
+export interface RecommendResponse {
+  title: string;
+  description: string;
+  steps: RecommendedStep[];
+  explanation: string;
+}
+
+export async function recommendPath(
+  topic: string,
+  maxSteps = 4,
+  language?: string,
+): Promise<RecommendResponse> {
+  const r = await fetch(`${API}/paths/recommend`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ topic, max_steps: maxSteps, language }),
+  });
+  if (!r.ok) {
+    const msg = await safeText(r);
+    const err = new Error(msg) as Error & { status?: number };
+    err.status = r.status;
+    throw err;
+  }
+  return r.json();
+}

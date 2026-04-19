@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Deck, listDecks,
   PathSummary, PathStepInput, listPaths, createPath, deletePath,
+  RecommendResponse, RecommendedStep, recommendPath,
 } from '../services/uc1Api';
 
 const theme = {
@@ -19,6 +20,8 @@ export default function Uc1PathsListPage() {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [showRecommend, setShowRecommend] = useState(false);
+  const [prefill, setPrefill] = useState<RecommendResponse | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -73,18 +76,33 @@ export default function Uc1PathsListPage() {
               Chain multiple decks into an ordered path. Learners resume where they left off, progress is tracked.
             </p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            disabled={decks.length === 0}
-            style={{
-              background: theme.brand, color: 'white', border: 'none',
-              borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600,
-              cursor: decks.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: decks.length === 0 ? 0.5 : 1,
-            }}
-          >
-            + Create path
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => setShowRecommend(true)}
+              data-testid="recommend-path-btn"
+              disabled={decks.length === 0}
+              style={{
+                background: 'white', color: theme.brand, border: `2px solid ${theme.brand}`,
+                borderRadius: 8, padding: '8px 16px', fontSize: 14, fontWeight: 600,
+                cursor: decks.length === 0 ? 'not-allowed' : 'pointer',
+                opacity: decks.length === 0 ? 0.5 : 1,
+              }}
+            >
+              ✨ Recommend with AI
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              disabled={decks.length === 0}
+              style={{
+                background: theme.brand, color: 'white', border: 'none',
+                borderRadius: 8, padding: '10px 18px', fontSize: 14, fontWeight: 600,
+                cursor: decks.length === 0 ? 'not-allowed' : 'pointer',
+                opacity: decks.length === 0 ? 0.5 : 1,
+              }}
+            >
+              + Create path
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -169,8 +187,21 @@ export default function Uc1PathsListPage() {
       {showCreate && (
         <CreatePathModal
           decks={decks}
-          onClose={() => setShowCreate(false)}
-          onCreated={() => { setShowCreate(false); refresh(); }}
+          prefill={prefill}
+          onClose={() => { setShowCreate(false); setPrefill(null); }}
+          onCreated={() => { setShowCreate(false); setPrefill(null); refresh(); }}
+        />
+      )}
+
+      {showRecommend && (
+        <RecommendPathModal
+          decks={decks}
+          onClose={() => setShowRecommend(false)}
+          onAccept={(rec) => {
+            setPrefill(rec);
+            setShowRecommend(false);
+            setShowCreate(true);
+          }}
         />
       )}
     </div>
@@ -181,11 +212,11 @@ export default function Uc1PathsListPage() {
 // Create-path modal
 // ---------------------------------------------------------------------------
 function CreatePathModal({
-  decks, onClose, onCreated,
-}: { decks: Deck[]; onClose: () => void; onCreated: () => void }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selected, setSelected] = useState<string[]>([]);
+  decks, prefill, onClose, onCreated,
+}: { decks: Deck[]; prefill?: RecommendResponse | null; onClose: () => void; onCreated: () => void }) {
+  const [title, setTitle] = useState(prefill?.title ?? '');
+  const [description, setDescription] = useState(prefill?.description ?? '');
+  const [selected, setSelected] = useState<string[]>(prefill?.steps.map((s) => s.deck_id) ?? []);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -320,6 +351,114 @@ function CreatePathModal({
           >
             {saving ? 'Creating…' : 'Create path'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recommend-with-AI modal
+// ---------------------------------------------------------------------------
+function RecommendPathModal({
+  decks, onClose, onAccept,
+}: { decks: Deck[]; onClose: () => void; onAccept: (rec: RecommendResponse) => void }) {
+  const [topic, setTopic] = useState('');
+  const [maxSteps, setMaxSteps] = useState(4);
+  const [language, setLanguage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [rec, setRec] = useState<RecommendResponse | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const availableLanguages = Array.from(new Set(decks.map((d) => d.language).filter(Boolean))) as string[];
+
+  async function generate() {
+    if (!topic.trim()) { setErr('Enter a topic'); return; }
+    setLoading(true); setErr(null); setRec(null);
+    try {
+      const r = await recommendPath(topic.trim(), maxSteps, language || undefined);
+      setRec(r);
+    } catch (e: any) {
+      setErr(String(e?.message ?? e));
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div role="dialog" aria-label="Recommend path" style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20,
+    }}>
+      <div style={{ background: 'white', borderRadius: 12, width: '100%', maxWidth: 720, maxHeight: '90vh', overflow: 'auto' }}>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 20, color: theme.brand }}>✨ Recommend a learning path</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: theme.muted }}>×</button>
+        </div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: theme.text }}>
+            Topic
+            <textarea
+              data-testid="recommend-topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., cybersecurity fundamentals, sustainable energy transition…"
+              rows={2}
+              style={{ width: '100%', marginTop: 6, padding: 10, fontSize: 14, border: `1px solid ${theme.border}`, borderRadius: 8, fontFamily: 'inherit' }}
+            />
+          </label>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+              Max steps: {maxSteps}
+              <input type="range" min={2} max={8} value={maxSteps} onChange={(e) => setMaxSteps(Number(e.target.value))} style={{ width: '100%' }} />
+            </label>
+            <label style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+              Language filter
+              <select value={language} onChange={(e) => setLanguage(e.target.value)}
+                style={{ width: '100%', marginTop: 6, padding: 8, fontSize: 14, border: `1px solid ` + theme.border, borderRadius: 8 }}>
+                <option value="">Any</option>
+                {availableLanguages.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </label>
+          </div>
+          <button
+            onClick={generate}
+            data-testid="recommend-generate"
+            disabled={loading || !topic.trim()}
+            style={{
+              background: theme.brand, color: 'white', border: 'none', padding: '10px 18px',
+              borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? 'wait' : 'pointer',
+              opacity: loading || !topic.trim() ? 0.6 : 1, alignSelf: 'flex-start',
+            }}
+          >
+            {loading ? 'Generating…' : 'Generate recommendation'}
+          </button>
+
+          {err && <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 8, fontSize: 14 }}>{err}</div>}
+
+          {rec && (
+            <div data-testid="recommend-preview" style={{ border: `1px solid ` + theme.border, borderRadius: 8, padding: 16, background: theme.cardAlt }}>
+              <h3 style={{ margin: '0 0 6px 0', color: theme.brand }}>{rec.title}</h3>
+              <p style={{ margin: '0 0 8px 0', fontSize: 13, color: theme.text }}>{rec.description}</p>
+              <p style={{ margin: '0 0 12px 0', fontSize: 12, color: theme.muted, fontStyle: 'italic' }}>{rec.explanation}</p>
+              <ol style={{ margin: 0, paddingLeft: 20 }}>
+                {rec.steps.map((s: RecommendedStep) => (
+                  <li key={s.deck_id} style={{ marginBottom: 8 }}>
+                    <strong>{s.deck_title}</strong> <span style={{ color: theme.muted, fontSize: 12 }}>({s.slide_count} slides)</span>
+                    <div style={{ fontSize: 12, color: theme.muted }}>{s.rationale}</div>
+                  </li>
+                ))}
+              </ol>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+                <button onClick={generate} style={{ padding: '8px 14px', border: `1px solid ` + theme.border, background: 'white', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>Regenerate</button>
+                <button
+                  data-testid="recommend-accept"
+                  onClick={() => onAccept(rec)}
+                  style={{ padding: '8px 14px', border: 'none', background: theme.brand, color: 'white', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                >
+                  Accept & customize
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

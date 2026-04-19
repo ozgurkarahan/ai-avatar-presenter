@@ -26,4 +26,15 @@ test.describe('UC1 — Learning Paths', () => {
     await expect(page.getByText('Create learning path')).toBeVisible();
     await expect(page.getByPlaceholder(/Security Onboarding/i)).toBeVisible();
   });
+
+  test('recommend-with-ai button opens modal', async ({ page }) => {
+    await page.goto(`${BASE_URL}/uc1/paths`);
+    const btn = page.getByTestId('recommend-path-btn');
+    await expect(btn).toBeVisible();
+    const disabled = await btn.isDisabled();
+    test.skip(disabled, 'No decks available — recommend flow requires decks');
+    await btn.click();
+    await expect(page.getByTestId('recommend-topic')).toBeVisible();
+    await expect(page.getByTestId('recommend-generate')).toBeVisible();
+  });
 });
