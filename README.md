@@ -307,14 +307,17 @@ The repository ships two end-to-end runners that drive the real deployed stack (
 | Script | Scope | Last validated |
 |---|---|---|
 | `tests/e2e_rfi.py` | Reset DB → upload 9 RFI fixture decks → UC1 hub / search / paths / progress / AI recommend → UC2 & UC3 smoke | 30/30 passed on `uc1v10` |
-| `tests/e2e_render.py` | Full render pipeline for UC2 (PPTX → MP4) and UC3 (PPTX → MP3) including TTS + compose | 10/10 passed (5.9 MB mp4 in 370s, 854 KB mp3 in 265s) |
+| `tests/e2e_render.py` | Full render pipeline for UC2 (PPTX → MP4) and UC3 (PPTX → MP3) including TTS + compose. Accepts `--languages fr-FR,en-US,es-ES` to sweep the three RFI thematic groups. | 30/30 passed multi-language (fr-FR, en-US, es-ES × UC2+UC3 × ingest/script/render/download, ~30 min total) |
 
 ```powershell
 # Run the RFI suite (cheap, ~1 min)
 python tests/e2e_rfi.py --base-url https://<your-container-app>
 
-# Run the full render suite (expensive: ~10 min + TTS tokens)
+# Run the full render suite — English only (~10 min + TTS tokens)
 python tests/e2e_render.py --base-url https://<your-container-app>
+
+# Multi-language render sweep (~30 min + 3× TTS cost)
+python tests/e2e_render.py --base-url https://<your-container-app> --languages fr-FR,en-US,es-ES
 
 # Regenerate the 9 RFI fixture decks from source-of-truth Python
 python tests/fixtures/rfi/_generate.py

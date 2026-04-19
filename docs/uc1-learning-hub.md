@@ -183,7 +183,7 @@ Tested end-to-end on `tests/e2e_rfi.py` against the 9 RFI fixture decks. Last ru
 | Script | Scope | Last run |
 |---|---|---|
 | `tests/e2e_rfi.py` | Reset all Cosmos containers + UC2 library → upload 9 RFI fixtures → UC1 hub + search + paths + progress + AI recommend → UC2/UC3 smoke | 30/30 passed on `uc1v10` |
-| `tests/e2e_render.py` | UC2 + UC3 full render | 10/10 passed |
+| `tests/e2e_render.py` | UC2 + UC3 full render, one language or multi-language sweep | 30/30 passed multi-language (fr-FR / en-US / es-ES × UC2+UC3) |
 | `tests/test_uc1_paths_api.py` | pytest — paths CRUD, progress, AI recommend (incl. catalog validation) | 4 passed, 1 skipped (LLM-dependent) |
 | `tests/uc1-learning-paths.spec.ts` | Playwright UI — create path, recommend modal, light language selector regression | 9 passed |
 
@@ -203,8 +203,11 @@ Each deck: 5 slides, 2-sentence speaker notes, progresses from intro → deepeni
 # Cheap (~1 min) — assumes the target app is up
 python tests/e2e_rfi.py --base-url https://ca-clgsqan6efeuy.thankfulhill-3503b062.swedencentral.azurecontainerapps.io
 
-# Expensive (~10 min + TTS tokens) — full UC2/UC3 media render
+# Expensive (~10 min + TTS tokens) — full UC2/UC3 media render, English only
 python tests/e2e_render.py --base-url https://ca-clgsqan6efeuy.thankfulhill-3503b062.swedencentral.azurecontainerapps.io
+
+# Multi-language render sweep (~30 min) — fr-FR (Safety), en-US (Sustainability), es-ES (AI)
+python tests/e2e_render.py --base-url https://ca-clgsqan6efeuy.thankfulhill-3503b062.swedencentral.azurecontainerapps.io --languages fr-FR,en-US,es-ES
 ```
 
 `--skip-reset` preserves existing data when iterating locally. `--skip-video` / `--skip-podcast` in `e2e_render.py` let you run one UC at a time.

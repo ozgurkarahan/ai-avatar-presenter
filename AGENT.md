@@ -69,7 +69,7 @@ The repo now covers all three use cases of Saint-Gobain **RFI 559** in a single 
 | `demos/frontend/src/services/uc1Api.ts` | UC1 API client (decks, search, paths, recommend) |
 | `demos/frontend/src/services/teams.ts` | Microsoft Teams SDK integration helpers |
 | `tests/e2e_rfi.py` | End-to-end runner — reset DB + upload 9 RFI fixtures + UC1/UC2/UC3 smoke (30 checks) |
-| `tests/e2e_render.py` | Full render E2E for UC2 (MP4) + UC3 (MP3) (10 checks) |
+| `tests/e2e_render.py` | Full render E2E for UC2 (MP4) + UC3 (MP3), with `--languages` flag for multi-locale sweep (30 checks in 3-lang mode) |
 | `tests/fixtures/rfi/` | 9 coherent fixture decks in 3 thematic groups (Safety FR, Sustainability EN, AI ES) |
 | `tests/test_uc1_paths_api.py` | pytest for UC1 paths API incl. AI recommend |
 | `tests/uc1-learning-paths.spec.ts` | Playwright UI regressions for Learning Paths |
@@ -90,4 +90,4 @@ The repo now covers all three use cases of Saint-Gobain **RFI 559** in a single 
 - [x] UC1 AI path recommendation (GPT-4.1 JSON mode, catalog-validated)
 - [x] UC2 Static Video full render pipeline (validated E2E on prod: 5.9 MB mp4 in 370s)
 - [x] UC3 Podcast full render pipeline (validated E2E on prod: 854 KB mp3 in 265s)
-- [x] E2E test suites — `tests/e2e_rfi.py` (30/30) + `tests/e2e_render.py` (10/10)
+- [x] E2E test suites — `tests/e2e_rfi.py` (30/30) + `tests/e2e_render.py` (30/30 multi-language: fr-FR/en-US/es-ES × UC2+UC3)

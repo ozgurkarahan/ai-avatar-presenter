@@ -1,11 +1,23 @@
 """End-to-end render tests for UC2 (static video) and UC3 (podcast).
 
 Full happy-path: ingest -> script (streaming) -> render -> poll until done
--> download media file. Expensive: each run costs TTS tokens + ~1-3 minutes
-per UC. Intended to be run occasionally, not on every commit.
+-> download media file. Expensive: each UC + language costs TTS tokens +
+~5-8 min for UC2 and ~3-5 min for UC3.
+
+Runs per language using the matching RFI fixture:
+  fr-FR -> securite-bases.pptx           (Group A - Safety)
+  en-US -> decarbonization-intro.pptx    (Group B - Sustainability)
+  es-ES -> ia-industrial-intro.pptx      (Group C - AI)
 
 Usage:
-    python tests/e2e_render.py --base-url https://... [--skip-video] [--skip-podcast]
+    # Default: English only (same as before, cheap)
+    python tests/e2e_render.py --base-url https://...
+
+    # Multi-language pass (expensive ~30-60 min)
+    python tests/e2e_render.py --base-url https://... --languages fr-FR,en-US,es-ES
+
+    # Pick one UC
+    python tests/e2e_render.py --base-url https://... --skip-podcast --languages en-US
 """
 from __future__ import annotations
 
@@ -14,25 +26,71 @@ import json
 import os
 import sys
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 import httpx
 
 DEFAULT_BASE = os.environ.get("BASE_URL", "http://localhost:8080")
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "rfi"
 
-# Use Group B (EN) deck #1 — shortest narration pathway, fewest TTS tokens.
-UC2_FIXTURE = FIXTURE_DIR / "decarbonization-intro.pptx"
-UC3_FIXTURE = FIXTURE_DIR / "decarbonization-intro.pptx"
-
 POLL_TIMEOUT_SEC = 600  # 10 minutes max per render job
 POLL_INTERVAL_SEC = 6
+
+
+# ---------------------------------------------------------------------------
+# Per-language test plan (fixture + voice pair)
+# ---------------------------------------------------------------------------
+@dataclass
+class LangPlan:
+    language: str              # e.g. "fr-FR"
+    fixture: str               # filename under tests/fixtures/rfi/
+    voice_male: str            # e.g. "fr-FR-Remy:DragonHDLatestNeural"
+    voice_female: str          # e.g. "fr-FR-Vivienne:DragonHDLatestNeural"
+
+
+PLANS: dict[str, LangPlan] = {
+    "fr-FR": LangPlan(
+        language="fr-FR",
+        fixture="securite-bases.pptx",
+        voice_male="fr-FR-Remy:DragonHDLatestNeural",
+        voice_female="fr-FR-Vivienne:DragonHDLatestNeural",
+    ),
+    "en-US": LangPlan(
+        language="en-US",
+        fixture="decarbonization-intro.pptx",
+        voice_male="en-US-Andrew:DragonHDLatestNeural",
+        voice_female="en-US-Ava:DragonHDLatestNeural",
+    ),
+    "es-ES": LangPlan(
+        language="es-ES",
+        fixture="ia-industrial-intro.pptx",
+        voice_male="es-ES-Tristan:DragonHDLatestNeural",
+        voice_female="es-ES-Ximena:DragonHDLatestNeural",
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Logging helpers (terminal-friendly, ASCII safe for Windows stdout)
+# ---------------------------------------------------------------------------
+@dataclass
+class RunResult:
+    uc: str               # "UC2" or "UC3"
+    language: str
+    fixture: str
+    state: str = "pending"   # "pending" | "pass" | "fail"
+    detail: str = ""
+    duration_sec: float = 0.0
+    output_bytes: int = 0
 
 
 class Log:
     def __init__(self) -> None:
         self.passes = 0
         self.fails = 0
+        self.runs: list[RunResult] = []
 
     def header(self, title: str) -> None:
         print(f"\n{'=' * 70}\n== {title}\n{'=' * 70}")
@@ -48,49 +106,83 @@ class Log:
         self.fails += 1
         print(f"  [FAIL] {msg}")
 
+    def record(self, result: RunResult) -> None:
+        self.runs.append(result)
+
     def summary(self) -> int:
         print(f"\n{'=' * 70}")
         print(f"RESULTS: {self.passes} passed  {self.fails} failed")
+        if self.runs:
+            print(f"\nPer-run matrix:")
+            print(f"{'UC':<5}{'LANGUAGE':<10}{'FIXTURE':<32}{'STATE':<8}{'BYTES':>12}{'SEC':>8}")
+            print("-" * 75)
+            for r in self.runs:
+                print(
+                    f"{r.uc:<5}{r.language:<10}{r.fixture:<32}"
+                    f"{r.state:<8}{r.output_bytes:>12,}{r.duration_sec:>8.1f}"
+                )
         print(f"{'=' * 70}")
         return 0 if self.fails == 0 else 1
 
 
 # ---------------------------------------------------------------------------
-# UC2 — Static video
+# UC2 - Static video (1 language)
 # ---------------------------------------------------------------------------
-def test_uc2_render(client: httpx.Client, log: Log) -> None:
-    log.header("UC2  STATIC VIDEO  full render")
-    if not UC2_FIXTURE.exists():
-        log.fail(f"Fixture missing: {UC2_FIXTURE}")
+def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None:
+    log.header(f"UC2  STATIC VIDEO  {plan.language}  {plan.fixture}")
+    result = RunResult(uc="UC2", language=plan.language, fixture=plan.fixture)
+    log.record(result)
+
+    fixture_path = FIXTURE_DIR / plan.fixture
+    if not fixture_path.exists():
+        msg = f"Fixture missing: {fixture_path}"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
+
+    t_start = time.time()
 
     # 1. Ingest
     log.step("POST /api/static-video/ingest")
-    with UC2_FIXTURE.open("rb") as f:
-        r = client.post(
-            "/api/static-video/ingest",
-            files={"file": (UC2_FIXTURE.name, f, "application/vnd.openxmlformats-officedocument.presentationml.presentation")},
-            timeout=120,
-        )
+    try:
+        with fixture_path.open("rb") as f:
+            r = client.post(
+                "/api/static-video/ingest",
+                files={"file": (
+                    fixture_path.name, f,
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                )},
+                timeout=120,
+            )
+    except Exception as e:  # noqa: BLE001
+        log.fail(f"ingest: {e}")
+        result.state, result.detail = "fail", str(e)
+        return
     if r.status_code != 200:
-        log.fail(f"ingest -> {r.status_code}: {r.text[:300]}")
+        msg = f"ingest -> {r.status_code}: {r.text[:200]}"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
     ingest = r.json()
     doc_id = ingest["doc_id"]
     n_slides = len(ingest.get("slides", []))
     log.ok(f"ingested doc_id={doc_id} ({n_slides} slides)")
 
-    # 2. Script generation (NDJSON streaming)
-    log.step("POST /api/static-video/script/{doc_id} (NDJSON stream)")
-    voice = "en-US-Ava:DragonHDLatestNeural"
-    payload = {"language": "en-US", "style": "explainer", "voice": voice}
+    # 2. Script (NDJSON)
+    log.step(f"POST /api/static-video/script/{{doc_id}} lang={plan.language}")
+    payload = {"language": plan.language, "style": "explainer", "voice": plan.voice_female}
     narrations = 0
     script_ok = False
     t0 = time.time()
     try:
-        with client.stream("POST", f"/api/static-video/script/{doc_id}", json=payload, timeout=180) as r:
+        with client.stream(
+            "POST", f"/api/static-video/script/{doc_id}",
+            json=payload, timeout=180,
+        ) as r:
             if r.status_code != 200:
-                log.fail(f"script -> {r.status_code}: {r.read()[:300]!r}")
+                msg = f"script -> {r.status_code}: {r.read()[:200]!r}"
+                log.fail(msg)
+                result.state, result.detail = "fail", msg
                 return
             for line in r.iter_lines():
                 if not line:
@@ -105,13 +197,18 @@ def test_uc2_render(client: httpx.Client, log: Log) -> None:
                     script_ok = True
                     break
                 elif event.get("event") == "error":
-                    log.fail(f"script stream error: {event.get('data')}")
+                    msg = f"script stream error: {event.get('data')}"
+                    log.fail(msg)
+                    result.state, result.detail = "fail", msg
                     return
     except Exception as e:  # noqa: BLE001
         log.fail(f"script stream: {e}")
+        result.state, result.detail = "fail", str(e)
         return
     if not script_ok:
-        log.fail("script stream ended without 'done' event")
+        msg = "script stream ended without 'done' event"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
     log.ok(f"script generated ({narrations} narrations in {time.time()-t0:.1f}s)")
 
@@ -119,7 +216,9 @@ def test_uc2_render(client: httpx.Client, log: Log) -> None:
     log.step("POST /api/static-video/render/{doc_id}")
     r = client.post(f"/api/static-video/render/{doc_id}", timeout=30)
     if r.status_code != 200:
-        log.fail(f"render -> {r.status_code}: {r.text[:300]}")
+        msg = f"render -> {r.status_code}: {r.text[:200]}"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
     job_id = r.json().get("job_id")
     log.ok(f"render job queued job_id={job_id}")
@@ -146,7 +245,9 @@ def test_uc2_render(client: httpx.Client, log: Log) -> None:
             if state in ("done", "failed"):
                 final_state = state
                 if state == "failed":
-                    log.fail(f"render failed: {job.get('error')}")
+                    msg = f"render failed: {job.get('error')}"
+                    log.fail(msg)
+                    result.state, result.detail = "fail", msg
                     return
                 break
         except Exception as e:  # noqa: BLE001
@@ -154,62 +255,93 @@ def test_uc2_render(client: httpx.Client, log: Log) -> None:
         time.sleep(POLL_INTERVAL_SEC)
 
     if final_state != "done":
-        log.fail(f"render timeout after {POLL_TIMEOUT_SEC}s")
+        msg = f"render timeout after {POLL_TIMEOUT_SEC}s"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
     log.ok(f"render completed in {time.time()-t0:.1f}s")
 
     # 5. Download mp4
     log.step("GET /api/static-video/jobs/{job_id}/file/mp4")
     try:
-        r = client.get(f"/api/static-video/jobs/{job_id}/file/mp4", timeout=120)
+        r = client.get(f"/api/static-video/jobs/{job_id}/file/mp4", timeout=180)
         if r.status_code == 200 and len(r.content) > 10_000:
             log.ok(f"mp4 downloaded ({len(r.content):,} bytes)")
+            result.output_bytes = len(r.content)
+            result.state = "pass"
+            result.duration_sec = time.time() - t_start
         else:
-            log.fail(f"mp4 download status={r.status_code} size={len(r.content)}")
+            msg = f"mp4 download status={r.status_code} size={len(r.content)}"
+            log.fail(msg)
+            result.state, result.detail = "fail", msg
     except Exception as e:  # noqa: BLE001
         log.fail(f"mp4 download: {e}")
+        result.state, result.detail = "fail", str(e)
 
 
 # ---------------------------------------------------------------------------
-# UC3 — Podcast
+# UC3 - Podcast (1 language)
 # ---------------------------------------------------------------------------
-def test_uc3_render(client: httpx.Client, log: Log) -> None:
-    log.header("UC3  PODCAST  full render")
-    if not UC3_FIXTURE.exists():
-        log.fail(f"Fixture missing: {UC3_FIXTURE}")
+def run_uc3_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None:
+    log.header(f"UC3  PODCAST  {plan.language}  {plan.fixture}")
+    result = RunResult(uc="UC3", language=plan.language, fixture=plan.fixture)
+    log.record(result)
+
+    fixture_path = FIXTURE_DIR / plan.fixture
+    if not fixture_path.exists():
+        msg = f"Fixture missing: {fixture_path}"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
+
+    t_start = time.time()
 
     # 1. Ingest
     log.step("POST /api/podcast/ingest")
-    with UC3_FIXTURE.open("rb") as f:
-        r = client.post(
-            "/api/podcast/ingest",
-            files={"file": (UC3_FIXTURE.name, f, "application/vnd.openxmlformats-officedocument.presentationml.presentation")},
-            timeout=120,
-        )
+    try:
+        with fixture_path.open("rb") as f:
+            r = client.post(
+                "/api/podcast/ingest",
+                files={"file": (
+                    fixture_path.name, f,
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                )},
+                timeout=120,
+            )
+    except Exception as e:  # noqa: BLE001
+        log.fail(f"ingest: {e}")
+        result.state, result.detail = "fail", str(e)
+        return
     if r.status_code != 200:
-        log.fail(f"ingest -> {r.status_code}: {r.text[:300]}")
+        msg = f"ingest -> {r.status_code}: {r.text[:200]}"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
     doc = r.json().get("document", {})
     doc_id = doc.get("id")
     log.ok(f"ingested doc_id={doc_id} title={doc.get('title')!r}")
 
-    # 2. Script (SSE streaming)
-    log.step("POST /api/podcast/script/stream (SSE)")
+    # 2. Script (SSE)
+    log.step(f"POST /api/podcast/script/stream lang={plan.language}")
     payload = {
         "document_id": doc_id,
-        "language": "en-US",
+        "language": plan.language,
         "style": "casual",
         "length": "short",
         "num_turns": 4,
     }
-    script_id = None
+    script_id: Optional[str] = None
     turn_count = 0
     t0 = time.time()
     try:
-        with client.stream("POST", "/api/podcast/script/stream", json=payload, timeout=180) as r:
+        with client.stream(
+            "POST", "/api/podcast/script/stream",
+            json=payload, timeout=180,
+        ) as r:
             if r.status_code != 200:
-                log.fail(f"script -> {r.status_code}: {r.read()[:300]!r}")
+                msg = f"script -> {r.status_code}: {r.read()[:200]!r}"
+                log.fail(msg)
+                result.state, result.detail = "fail", msg
                 return
             current_event = None
             for line in r.iter_lines():
@@ -229,15 +361,20 @@ def test_uc3_render(client: httpx.Client, log: Log) -> None:
                             pass
                         break
                     elif current_event == "error":
-                        log.fail(f"script stream error: {data}")
+                        msg = f"script stream error: {data}"
+                        log.fail(msg)
+                        result.state, result.detail = "fail", msg
                         return
     except Exception as e:  # noqa: BLE001
         log.fail(f"script stream: {e}")
+        result.state, result.detail = "fail", str(e)
         return
     if not script_id:
-        log.fail("script stream ended without script_id")
+        msg = "script stream ended without script_id"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
-    log.ok(f"script generated id={script_id} turns={turn_count} in {time.time()-t0:.1f}s")
+    log.ok(f"script id={script_id} turns={turn_count} in {time.time()-t0:.1f}s")
 
     # 3. Render
     log.step("POST /api/podcast/render")
@@ -245,14 +382,14 @@ def test_uc3_render(client: httpx.Client, log: Log) -> None:
         "script_id": script_id,
         "roles": {
             "interviewer": {
-                "display_name": "Ava",
+                "display_name": "Host",
                 "avatar": "lisa",
-                "voice": "en-US-Ava:DragonHDLatestNeural",
+                "voice": plan.voice_female,
             },
             "expert": {
-                "display_name": "Andrew",
+                "display_name": "Expert",
                 "avatar": "harry",
-                "voice": "en-US-Andrew:DragonHDLatestNeural",
+                "voice": plan.voice_male,
             },
         },
         "layout": "split_screen_with_slides",
@@ -261,7 +398,9 @@ def test_uc3_render(client: httpx.Client, log: Log) -> None:
     }
     r = client.post("/api/podcast/render", json=render_req, timeout=30)
     if r.status_code != 200:
-        log.fail(f"render -> {r.status_code}: {r.text[:400]}")
+        msg = f"render -> {r.status_code}: {r.text[:300]}"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
     job = r.json()
     job_id = job.get("id")
@@ -289,7 +428,9 @@ def test_uc3_render(client: httpx.Client, log: Log) -> None:
             if state in ("done", "failed"):
                 final_state = state
                 if state == "failed":
-                    log.fail(f"render failed: {job.get('error')}")
+                    msg = f"render failed: {job.get('error')}"
+                    log.fail(msg)
+                    result.state, result.detail = "fail", msg
                     return
                 break
         except Exception as e:  # noqa: BLE001
@@ -297,20 +438,27 @@ def test_uc3_render(client: httpx.Client, log: Log) -> None:
         time.sleep(POLL_INTERVAL_SEC)
 
     if final_state != "done":
-        log.fail(f"render timeout after {POLL_TIMEOUT_SEC}s")
+        msg = f"render timeout after {POLL_TIMEOUT_SEC}s"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
         return
     log.ok(f"render completed in {time.time()-t0:.1f}s")
 
-    # 5. Download mp3 (cheaper than mp4; we just want to confirm output exists)
+    # 5. Download mp3 (fallback mp4)
     for kind in ("mp3", "mp4"):
         try:
-            r = client.get(f"/api/podcast/jobs/{job_id}/file/{kind}", timeout=120)
+            r = client.get(f"/api/podcast/jobs/{job_id}/file/{kind}", timeout=180)
             if r.status_code == 200 and len(r.content) > 10_000:
                 log.ok(f"{kind} downloaded ({len(r.content):,} bytes)")
-                return  # one is enough
+                result.output_bytes = len(r.content)
+                result.state = "pass"
+                result.duration_sec = time.time() - t_start
+                return
         except Exception as e:  # noqa: BLE001
             print(f"     {kind} download error: {e}")
-    log.fail("no media file downloadable")
+    msg = "no media file downloadable"
+    log.fail(msg)
+    result.state, result.detail = "fail", msg
 
 
 # ---------------------------------------------------------------------------
@@ -319,17 +467,35 @@ def test_uc3_render(client: httpx.Client, log: Log) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default=DEFAULT_BASE)
-    parser.add_argument("--skip-video", action="store_true")
-    parser.add_argument("--skip-podcast", action="store_true")
+    parser.add_argument(
+        "--languages",
+        default="en-US",
+        help="Comma-separated list of locales to test, e.g. 'fr-FR,en-US,es-ES'. "
+             "Default: en-US only.",
+    )
+    parser.add_argument("--skip-video", action="store_true", help="Skip UC2")
+    parser.add_argument("--skip-podcast", action="store_true", help="Skip UC3")
     args = parser.parse_args()
 
+    requested = [lang.strip() for lang in args.languages.split(",") if lang.strip()]
+    unknown = [lang for lang in requested if lang not in PLANS]
+    if unknown:
+        print(f"ERROR: unknown languages: {unknown}. Supported: {sorted(PLANS.keys())}")
+        return 2
+
     print(f"Target: {args.base_url}")
+    print(f"Languages: {requested}")
+    print(f"UCs: {'UC2 ' if not args.skip_video else ''}"
+          f"{'UC3' if not args.skip_podcast else ''}".strip())
+
     log = Log()
     with httpx.Client(base_url=args.base_url, timeout=60) as client:
-        if not args.skip_video:
-            test_uc2_render(client, log)
-        if not args.skip_podcast:
-            test_uc3_render(client, log)
+        for lang in requested:
+            plan = PLANS[lang]
+            if not args.skip_video:
+                run_uc2_for_language(client, plan, log)
+            if not args.skip_podcast:
+                run_uc3_for_language(client, plan, log)
     return log.summary()
 
 
