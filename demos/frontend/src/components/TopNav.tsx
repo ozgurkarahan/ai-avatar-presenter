@@ -17,15 +17,40 @@ type NavGroup = {
 
 const groups: NavGroup[] = [
   {
-    title: 'Live Avatar',
-    tag: 'UC1',
+    title: 'AI Presenter',
+    tag: 'Legacy',
     items: [
       {
         to: '/',
         end: true,
         icon: '🎙️',
         label: 'Presenter',
-        desc: 'Upload a .pptx and present live with an AI avatar (real-time Q&A, multilingual voices).',
+        desc: 'Original single-deck presenter (kept for compatibility).',
+      },
+    ],
+  },
+  {
+    title: 'Learning Hub',
+    tag: 'UC1',
+    items: [
+      {
+        to: '/uc1',
+        end: true,
+        icon: '🏠',
+        label: 'Hub',
+        desc: 'UC1 Learning Hub home — pick Learn or Decks.',
+      },
+      {
+        to: '/uc1/learn',
+        icon: '🎓',
+        label: 'Learn',
+        desc: 'Ask anything across all decks; the avatar presents the right slide.',
+      },
+      {
+        to: '/uc1/decks',
+        icon: '📚',
+        label: 'Decks',
+        desc: 'Upload, browse, tag, and manage your training decks.',
       },
     ],
   },
@@ -130,8 +155,14 @@ export default function TopNav() {
       >
         Acme · AI Avatar Suite
       </div>
-      {groups.map((g) => (
-        <div key={g.tag} style={groupBoxStyle} title={`${g.tag} — ${g.title}`}>
+      {groups.map((g) => {
+        const muted = g.tag === 'Legacy';
+        return (
+        <div
+          key={g.tag}
+          style={{ ...groupBoxStyle, opacity: muted ? 0.72 : 1 }}
+          title={`${g.tag} — ${g.title}${muted ? ' (deprecated)' : ''}`}
+        >
           <span style={groupLabelStyle}>
             {g.tag} · {g.title}
           </span>
@@ -148,7 +179,8 @@ export default function TopNav() {
             </NavLink>
           ))}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
