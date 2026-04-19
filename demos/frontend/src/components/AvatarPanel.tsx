@@ -10,6 +10,7 @@ interface Props {
   onRequestVideoAutoPlay?: () => void;
   selectedAvatar?: string;
   selectedVoice?: string;
+  autoStart?: boolean;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -83,7 +84,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice }: Props) {
+export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice, autoStart = false }: Props) {
   const [connected, setConnected] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -590,6 +591,23 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   useEffect(() => {
     return () => { stopSession(); };
   }, []);
+
+  // Auto-start: connect on mount, and auto-present whenever the deck changes (path mode)
+  const autoStartedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoStart) return;
+    if (!connected) {
+      startSessionRef.current();
+      return;
+    }
+    // Already connected — if presentation changed, auto-present from the current slide
+    if (autoStartedForRef.current !== presentation.id) {
+      autoStartedForRef.current = presentation.id;
+      setPresenting(true);
+      setPaused(false);
+      setTimeout(() => speakSlideRef.current(currentSlideRef.current), 500);
+    }
+  }, [autoStart, connected, presentation.id]);
 
   return (
     <div style={styles.container}>
