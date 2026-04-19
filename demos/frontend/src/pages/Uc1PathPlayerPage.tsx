@@ -307,7 +307,7 @@ export default function Uc1PathPlayerPage() {
             </select>
           </label>
 
-          <LanguageSelector value={language} onChange={setLanguage} />
+          <LanguageSelector value={language} onChange={setLanguage} variant="light" />
         </div>
 
         {/* Start / Resume banner */}
@@ -392,6 +392,7 @@ export default function Uc1PathPlayerPage() {
                   onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
                   selectedAvatar={selectedAvatar}
                   selectedVoice={selectedVoice}
+                  autoStart={true}
                 />
               </div>
             </div>

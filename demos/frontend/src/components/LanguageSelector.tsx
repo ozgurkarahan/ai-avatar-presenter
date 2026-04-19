@@ -3,6 +3,7 @@ import React from 'react';
 interface Props {
   value: string;
   onChange: (lang: string) => void;
+  variant?: 'dark' | 'light';
 }
 
 // Languages with native DragonHD voices are marked with ✅
@@ -46,12 +47,23 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-export default function LanguageSelector({ value, onChange }: Props) {
+export default function LanguageSelector({ value, onChange, variant = 'dark' }: Props) {
+  const isLight = variant === 'light';
+  const selectStyle: React.CSSProperties = isLight
+    ? {
+        ...styles.select,
+        border: '1px solid #cbd5e1',
+        background: 'white',
+        color: '#1a1a2e',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23334155' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6.5 6 6.5-6'/%3E%3C/svg%3E")`,
+      }
+    : styles.select;
+  const labelStyle: React.CSSProperties = isLight ? { ...styles.label, color: '#334155' } : styles.label;
   return (
     <div style={styles.container}>
-      <span style={styles.label}>🌐</span>
+      <span style={labelStyle}>🌐</span>
       <select
-        style={styles.select}
+        style={selectStyle}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
