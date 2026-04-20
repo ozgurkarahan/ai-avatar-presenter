@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, B
 from fastapi.responses import StreamingResponse, FileResponse
 
 from config import AzureConfig, load_config
+from services.scorm_packager import build_scorm_package
 from services.podcast_models import (
     AvatarOption,
     Document,
@@ -269,15 +270,45 @@ def list_jobs(limit: int = 20) -> list[PodcastJob]:
 
 @router.get("/jobs/{job_id}/file/{kind}")
 def download_job_file(job_id: str, kind: str):
-    """Serve the rendered mp4/mp3/srt from local disk (PoC)."""
+    """Serve the rendered mp4/mp3/srt/scorm from local disk (PoC)."""
     files = _JOB_FILES.get(job_id)
-    if not files or kind not in files:
+    if not files:
+        raise HTTPException(404, "File not found")
+
+    # Lazy-generate SCORM package on first request
+    if kind == "scorm" and (not files.get("scorm") or not files["scorm"].exists()):
+        mp3_path = files.get("mp3")
+        srt_path = files.get("srt")
+        if not mp3_path or not srt_path:
+            raise HTTPException(404, "MP3 or SRT not available for SCORM packaging")
+        job = JOBS.get(job_id)
+        script = SCRIPTS.get(job.script_id) if job else None
+        doc = DOCUMENTS.get(script.document_id) if script else None
+        title = (doc.title if doc else job_id) or job_id
+        language = script.language if script else "en-US"
+        files["scorm"] = build_scorm_package(
+            title=title,
+            language=language,
+            media_path=mp3_path,
+            srt_path=srt_path,
+            out_dir=mp3_path.parent,
+        )
+
+    if kind not in files:
         raise HTTPException(404, "File not found")
     p = files[kind]
     if not p.exists():
         raise HTTPException(404, "File not found on disk")
-    media = {"mp4": "video/mp4", "mp3": "audio/mpeg", "srt": "application/x-subrip"}[kind]
-    return FileResponse(p, media_type=media, filename=p.name)
+    media = {"mp4": "video/mp4", "mp3": "audio/mpeg", "srt": "application/x-subrip",
+             "scorm": "application/zip"}[kind]
+    filename = p.name
+    if kind == "scorm":
+        job = JOBS.get(job_id)
+        script = SCRIPTS.get(job.script_id) if job else None
+        doc = DOCUMENTS.get(script.document_id) if script else None
+        safe = "".join(c if c.isalnum() or c in " -_" else "" for c in (doc.title if doc else job_id))[:60].strip()
+        filename = f"{safe or job_id}-scorm.zip"
+    return FileResponse(p, media_type=media, filename=filename)
 
 
 # ---------------------------------------------------------------------------

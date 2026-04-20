@@ -341,6 +341,9 @@ function PlayerModal({ item, loading, onClose }: {
                     ⬇ Subtitles
                   </a>
                 )}
+                <a href={`/api/podcast/jobs/${item.job_id}/file/scorm`} download style={btn('secondary')}>
+                  📦 SCORM
+                </a>
               </div>
             </div>
           </>

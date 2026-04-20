@@ -22,10 +22,13 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import sys
 import time
+import xml.etree.ElementTree as ET
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -278,6 +281,70 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
         log.fail(f"mp4 download: {e}")
         result.state, result.detail = "fail", str(e)
 
+    # 6. SCORM package validation
+    log.step("GET /api/static-video/jobs/{job_id}/file/scorm")
+    try:
+        r = client.get(f"/api/static-video/jobs/{job_id}/file/scorm", timeout=180)
+        if r.status_code != 200:
+            log.fail(f"scorm download status={r.status_code}")
+        else:
+            ct = r.headers.get("content-type", "")
+            if ct.startswith("application/zip"):
+                log.ok(f"scorm content-type={ct}")
+            else:
+                log.fail(f"scorm unexpected content-type={ct}")
+            zf = zipfile.ZipFile(io.BytesIO(r.content))
+            names = zf.namelist()
+            if "imsmanifest.xml" in names:
+                log.ok("scorm contains imsmanifest.xml")
+            else:
+                log.fail("scorm missing imsmanifest.xml")
+            if "index.html" in names:
+                log.ok("scorm contains index.html")
+            else:
+                log.fail("scorm missing index.html")
+            if "scorm.js" in names:
+                log.ok("scorm contains scorm.js")
+            else:
+                log.fail("scorm missing scorm.js")
+            if "subtitles.vtt" in names:
+                log.ok("scorm contains subtitles.vtt")
+            else:
+                log.fail("scorm missing subtitles.vtt")
+            if any(n.endswith(".mp4") for n in names):
+                log.ok("scorm contains mp4 video")
+            else:
+                log.fail("scorm missing mp4 video")
+            # Validate manifest XML
+            if "imsmanifest.xml" in names:
+                manifest = zf.read("imsmanifest.xml").decode()
+                root = ET.fromstring(manifest)
+                if "scormtype" in manifest.lower() or "scormType" in manifest:
+                    log.ok(f"scorm manifest valid ({len(manifest):,} bytes)")
+                else:
+                    log.fail("scorm manifest missing scormType attribute")
+            # Validate player HTML
+            if "index.html" in names:
+                html = zf.read("index.html").decode()
+                if "<video" in html:
+                    log.ok("scorm player contains video tag")
+                else:
+                    log.fail("scorm player missing video tag")
+                if "scormInit" in html:
+                    log.ok("scorm player contains scormInit")
+                else:
+                    log.fail("scorm player missing scormInit")
+            # Validate subtitles
+            if "subtitles.vtt" in names:
+                vtt = zf.read("subtitles.vtt").decode()
+                if vtt.startswith("WEBVTT"):
+                    log.ok("scorm subtitles in VTT format")
+                else:
+                    log.fail("scorm subtitles not in VTT format")
+            log.ok(f"scorm package valid ({len(names)} files, {len(r.content):,} bytes)")
+    except Exception as e:  # noqa: BLE001
+        log.fail(f"scorm validation: {e}")
+
 
 # ---------------------------------------------------------------------------
 # UC3 - Podcast (1 language)
@@ -445,6 +512,7 @@ def run_uc3_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
     log.ok(f"render completed in {time.time()-t0:.1f}s")
 
     # 5. Download mp3 (fallback mp4)
+    media_ok = False
     for kind in ("mp3", "mp4"):
         try:
             r = client.get(f"/api/podcast/jobs/{job_id}/file/{kind}", timeout=180)
@@ -453,12 +521,78 @@ def run_uc3_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
                 result.output_bytes = len(r.content)
                 result.state = "pass"
                 result.duration_sec = time.time() - t_start
-                return
+                media_ok = True
+                break
         except Exception as e:  # noqa: BLE001
             print(f"     {kind} download error: {e}")
-    msg = "no media file downloadable"
-    log.fail(msg)
-    result.state, result.detail = "fail", msg
+    if not media_ok:
+        msg = "no media file downloadable"
+        log.fail(msg)
+        result.state, result.detail = "fail", msg
+
+    # 6. SCORM package validation
+    log.step("GET /api/podcast/jobs/{job_id}/file/scorm")
+    try:
+        r = client.get(f"/api/podcast/jobs/{job_id}/file/scorm", timeout=180)
+        if r.status_code != 200:
+            log.fail(f"scorm download status={r.status_code}")
+        else:
+            ct = r.headers.get("content-type", "")
+            if ct.startswith("application/zip"):
+                log.ok(f"scorm content-type={ct}")
+            else:
+                log.fail(f"scorm unexpected content-type={ct}")
+            zf = zipfile.ZipFile(io.BytesIO(r.content))
+            names = zf.namelist()
+            if "imsmanifest.xml" in names:
+                log.ok("scorm contains imsmanifest.xml")
+            else:
+                log.fail("scorm missing imsmanifest.xml")
+            if "index.html" in names:
+                log.ok("scorm contains index.html")
+            else:
+                log.fail("scorm missing index.html")
+            if "scorm.js" in names:
+                log.ok("scorm contains scorm.js")
+            else:
+                log.fail("scorm missing scorm.js")
+            if "subtitles.vtt" in names:
+                log.ok("scorm contains subtitles.vtt")
+            else:
+                log.fail("scorm missing subtitles.vtt")
+            if any(n.endswith(".mp3") for n in names):
+                log.ok("scorm contains mp3 audio")
+            else:
+                log.fail("scorm missing mp3 audio")
+            # Validate manifest XML
+            if "imsmanifest.xml" in names:
+                manifest = zf.read("imsmanifest.xml").decode()
+                root = ET.fromstring(manifest)
+                if "scormtype" in manifest.lower() or "scormType" in manifest:
+                    log.ok(f"scorm manifest valid ({len(manifest):,} bytes)")
+                else:
+                    log.fail("scorm manifest missing scormType attribute")
+            # Validate player HTML
+            if "index.html" in names:
+                html = zf.read("index.html").decode()
+                if "<audio" in html:
+                    log.ok("scorm player contains audio tag")
+                else:
+                    log.fail("scorm player missing audio tag")
+                if "scormInit" in html:
+                    log.ok("scorm player contains scormInit")
+                else:
+                    log.fail("scorm player missing scormInit")
+            # Validate subtitles
+            if "subtitles.vtt" in names:
+                vtt = zf.read("subtitles.vtt").decode()
+                if vtt.startswith("WEBVTT"):
+                    log.ok("scorm subtitles in VTT format")
+                else:
+                    log.fail("scorm subtitles not in VTT format")
+            log.ok(f"scorm package valid ({len(names)} files, {len(r.content):,} bytes)")
+    except Exception as e:  # noqa: BLE001
+        log.fail(f"scorm validation: {e}")
 
 
 # ---------------------------------------------------------------------------

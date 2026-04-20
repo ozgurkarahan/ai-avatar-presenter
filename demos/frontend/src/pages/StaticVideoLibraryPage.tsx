@@ -321,6 +321,9 @@ function PlayerModal({ item, loading, onClose }: {
                     ⬇ Subtitles
                   </a>
                 )}
+                <a href={`/api/static-video/jobs/${item.job_id}/file/scorm`} download style={btn('secondary')}>
+                  📦 SCORM
+                </a>
               </div>
             </div>
           </>

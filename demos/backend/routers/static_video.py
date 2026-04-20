@@ -24,6 +24,7 @@ from fastapi import (
 from fastapi.responses import FileResponse, StreamingResponse
 
 from config import AzureConfig, load_config
+from services.scorm_packager import build_scorm_package
 from services.static_models import (
     IngestResponse,
     JobOutputs,
@@ -290,8 +291,34 @@ def get_job(job_id: str) -> StaticJob:
 
 @router.get("/jobs/{job_id}/file/{kind}")
 def download_job_file(job_id: str, kind: str):
-    """Serve the rendered mp4/mp3/srt/thumb from local disk (pre-publish)."""
+    """Serve the rendered mp4/mp3/srt/thumb/scorm from local disk (pre-publish)."""
     files = _JOB_FILES.get(job_id)
+
+    # Lazy-generate SCORM package on first request
+    if kind == "scorm" and files:
+        scorm_path = files.get("scorm")
+        if not scorm_path or not scorm_path.exists():
+            mp4_path = files.get("mp4")
+            srt_path = files.get("srt")
+            if not mp4_path or not mp4_path.exists() or not srt_path or not srt_path.exists():
+                raise HTTPException(404, "MP4/SRT not available for SCORM packaging")
+            job = JOBS.get(job_id)
+            if not job:
+                raise HTTPException(404, f"Job {job_id} not found")
+            doc = DOCUMENTS.get(job.doc_id)
+            script = SCRIPTS.get(job.doc_id)
+            title = (doc.title if doc else job.doc_id) or job.doc_id
+            language = script.language if script else "en-US"
+            scorm_path = build_scorm_package(
+                title=title,
+                language=language,
+                media_path=mp4_path,
+                srt_path=srt_path,
+                out_dir=mp4_path.parent,
+                thumbnail_path=files.get("thumb"),
+            )
+            files["scorm"] = scorm_path
+
     if not files or kind not in files:
         raise HTTPException(404, "File not found")
     p = files[kind]
@@ -302,8 +329,15 @@ def download_job_file(job_id: str, kind: str):
         "mp3": "audio/mpeg",
         "srt": "application/x-subrip",
         "thumb": "image/jpeg",
+        "scorm": "application/zip",
     }.get(kind, "application/octet-stream")
-    return FileResponse(p, media_type=media, filename=p.name)
+    dl_name = p.name
+    if kind == "scorm":
+        _job = JOBS.get(job_id)
+        _doc = DOCUMENTS.get(_job.doc_id) if _job else None
+        label = (_doc.title if _doc and _doc.title else job_id)
+        dl_name = f"{label}-scorm.zip"
+    return FileResponse(p, media_type=media, filename=dl_name)
 
 
 # ---------------------------------------------------------------------------
