@@ -33,7 +33,7 @@ COPY demos/backend/ .
 COPY --from=frontend-build /frontend/dist ./static
 
 # Local data dirs for rendered slide images
-RUN mkdir -p data/uploads data/slides && chown -R appuser:appuser data
+RUN mkdir -p data/uploads data/slides slides_cache && chown -R appuser:appuser data slides_cache
 
 USER appuser
 
