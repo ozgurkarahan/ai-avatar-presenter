@@ -41,28 +41,34 @@ The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `
 ## 🏗️ Architecture
 
 ```
-┌──────────────────┐       ┌──────────────────────┐       ┌─────────────────────────┐
-│                  │       │                      │       │    Azure Services       │
-│   Browser /      │       │   FastAPI Backend     │       │                         │
-│   Teams Tab      │◄─────►│   (Python 3.12)      │──────►│  Azure AI Speech        │
-│   (React SPA)    │ HTTP  │                      │       │   ├─ VoiceLive Avatar    │
-│                  │  &    │  ┌────────────────┐  │       │   ├─ DragonHD TTS       │
-│  ┌────────────┐  │ WS    │  │ PPTX Parser    │  │       │   └─ Batch Synthesis    │
-│  │SlideViewer │  │       │  │ Translation    │  │       │                         │
-│  │AvatarPanel │  │       │  │ Avatar Service │  │       │  Azure OpenAI           │
-│  │QA Chat     │  │       │  │ QA (RAG)       │  │       │   ├─ GPT-4.1            │
-│  │Agent Chat  │  │       │  │ Voice Proxy    │  │       │   └─ text-embedding-    │
-│  │Language    │  │       │  │ Storage Service│  │       │       3-small           │
-│  │ Selector   │  │       │  │ Agent (FC)     │  │       │                         │
-│  │Pres. List  │  │       │  └────────────────┘  │       │  Azure Cosmos DB        │
-│  └────────────┘  │       │                      │       │   └─ Presentation data  │
-└──────────────────┘       └──────────────────────┘       │                         │
-                                     │                    │  Azure Blob Storage     │
-                           ┌─────────┴─────────┐         │   └─ Slide images + PPTX│
-                           │  LibreOffice       │         │                         │
-                           │  PPTX → PDF → PNG  │         │  Azure Container Apps   │
-                           │  (Poppler)         │         │  Azure Container Registry│
-                           └───────────────────┘         └─────────────────────────┘
+┌───────────────────────────┐      ┌──────────────────────────────┐      ┌──────────────────────────────┐
+│   Browser / Teams Tab      │      │   FastAPI Backend             │      │     Azure Services            │
+│   React 19 SPA             │      │   (Python 3.12 · Uvicorn)    │      │                              │
+│                            │      │                              │      │  Azure AI Speech              │
+│  ┌──────────────────────┐  │      │  ┌────────────────────────┐  │      │   ├─ VoiceLive Avatar (WS)   │
+│  │ UC1 legacy (/)       │  │      │  │ routers/               │  │      │   ├─ DragonHD TTS            │
+│  │  SlideViewer,        │  │ HTTP │  │  app.py   (UC1 legacy) │─────────▶│   └─ Batch Avatar           │
+│  │  AvatarPanel, QA     │◀─┼─────▶│  │  uc1.py        (Hub)   │  │      │                              │
+│  │                      │  │  &   │  │  uc1_paths.py  (Paths) │  │      │  Azure OpenAI                │
+│  │ UC1 Hub (/uc1)       │  │ WSS  │  │  static_video.py (UC2) │─────────▶│   ├─ GPT-4.1                │
+│  │  Decks, Learn,       │  │      │  │  podcast.py     (UC3)  │  │      │   └─ text-embedding-3-small  │
+│  │  Paths, Player       │  │      │  └────────────────────────┘  │      │                              │
+│  │                      │  │      │  ┌────────────────────────┐  │      │  Azure AI Search             │
+│  │ UC2 (/video)         │  │      │  │ services/              │  │      │   └─ uc1-decks (hybrid)      │
+│  │  Static Video + Lib  │  │      │  │  pptx_parser, voice,   │─────────▶│                             │
+│  │                      │  │      │  │  qa, translation,      │  │      │  Azure Cosmos DB (Serverless)│
+│  │ UC3 (/podcast)       │  │      │  │  uc1_search,           │  │      │   ├─ presentations           │
+│  │  Podcast + Library   │  │      │  │  static_* (×6),        │  │      │   └─ paths                   │
+│  └──────────────────────┘  │      │  │  podcast_* (×7),       │  │      │                              │
+│                            │      │  │  storage               │─────────▶│  Azure Blob Storage         │
+└───────────────────────────┘      │  └────────────────────────┘  │      │   └─ PPTX + slides + media   │
+                                    │           │                  │      │                              │
+                                    │  ┌────────▼─────────────┐   │      │  Azure Container Apps + ACR  │
+                                    │  │ LibreOffice + Poppler │   │      │  Log Analytics               │
+                                    │  │ PPTX → PDF → PNG      │   │      └──────────────────────────────┘
+                                    │  │ ffmpeg (UC2/UC3)      │   │
+                                    │  └──────────────────────┘   │
+                                    └──────────────────────────────┘
 ```
 
 ---
@@ -74,13 +80,15 @@ The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `
 | **Frontend**     | React 19, TypeScript, Vite 8                                |
 | **Backend**      | Python 3.12, FastAPI, Uvicorn, Gunicorn                     |
 | **AI / Speech**  | Azure AI Speech (VoiceLive Avatar API, DragonHD TTS, Batch Synthesis) |
-| **AI / LLM**    | Azure OpenAI — GPT-4.1, text-embedding-3-small              |
+| **AI / LLM**     | Azure OpenAI — GPT-4.1 (chat, translation, scripts, path recommend JSON mode), text-embedding-3-small |
+| **AI / Search**  | Azure AI Search — hybrid vector + keyword for UC1 Learning Hub (`uc1-decks` index, Free SKU) |
 | **AI / Agent**   | Function-calling agent (translate, Q&A, SSML generation)    |
 | **Slide Render** | LibreOffice Impress (headless) → PDF → pdf2image (Poppler)  |
-| **Vector Search**| In-memory numpy cosine similarity                           |
-| **Persistence**  | Azure Cosmos DB (Serverless) + Azure Blob Storage (SAS URLs)|
+| **Video/Audio**  | ffmpeg + ffprobe — UC2 slide compose, UC3 podcast compose, SRT generation |
+| **Vector Search**| Azure AI Search (UC1 Hub) + in-memory numpy cosine similarity (UC1 legacy Q&A) |
+| **Persistence**  | Azure Cosmos DB (Serverless) — containers `presentations` + `paths` — and Azure Blob Storage (SAS URLs) |
 | **Auth**         | Azure AD / Managed Identity (`DefaultAzureCredential`)      |
-| **Infra**        | Azure Container Apps, ACR, Bicep IaC, Azure Developer CLI (`azd`)|
+| **Infra**        | Azure Container Apps, ACR, Bicep IaC, Azure Developer CLI (`azd`) |
 | **Teams**        | `@microsoft/teams-js` SDK, Static Tab manifest (v1.17)      |
 | **Containerization** | Docker (multi-stage build)                              |
 
@@ -306,11 +314,11 @@ The repository ships two end-to-end runners that drive the real deployed stack (
 
 | Script | Scope | Last validated |
 |---|---|---|
-| `tests/e2e_rfi.py` | Reset DB → upload 9 RFI fixture decks → UC1 hub / search / paths / progress / AI recommend → UC2 & UC3 smoke | 30/30 passed on `uc1v10` |
-| `tests/e2e_render.py` | Full render pipeline for UC2 (PPTX → MP4) and UC3 (PPTX → MP3) including TTS + compose. Accepts `--languages fr-FR,en-US,es-ES` to sweep the three RFI thematic groups. | 30/30 passed multi-language (fr-FR, en-US, es-ES × UC2+UC3 × ingest/script/render/download, ~30 min total) |
+| `tests/e2e_rfi.py` | Reset DB → upload 9 fixture decks → UC1 hub / search / paths / progress / AI recommend → UC2 & UC3 smoke | 30/30 passed on `uc1v10` |
+| `tests/e2e_render.py` | Full render pipeline for UC2 (PPTX → MP4) and UC3 (PPTX → MP3) including TTS + compose. Accepts `--languages fr-FR,en-US,es-ES` to sweep the three thematic groups. | 30/30 passed multi-language (fr-FR, en-US, es-ES × UC2+UC3 × ingest/script/render/download, ~30 min total) |
 
 ```powershell
-# Run the RFI suite (cheap, ~1 min)
+# Run the fixture+smoke suite (cheap, ~1 min)
 python tests/e2e_rfi.py --base-url https://<your-container-app>
 
 # Run the full render suite — English only (~10 min + TTS tokens)
@@ -319,7 +327,7 @@ python tests/e2e_render.py --base-url https://<your-container-app>
 # Multi-language render sweep (~30 min + 3× TTS cost)
 python tests/e2e_render.py --base-url https://<your-container-app> --languages fr-FR,en-US,es-ES
 
-# Regenerate the 9 RFI fixture decks from source-of-truth Python
+# Regenerate the 9 fixture decks from source-of-truth Python
 python tests/fixtures/rfi/_generate.py
 ```
 
@@ -342,64 +350,99 @@ npx playwright test tests/uc1-learning-paths.spec.ts
 ```
 ai-presenter/
 ├── demos/
-│   ├── backend/                  # FastAPI backend
-│   │   ├── app.py               # Main application & API routes + agent chat
-│   │   ├── config.py            # Configuration management
-│   │   ├── agent_app.py         # Azure AI Foundry agent entry point
-│   │   ├── agent_tools.py       # Agent tool definitions
-│   │   ├── requirements.txt     # Python dependencies
-│   │   ├── .env.example         # Environment variable template
-│   │   ├── data/
-│   │   │   ├── uploads/         # Uploaded PPTX files
-│   │   │   └── slides/          # Rendered PNG slide images
+│   ├── backend/                  # FastAPI backend (Python 3.12)
+│   │   ├── app.py                # Legacy UC1 routes (/api/upload, /api/slides, /api/qa, /ws/voice) + agent chat
+│   │   ├── config.py             # Configuration management
+│   │   ├── agent_app.py          # Azure AI Foundry agent entry point
+│   │   ├── agent_tools.py        # Agent tool definitions
+│   │   ├── requirements.txt      # Python dependencies
+│   │   ├── .env.example          # Environment variable template
+│   │   ├── data/                 # Local dev: uploads/ + slides/
+│   │   ├── routers/              # Feature-scoped routers
+│   │   │   ├── uc1.py            # UC1 Learning Hub — decks + hybrid search
+│   │   │   ├── uc1_paths.py      # UC1 Learning Paths CRUD + progress + AI recommend
+│   │   │   ├── static_video.py   # UC2 Static Video — ingest, script, render, library
+│   │   │   └── podcast.py        # UC3 Podcast — ingest, script, render, library
 │   │   └── services/
-│   │       ├── pptx_parser.py   # PPTX parsing & slide rendering
-│   │       ├── translation.py   # Azure OpenAI translation
-│   │       ├── avatar.py        # Azure Speech avatar service
-│   │       ├── voice_proxy.py   # WebSocket voice proxy
-│   │       ├── qa.py            # RAG-based slide Q&A
-│   │       └── storage.py       # Cosmos DB + Blob Storage persistence
-│   └── frontend/                 # React SPA
+│   │       ├── pptx_parser.py    # PPTX parsing & slide rendering
+│   │       ├── translation.py    # Azure OpenAI translation (cached in Cosmos)
+│   │       ├── avatar.py         # Azure Speech avatar service
+│   │       ├── voice_proxy.py    # WebSocket voice proxy (VoiceLive)
+│   │       ├── qa.py             # Legacy in-memory numpy RAG (UC1 legacy)
+│   │       ├── uc1_search.py     # Azure AI Search client (hybrid vector + keyword)
+│   │       ├── static_*.py       # UC2 pipeline — ingest, script, render, compose, library, models
+│   │       ├── podcast_*.py      # UC3 pipeline — ingest, script, render, compose, library, models
+│   │       └── storage.py        # Cosmos DB (presentations + paths) + Blob Storage
+│   └── frontend/                 # React 19 SPA (Vite 8 + TypeScript)
 │       ├── src/
-│       │   ├── main.tsx         # React entry point
-│       │   ├── App.tsx          # Root component (Teams theme support)
+│       │   ├── main.tsx          # Router entry — /, /uc1*, /video*, /podcast*
+│       │   ├── App.tsx           # Root component (Teams theme support)
 │       │   ├── components/
-│       │   │   ├── PptUpload.tsx       # File upload UI
-│       │   │   ├── PresentationList.tsx # Saved presentations (CRUD)
-│       │   │   ├── SlideViewer.tsx     # Slide display & navigation
-│       │   │   ├── AvatarPanel.tsx     # Avatar video panel
-│       │   │   ├── LanguageSelector.tsx # Language picker (10 languages)
-│       │   │   └── QaChat.tsx          # Q&A chat interface
+│       │   │   ├── TopNav.tsx             # Grouped nav (UC1 legacy / UC1 Hub / UC2 / UC3)
+│       │   │   ├── AvatarPanel.tsx        # WebRTC avatar (autoStart for path player)
+│       │   │   ├── SlideViewer.tsx        # Slide display & navigation
+│       │   │   ├── LanguageSelector.tsx   # Language picker (variant dark/light)
+│       │   │   ├── PptUpload.tsx          # File upload UI
+│       │   │   ├── PresentationList.tsx   # Saved presentations (CRUD)
+│       │   │   └── QaChat.tsx             # Q&A chat interface
+│       │   ├── pages/
+│       │   │   ├── Uc1HubPage.tsx         # UC1 Hub landing
+│       │   │   ├── Uc1DecksPage.tsx       # Deck catalog
+│       │   │   ├── Uc1LearnPage.tsx       # Hybrid search across corpus
+│       │   │   ├── Uc1PathsListPage.tsx   # Paths library + "Recommend with AI"
+│       │   │   ├── Uc1PathPlayerPage.tsx  # Multi-deck sequential player
+│       │   │   ├── Uc1PresentPage.tsx     # Single-deck player
+│       │   │   ├── StaticVideoPage.tsx    # UC2 generator
+│       │   │   ├── StaticVideoLibraryPage.tsx
+│       │   │   ├── PodcastPage.tsx        # UC3 generator
+│       │   │   └── PodcastLibraryPage.tsx
 │       │   └── services/
-│       │       ├── api.ts       # API client
-│       │       └── teams.ts     # Teams SDK integration helpers
-│       ├── public/
-│       │   └── teams/           # Teams app manifest & icons
-│       ├── package.json
-│       └── vite.config.ts
+│       │       ├── api.ts                 # Legacy UC1 API client
+│       │       ├── uc1Api.ts              # UC1 Hub + Paths + Recommend
+│       │       ├── staticVideoApi.ts      # UC2 API client
+│       │       ├── podcast.ts             # UC3 API client
+│       │       └── teams.ts               # Teams SDK helpers
+│       └── public/teams/                  # Teams app manifest & icons
 ├── infra/                        # Azure Bicep IaC
-│   ├── main.bicep               # Main template (subscription-scoped)
-│   ├── main.parameters.json     # Deployment parameters
-│   ├── main.parameters.copilot.json  # Copilot instance parameters
-│   └── modules/
-│       ├── ai-services.bicep    # Azure AI Services (Speech/Avatar)
-│       ├── openai.bicep         # Azure OpenAI + model deployments
-│       ├── cosmos.bicep         # Cosmos DB (Serverless)
-│       ├── storage.bicep        # Blob Storage account
-│       ├── containerapp.bicep   # Container App + ACR + Log Analytics
-│       └── roles.bicep          # RBAC role assignments (5 roles)
-├── scripts/
-│   └── package-teams-app.ps1    # Teams app packaging script
-├── docs/                         # Documentation
-│   ├── architecture.md
-│   ├── deep-dive-azure.md
-│   ├── deploy-copilot.md        # Copilot instance deployment guide
-│   ├── feasibility.md
-│   ├── teams-integration.md
-│   └── diagrams/                # Mermaid + draw.io diagrams
-├── Dockerfile                    # Multi-stage Docker build
+│   ├── main.bicep                # Main template (subscription-scoped)
+│   ├── main.parameters.json
+│   └── modules/                  # ai-services, openai, cosmos, storage, containerapp, roles
+├── scripts/                      # Ops + test-prep scripts
+│   ├── package-teams-app.ps1     # Teams app packaging
+│   ├── uc2_multilang_run.py      # UC2 multi-language rendering sweep
+│   ├── uc2_republish.py          # Re-publish UC2 items
+│   ├── batch_translate.py        # Bulk video translation (Azure Video Translation API)
+│   ├── convert_srt.py            # SRT timestamp validator/fixer
+│   ├── make_multideck_test.py    # Generate multi-deck test corpus
+│   └── (generators, smoke tests, utilities)
+├── tests/
+│   ├── e2e_rfi.py                # End-to-end: reset DB + upload 9 fixtures + UC1/UC2/UC3 smoke (30 checks)
+│   ├── e2e_render.py             # Full render E2E for UC2 + UC3, with --languages multi-locale sweep
+│   ├── test_uc1_api.py           # pytest — UC1 Hub API
+│   ├── test_uc1_paths_api.py     # pytest — Paths + AI recommend (catalog validation)
+│   ├── uc1-learning-paths.spec.ts # Playwright — Paths UI regressions
+│   ├── uc1-learning.spec.ts      # Playwright — Learning Hub UI
+│   ├── conftest.py
+│   └── fixtures/
+│       ├── rfi/                  # 9 coherent decks in 3 thematic groups (Safety FR, Sustainability EN, AI ES)
+│       └── uc1/                  # UC1-specific test fixtures
+├── docs/
+│   ├── index.md                  # Docs navigation map
+│   ├── architecture.md           # Component architecture, data flows, API contract
+│   ├── uc1-learning-hub.md       # UC1 Hub + Paths + AI recommend design
+│   ├── uc2-static-video.md       # UC2 slide-first pipeline design
+│   ├── uc3-podcast-design.md     # UC3 dual-avatar podcast design
+│   ├── deep-dive-azure.md        # Full Azure deep-dive (Bicep, RBAC, security, CI/CD)
+│   ├── teams-integration.md      # Teams embedding feasibility & options
+│   ├── deploy-copilot.md         # Parallel "copilot" instance deployment
+│   ├── feasibility.md            # Historical feasibility study
+│   └── diagrams/                 # Mermaid + draw.io diagrams
+├── Dockerfile                    # Multi-stage build (Node frontend + Python backend + ffmpeg + LibreOffice)
 ├── azure.yaml                    # Azure Developer CLI config
-├── run-local.ps1                 # Local development script (Windows)
+├── playwright.config.ts          # Playwright config (UI E2E)
+├── requirements-test.txt         # Test-time Python deps
+├── run-local.ps1                 # One-command local dev startup (Windows)
+├── package.json                  # Frontend deps (root-level for Playwright)
 ├── LICENSE                       # MIT License
 └── README.md                     # This file
 ```

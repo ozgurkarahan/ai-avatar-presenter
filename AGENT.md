@@ -4,7 +4,7 @@
 
 AI Presenter: AI-powered avatar presentation assistant that reads PowerPoint speaker notes with multilingual text-to-speech. Upload a PowerPoint deck and an AI avatar autonomously presents it — translating speaker notes into the target language and delivering them via a realistic TTS avatar, without needing a live presenter.
 
-The repo now covers all three use cases of Saint-Gobain **RFI 559** in a single app:
+The repo now covers three complementary avatar-presentation use cases in a single app:
 - **UC1 legacy Live Avatar** at `/`
 - **UC1 Learning Hub** at `/uc1` — deck catalog + hybrid Azure AI Search + Learning Paths + AI path recommendation
 - **UC2 Static Video** at `/video` — batch avatar MP4 pipeline

@@ -23,7 +23,7 @@ A quick, opinionated map of what's in `docs/`. Start with whichever bucket match
 | Azure infra deep dive (Bicep, RBAC, security, CI/CD) | [deep-dive-azure.md](deep-dive-azure.md) |
 | Parallel "copilot" deployment | [deploy-copilot.md](deploy-copilot.md) |
 | Microsoft Teams Static Tab embedding | [teams-integration.md](teams-integration.md) |
-| Feasibility / RFI background | [feasibility.md](feasibility.md) |
+| Feasibility assessment (historical) | [feasibility.md](feasibility.md) |
 
 ---
 
@@ -58,6 +58,6 @@ PNGs are rendered from draw.io sources in [`diagrams/`](diagrams/).
 - **Where is the UC2 code?** → `demos/backend/routers/static_video.py` + `services/static_*.py` + `demos/frontend/src/pages/StaticVideo*.tsx`
 - **Where is the UC3 code?** → `demos/backend/routers/podcast.py` + `services/podcast_*.py` + `demos/frontend/src/pages/PodcastPage.tsx`
 - **Where are the E2E test scripts?** → `tests/e2e_rfi.py` (UC1 + smoke, 30 checks) and `tests/e2e_render.py` (UC2 + UC3 full render, 10 checks)
-- **Where are the RFI fixtures?** → `tests/fixtures/rfi/` — 9 decks, 3 thematic groups (Safety FR, Sustainability EN, AI ES); regenerate with `python tests/fixtures/rfi/_generate.py`
+- **Where are the fixture decks?** → `tests/fixtures/rfi/` — 9 decks, 3 thematic groups (Safety FR, Sustainability EN, AI ES); regenerate with `python tests/fixtures/rfi/_generate.py`
 - **How do I add a new language?** → extend `LANGS` in `scripts/uc2_multilang_run.py` and `VOICES`/`LANGUAGES` in `demos/backend/routers/static_video.py`
 - **Where are the voice → avatar rules?** → `demos/backend/services/static_render.py` → `avatar_for_voice()`

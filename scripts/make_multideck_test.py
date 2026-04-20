@@ -24,7 +24,7 @@ DECKS = [
         "slides": [
             ("Carbon Neutrality Goals",
              "Reaching net-zero emissions by 2050 requires decarbonising the power grid, electrifying transport, and restoring forests.",
-             "Emphasise Saint-Gobain's own science-based target and the ACT methodology we follow."),
+             "Emphasise the organisation's own science-based target and the ACT methodology we follow."),
             ("Renewable Energy Transition",
              "Solar photovoltaics and offshore wind are the fastest-growing sources of renewable electricity worldwide.",
              "Mention the cost curves: solar PV LCOE dropped 89% in a decade."),
@@ -162,7 +162,7 @@ def build_deck(out_path: Path, title: str, slides: list[tuple[str, str, str]]) -
     slide = prs.slides.add_slide(layout)
     slide.shapes.title.text = title
     if len(slide.placeholders) > 1:
-        slide.placeholders[1].text = "Saint-Gobain · AI Avatar Presenter · UC1 test fixture"
+        slide.placeholders[1].text = "AI Avatar Presenter · UC1 test fixture"
 
     # Content slides
     content_layout = prs.slide_layouts[1]

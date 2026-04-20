@@ -1,6 +1,6 @@
-# RFI test fixtures — 9 coherent decks in 3 groups
+# End-to-end test fixtures — 9 coherent decks in 3 groups
 
-Purpose: end-to-end test corpus for the **3 RFI use cases** (UC1 Learning Hub/Paths, UC2 Avatar Video Library, UC3 Create/Q&A Library). Each deck has 5 slides with 2-sentence speaker notes (~25-30 s spoken per slide).
+Purpose: end-to-end test corpus for the **3 use cases** (UC1 Learning Hub/Paths, UC2 Avatar Video Library, UC3 Create/Q&A Library). Each deck has 5 slides with 2-sentence speaker notes (~25-30 s spoken per slide).
 
 Regenerate with:
 ```bash

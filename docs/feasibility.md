@@ -1,5 +1,7 @@
 # AI Presenter — Feasibility Assessment
 
+> **Historical document.** This is the original pre-PoC feasibility study. The UC numbering in this doc predates the current app and **does not match it** — today the live app ships **UC1** (Live Avatar + Learning Hub + Paths + AI recommend), **UC2** (Static Video) and **UC3** (Podcast). See [architecture.md](architecture.md) and the [docs index](index.md) for the current state.
+
 ## Executive Summary
 
 This document assesses the feasibility of building an AI-powered avatar presentation assistant for organizational training. The system would accept PowerPoint files, read speaker notes aloud via a photorealistic AI avatar, support multilingual text-to-speech, and allow viewers to ask questions about slide content.

@@ -1,6 +1,6 @@
 # AI Presenter — Architecture Document
 
-> **RFI Context**: This PoC demonstrates Microsoft's response to **RFI — AI Avatar Solution** for Acme DSI Groupe. It addresses **Use Case 1 (Silver level)** — interactive learning with avatars over PowerPoint slides — and **Use Case 2** — automated batch video generation.
+> **Context**: This PoC is an AI-powered avatar presentation assistant. It addresses **Use Case 1 (Silver level)** — interactive learning with avatars over PowerPoint slides — plus **Use Case 2** (automated batch video generation) and **Use Case 3** (podcast-style dual-avatar video).
 
 ## System Overview
 
@@ -109,18 +109,18 @@ The AI Presenter is a web-based application that allows users to upload PowerPoi
 
 ---
 
-## RFI Use Case Mapping
+## Use Case Mapping
 
-| RFI Requirement | Implementation | Status |
+| Requirement | Implementation | Status |
 |-----------------|---------------|--------|
 | **UC1 Basic** — Voice conversation with avatar from knowledge base | Agent chat (`/api/agent/chat`) + VoiceLive WebRTC | ✅ Implemented |
-| **UC1 Silver** — Avatar overlaid on PPT slides with Q&A | SlideViewer + AvatarPanel + Q&A RAG pipeline | ✅ Implemented |
-| **UC1 Gold** — Multi-deck AI slide selection | Not yet implemented | 🔲 Roadmap |
-| **UC2** — Automated batch video generation | Batch Avatar Synthesis API (`/api/avatar/batch`) | ✅ Implemented |
-| **UC3** — Podcast-style video generation | Not yet implemented | 🔲 Roadmap |
+| **UC1 Silver** — Avatar overlaid on PPT slides with Q&A | SlideViewer + AvatarPanel + Q&A RAG pipeline (legacy `/`) | ✅ Implemented |
+| **UC1 Gold** — Multi-deck corpus + AI deck/path selection | Learning Hub (`/uc1`) — Azure AI Search hybrid, Learning Paths (Cosmos), AI path recommendation (GPT-4.1 JSON mode) | ✅ Implemented |
+| **UC2** — Automated batch video generation | Slide-first pipeline (`/video`) — Batch Avatar per slide + ffmpeg compose | ✅ Implemented |
+| **UC3** — Podcast-style video generation | Dual-avatar podcast (`/podcast`) — GPT-4.1 dialogue + parallel TTS + ffmpeg compose | ✅ Implemented |
 | **Multilingual** (37+ languages) | 10 languages (6 native DragonHD + 4 multilingual fallback) | ✅ Partial |
 | **LMS/SCORM integration** | Not yet implemented | 🔲 Roadmap |
-| **SGChat/M365 Copilot integration** | Agent Framework + Teams Static Tab | ✅ Partial |
+| **M365 Copilot / Teams integration** | Agent Framework + Teams Static Tab | ✅ Partial |
 | **GDPR compliance** | Managed Identity, no keys in client, Azure-hosted | ✅ PoC level |
 
 ---

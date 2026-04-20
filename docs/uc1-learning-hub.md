@@ -1,7 +1,7 @@
 # UC1 · Learning Hub — Design
 
 > **Status:** Delivered 2026-04-19/20 (revision `uc1v10` on `ca-clgsqan6efeuy`).
-> Covers Saint-Gobain RFI 559 **Use Case 1 · Silver tier** (multi-deck corpus + Learning Paths).
+> Covers **Use Case 1 · Silver tier** — multi-deck corpus with hybrid search + Learning Paths + AI path recommendation.
 
 The UC1 Learning Hub lives at [`/uc1`](https://ca-clgsqan6efeuy.thankfulhill-3503b062.swedencentral.azurecontainerapps.io/uc1) — a dedicated section of the app that complements the legacy single-deck UC1 flow at `/`. The legacy route is intentionally preserved to avoid any regression on the previously demo'd UX.
 
@@ -9,7 +9,7 @@ The UC1 Learning Hub lives at [`/uc1`](https://ca-clgsqan6efeuy.thankfulhill-350
 
 ## 1. Scope
 
-The Hub is the UC1 **Silver** experience from the Microsoft RFI response:
+The Hub is the UC1 **Silver** experience:
 
 > *Avatar overlaid on PPT slides, slide-by-slide presentation, interruptible Q&A, natural language slide navigation, Content Understanding across a corpus of decks.*
 
@@ -166,7 +166,7 @@ The backend:
 
 ### 5.4 Validation
 
-Tested end-to-end on `tests/e2e_rfi.py` against the 9 RFI fixture decks. Last run (3 topics, 3 languages):
+Tested end-to-end on `tests/e2e_rfi.py` against the 9 fixture decks. Last run (3 topics, 3 languages):
 
 | Topic | Expected keyword group | GPT-4.1 result |
 |---|---|---|
@@ -182,7 +182,7 @@ Tested end-to-end on `tests/e2e_rfi.py` against the 9 RFI fixture decks. Last ru
 
 | Script | Scope | Last run |
 |---|---|---|
-| `tests/e2e_rfi.py` | Reset all Cosmos containers + UC2 library → upload 9 RFI fixtures → UC1 hub + search + paths + progress + AI recommend → UC2/UC3 smoke | 30/30 passed on `uc1v10` |
+| `tests/e2e_rfi.py` | Reset all Cosmos containers + UC2 library → upload 9 fixture decks → UC1 hub + search + paths + progress + AI recommend → UC2/UC3 smoke | 30/30 passed on `uc1v10` |
 | `tests/e2e_render.py` | UC2 + UC3 full render, one language or multi-language sweep | 30/30 passed multi-language (fr-FR / en-US / es-ES × UC2+UC3) |
 | `tests/test_uc1_paths_api.py` | pytest — paths CRUD, progress, AI recommend (incl. catalog validation) | 4 passed, 1 skipped (LLM-dependent) |
 | `tests/uc1-learning-paths.spec.ts` | Playwright UI — create path, recommend modal, light language selector regression | 9 passed |
@@ -235,7 +235,7 @@ RG: `rg-ai-presenter-sub2`. Deploy via `az acr build -r crclgsqan6efeuy -t ai-pr
 - **Search index rebuild** — there is no one-click "re-index all decks" endpoint; `POST /api/uc1/upload` re-ingests individually. Deleting a deck leaves orphan search docs until a full recrawl.
 - **Language filter in recommend** — if the user picks a language that has fewer than `max_steps` decks, the response may be shorter than requested (GPT currently respects "don't invent content").
 - **Path progress aggregation** — the player writes back `resume_slide_index` per step but there is no dashboard view of global path completion yet.
-- **No auth** — the Hub is currently open; deployment is a PoC on a public Container App URL. For Saint-Gobain production we would put this behind Entra ID + per-user path ownership.
+- **No auth** — the Hub is currently open; deployment is a PoC on a public Container App URL. For production we would put this behind Entra ID + per-user path ownership.
 - **UC1 legacy `/` route** — intentionally preserved without changes. Any regression on the original flow blocks a release.
 
 ---

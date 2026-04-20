@@ -1,7 +1,7 @@
 # UC2 — Automated Static Video Generation
 
 **Status:** Shipped · `master` · deployed to `rg-ai-presenter-sub2` (swedencentral)
-**RFI reference:** Saint-Gobain RFI — AI Avatar Solution, Use Case 2
+**Scope:** Use Case 2 — automated, pre-rendered narrated video per deck
 **Branch history:** `feat/uc2-static-video` → merged `a8ba703`
 
 ---

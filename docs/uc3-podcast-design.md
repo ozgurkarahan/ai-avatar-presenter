@@ -4,7 +4,7 @@
 
 > **Demo-quality PoC, not production.** This doc has been re-scoped away from production robustness (workers, idempotent manifests, global semaphores, chunk-reduce) toward **customer-facing polish**: split-screen layout with live speaker highlight, scrolling subtitles under each avatar, waveform pulse, premium HD voices, branded intro/outro, sample prompt gallery, streaming script generation. The goal is to make Acme say "yes" in the demo.
 **Branch:** `feat/uc3-podcast-dual-avatar`
-**RFI:** RFI — Acme AI Avatar Solution
+**Scope:** Use Case 3 — podcast-style dual-avatar video from any document
 **Inspiration:** NotebookLM "Audio Overview"
 
 ---
@@ -306,4 +306,4 @@ src/components/podcast/JobStatus.tsx          // progress + final player
 
 **Phase 2 (MVP implementation, on approval):** backend router + services + frontend route + minimal UI. Deploy Bicep. End-to-end smoke.
 
-**Phase 3 (polish):** split-screen / PiP layout (requires transparent-bg WebM/VP9 output from Speech), regenerate single turn, voice preview, SCORM packaging (the RFI marks it "optional LMS-ready package", so it stays deferred), background music / transitions.
+**Phase 3 (polish):** split-screen / PiP layout (requires transparent-bg WebM/VP9 output from Speech), regenerate single turn, voice preview, SCORM / LMS packaging (deferred — marked "optional" by stakeholders), background music / transitions.

@@ -9,7 +9,7 @@
         <mxCell id="title" value="AI Presenter — Azure Architecture" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=20;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
           <mxGeometry x="580" y="15" width="400" height="35" as="geometry" />
         </mxCell>
-        <mxCell id="subtitle" value="RFI — AI Avatar Solution for Acme" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=12;fontColor=#666666;" vertex="1" parent="1">
+        <mxCell id="subtitle" value="AI Avatar Solution — PoC" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;fontSize=12;fontColor=#666666;" vertex="1" parent="1">
           <mxGeometry x="620" y="48" width="320" height="22" as="geometry" />
         </mxCell>
 
@@ -345,7 +345,7 @@
         <mxCell id="uc-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FAFAFA;strokeColor=#E0E0E0;arcSize=6;" vertex="1" parent="1">
           <mxGeometry x="1000" y="700" width="420" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="uc-title" value="RFI Use Case Coverage" style="text;html=1;fontSize=11;fontStyle=1;fontColor=#1a1a1a;align=left;" vertex="1" parent="1">
+        <mxCell id="uc-title" value="Use Case Coverage" style="text;html=1;fontSize=11;fontStyle=1;fontColor=#1a1a1a;align=left;" vertex="1" parent="1">
           <mxGeometry x="1015" y="705" width="250" height="20" as="geometry" />
         </mxCell>
         <mxCell id="u1" value="[done]  UC1 Silver — Interactive avatar over PPT slides with Q and A" style="text;html=1;fontSize=9;fontColor=#2E7D32;align=left;" vertex="1" parent="1">
