@@ -455,21 +455,49 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Karaoke,Arial,42,&H00FFFFFF&,&H0000C8FF&,&H00000000&,&H80000000&,1,0,0,0,100,100,0,0,1,2,1,2,40,40,290,1
+Style: Karaoke,Arial,34,&H00FFFFFF&,&H0000C8FF&,&H00000000&,&H80000000&,1,0,0,0,100,100,0,0,1,3,1,2,40,40,30,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
 
-def _write_ass(
-    path: Path,
-    clips: list[ClipManifest],
-    durations: list[float],
-    turn_by_idx: dict[int, "DialogueTurn"],
-    roles: RenderRoles,
-    offset: float = 0.0,
-) -> None:
+def _chunk_text(text: str, max_chars: int = 80) -> list[str]:
+    """Split text into subtitle-friendly chunks by sentence, then by max_chars."""
+    import re
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+
+    chunks: list[str] = []
+    current = ""
+    for sentence in sentences:
+        if current and len(current) + len(sentence) + 1 > max_chars:
+            chunks.append(current.strip())
+            current = sentence
+        else:
+            current = f"{current} {sentence}".strip() if current else sentence
+    if current:
+        chunks.append(current.strip())
+
+    final: list[str] = []
+    for chunk in chunks:
+        if len(chunk) <= max_chars:
+            final.append(chunk)
+        else:
+            words = chunk.split()
+            line = ""
+            for word in words:
+                if line and len(line) + len(word) + 1 > max_chars:
+                    final.append(line.strip())
+                    line = word
+                else:
+                    line = f"{line} {word}".strip() if line else word
+            if line:
+                final.append(line.strip())
+
+    return final if final else [text.strip()]
+
+
+def _write_ass(path, clips, durations, turn_by_idx, roles, offset=0.0):
     lines = [ASS_HEADER]
     cursor = offset
     for clip, dur in zip(clips, durations):
@@ -479,45 +507,53 @@ def _write_ass(
             cursor += dur
             continue
 
-        words = text.split()
-        # Use vtt cue timings if present, else evenly distribute across dur.
-        if clip.word_timings:
-            per = max(0.001, dur / max(1, len(words)))
-            kara = "".join(f"{{\\k{int(per * 100)}}}{_ass_esc(w)} " for w in words)
-        else:
-            per = max(0.001, dur / max(1, len(words)))
-            kara = "".join(f"{{\\k{int(per * 100)}}}{_ass_esc(w)} " for w in words)
+        chunks = _chunk_text(text)
+        total_words = len(text.split())
+        chunk_cursor = cursor
 
-        start_ts = _ass_time(cursor)
-        end_ts = _ass_time(cursor + dur)
-        lines.append(
-            f"Dialogue: 0,{start_ts},{end_ts},Karaoke,,0,0,0,,{kara.strip()}"
-        )
+        for chunk in chunks:
+            chunk_words = chunk.split()
+            chunk_dur = dur * (len(chunk_words) / max(1, total_words))
+            per = max(0.001, chunk_dur / max(1, len(chunk_words)))
+            kara = "".join(f"{{\\k{int(per * 100)}}}{_ass_esc(w)} " for w in chunk_words)
+            start_ts = _ass_time(chunk_cursor)
+            end_ts = _ass_time(chunk_cursor + chunk_dur)
+            lines.append(f"Dialogue: 0,{start_ts},{end_ts},Karaoke,,0,0,0,,{kara.strip()}")
+            chunk_cursor += chunk_dur
+
         cursor += dur
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def _write_srt(
-    path: Path,
-    clips: list[ClipManifest],
-    durations: list[float],
-    turn_by_idx: dict[int, "DialogueTurn"],
-    roles: RenderRoles,
-    offset: float = 0.0,
-) -> None:
+def _write_srt(path, clips, durations, turn_by_idx, roles, offset=0.0):
     out_lines: list[str] = []
     cursor = offset
-    for n, (clip, dur) in enumerate(zip(clips, durations), start=1):
+    cue_num = 0
+    for clip, dur in zip(clips, durations):
         turn = turn_by_idx.get(clip.turn_idx)
         text = (turn.text if turn else "").strip()
         speaker_label = (
             roles.interviewer.display_name if clip.speaker == "interviewer"
             else roles.expert.display_name
         )
-        out_lines.append(str(n))
-        out_lines.append(f"{_srt_time(cursor)} --> {_srt_time(cursor + dur)}")
-        out_lines.append(f"{speaker_label}: {text}")
-        out_lines.append("")
+        if not text:
+            cursor += dur
+            continue
+
+        chunks = _chunk_text(text)
+        total_words = len(text.split())
+        chunk_cursor = cursor
+
+        for chunk in chunks:
+            cue_num += 1
+            chunk_words = chunk.split()
+            chunk_dur = dur * (len(chunk_words) / max(1, total_words))
+            out_lines.append(str(cue_num))
+            out_lines.append(f"{_srt_time(chunk_cursor)} --> {_srt_time(chunk_cursor + chunk_dur)}")
+            out_lines.append(f"{speaker_label}: {chunk}")
+            out_lines.append("")
+            chunk_cursor += chunk_dur
+
         cursor += dur
     path.write_text("\n".join(out_lines), encoding="utf-8")
 
