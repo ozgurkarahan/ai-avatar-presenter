@@ -152,7 +152,7 @@ export default function Uc1PresentPage() {
                 </select>
               </label>
 
-              <LanguageSelector value={language} onChange={setLanguage} />
+              <LanguageSelector value={language} onChange={setLanguage} variant="light" />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
