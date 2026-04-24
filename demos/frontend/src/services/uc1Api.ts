@@ -121,23 +121,30 @@ export const UC1_LANGUAGE_LABELS: Record<string, string> = {
 const MALE_VOICE_NAMES = ['Andrew', 'Remy', 'Tristan', 'Florian', 'Alessio', 'Macerio', 'Yunfan', 'Masaru'];
 const FEMALE_VOICE_NAMES = ['Ava', 'Vivienne', 'Ximena', 'Seraphina', 'Isabella', 'Thalita', 'Xiaochen', 'Nanami'];
 
-/** Match avatar_for_voice() in demos/backend/services/static_render.py. */
-export function avatarForVoice(voice: string, fallback = 'lisa'): string {
+/** Suggest an avatar matching the voice gender.
+ *
+ * DEPRECATED (H1 2026-04-24): the UC2 render backend no longer auto-
+ * overrides the user-selected avatar based on voice gender, because
+ * that silently ignored the UI choice. Kept here only for legacy
+ * callers that still invoke it; new code should trust the user's
+ * explicit avatar pick.
+ */
+export function avatarForVoice(voice: string, fallback = 'harry'): string {
   if (!voice) return fallback;
   if (MALE_VOICE_NAMES.some((n) => voice.includes(n))) return 'harry';
-  if (FEMALE_VOICE_NAMES.some((n) => voice.includes(n))) return 'lisa';
+  if (FEMALE_VOICE_NAMES.some((n) => voice.includes(n))) return 'max';
   return fallback;
 }
 
 export const UC1_AVATARS: { id: string; label: string; style: string }[] = [
+  { id: 'harry', label: 'Harry (youthful)',      style: 'youthful' },
+  { id: 'max',   label: 'Max (business)',        style: 'business' },
+  { id: 'meg',   label: 'Meg (business)',        style: 'business' },
   { id: 'lisa',  label: 'Lisa (casual-sitting)', style: 'casual-sitting' },
-  { id: 'harry', label: 'Harry (business)',      style: 'business' },
-  { id: 'meg',   label: 'Meg (formal)',          style: 'formal' },
-  { id: 'max',   label: 'Max (casual)',          style: 'casual' },
 ];
 
 export function styleForAvatar(avatarId: string): string {
-  return UC1_AVATARS.find((a) => a.id === avatarId)?.style ?? 'casual-sitting';
+  return UC1_AVATARS.find((a) => a.id === avatarId)?.style ?? 'youthful';
 }
 
 

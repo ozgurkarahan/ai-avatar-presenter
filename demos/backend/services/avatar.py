@@ -6,6 +6,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Optional
+from xml.sax.saxutils import escape as _xml_escape
 
 import requests
 from azure.identity import DefaultAzureCredential
@@ -29,19 +30,23 @@ AVATAR_MAP = {
 }
 
 # Azure Batch Avatar Synthesis: each character supports a specific set of styles.
-# Mismatched style → 400 "style X is not supported for avatar character Y".
+# Mismatched style -> 400 "style X is not supported for avatar character Y".
 # Ref: https://learn.microsoft.com/azure/ai-services/speech-service/batch-synthesis-avatar
 AVATAR_STYLES = {
     "lisa": "casual-sitting",
-    "harry": "business",
+    "harry": "youthful",
     "jeff": "business",
     "lori": "casual",
     "max": "business",
     "meg": "business",
 }
 
-DEFAULT_AVATAR = "lisa"
-DEFAULT_AVATAR_STYLE = "casual-sitting"
+# New defaults (H1 2026-04-24): max/business is the most gesture-rich standard
+# avatar for training content (applaud, welcome, thanks, encourage,
+# introduction-to-products, nodding). Replaces the previous lisa/casual-sitting
+# default which was the least dynamic option in the standard lineup.
+DEFAULT_AVATAR = "max"
+DEFAULT_AVATAR_STYLE = "business"
 
 
 def style_for(avatar: str) -> str:
@@ -154,19 +159,40 @@ def get_speech_token(config: AzureConfig) -> dict:
     }
 
 
-def build_ssml(text: str, language: str, voice: Optional[str] = None) -> str:
+def build_ssml(
+    text: str,
+    language: str,
+    voice: Optional[str] = None,
+    *,
+    intro_gesture_for: Optional[str] = None,
+) -> str:
     """Build SSML for avatar synthesis.
 
     Includes a 250 ms leading <break> because Azure batch avatar synthesis
     consistently clips the first ~100 ms of spoken audio; the explicit pause
     preserves the first word (e.g. "Today", "Hello").
+
+    Args:
+        text: Narration plain text. Special XML chars are escaped.
+        language: BCP-47 locale (e.g. "en-US").
+        voice: Explicit voice name (overrides VOICE_MAP).
+        intro_gesture_for: If set to "max", inject a `gesture.welcome`
+            bookmark right after the leading pause. Only Max is validated
+            to support this gesture in the current Azure catalog, so any
+            other value is a no-op — keeps us safe against
+            character/style-specific gesture availability. Callers should
+            pass this ONLY on the first slide of a deck.
     """
     voice_name = voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
+    safe_text = _xml_escape(text or "")
+    gesture = ""
+    if intro_gesture_for == "max":
+        gesture = "<bookmark mark='gesture.welcome'/>"
     return (
         f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         f'xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="{language}">'
         f'<voice name="{voice_name}">'
-        f'<break time="250ms"/>{text}'
+        f'<break time="250ms"/>{gesture}{safe_text}'
         f"</voice></speak>"
     )
 

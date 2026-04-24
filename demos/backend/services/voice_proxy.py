@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 VOICE_API_VERSION = "2025-05-01-preview"
 COGNITIVE_DOMAIN = "cognitiveservices.azure.com"
 
-DEFAULT_AVATAR_CHARACTER = "lisa"
-DEFAULT_AVATAR_STYLE = "casual-sitting"
+DEFAULT_AVATAR_CHARACTER = "harry"
+DEFAULT_AVATAR_STYLE = "youthful"
 DEFAULT_VOICE_NAME = "en-US-Ava:DragonHDLatestNeural"
 DEFAULT_VOICE_TYPE = "azure-standard"
 
@@ -76,11 +76,13 @@ def build_session_config(
 ) -> Dict[str, Any]:
     """Build the session.update payload with avatar config.
 
-    Automatically selects the native DragonHD voice persona for the
-    requested language so the avatar speaks with the correct accent.
+    If voice_name is provided by the caller, it wins over the language
+    default — this lets the frontend voice picker actually take effect
+    in the realtime session. Otherwise we fall back to the native
+    DragonHD persona for the requested language.
     """
     lang_cfg = VOICE_CONFIG.get(language, VOICE_CONFIG["en-US"])
-    resolved_voice = voice_name or lang_cfg["voice"]
+    resolved_voice = voice_name if voice_name else lang_cfg["voice"]
     lang_name = lang_cfg["name"]
 
     # Session-level instructions lock the avatar into the target language
@@ -123,6 +125,7 @@ async def handle_voice_proxy(
     avatar_style: str = DEFAULT_AVATAR_STYLE,
     language: str = "en-US",
     instructions: Optional[str] = None,
+    voice_name: Optional[str] = None,
 ) -> None:
     """Handle a WebSocket proxy connection between client and Azure Voice API.
 
@@ -157,6 +160,7 @@ async def handle_voice_proxy(
                 language=language,
                 avatar_character=avatar_character,
                 avatar_style=avatar_style,
+                voice_name=voice_name,
                 instructions=instructions,
             )
             await azure_ws.send(json.dumps({

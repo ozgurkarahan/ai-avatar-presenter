@@ -397,12 +397,12 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
       ws.onopen = () => {
         console.log('[WS] Connected, sending session config with language:', languageRef.current);
         setStatus('Configuring avatar session...');
-        const avatarId = selectedAvatarRef.current || 'lisa';
+        const avatarId = selectedAvatarRef.current || 'harry';
         const avatarStyleMap: Record<string, string> = {
-          lisa: 'casual-sitting', harry: 'business', meg: 'formal', max: 'casual',
+          lisa: 'casual-sitting', harry: 'youthful', meg: 'business', max: 'business',
         };
         const sessionConfig: Record<string, unknown> = {
-          avatar: { character: avatarId, style: avatarStyleMap[avatarId] ?? 'casual-sitting' },
+          avatar: { character: avatarId, style: avatarStyleMap[avatarId] ?? 'youthful' },
           language: languageRef.current,
         };
         if (selectedVoiceRef.current) {

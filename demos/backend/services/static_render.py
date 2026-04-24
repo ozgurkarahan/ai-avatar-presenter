@@ -36,12 +36,18 @@ log = logging.getLogger(__name__)
 
 
 # Default avatar for UC2 single-narrator picture-in-picture.
-DEFAULT_AVATAR = "lisa"
+# H1 2026-04-24: max/business — widest validated gesture vocabulary for
+# training content (welcome, thanks, applaud, encourage, nodding,
+# introduction-to-products, display-number, press-down). Replaces the
+# previous "lisa" default which was the least dynamic standard avatar.
+DEFAULT_AVATAR = "max"
 
-# Voice → avatar gender match. Picks "harry" (business) for male voices,
-# "lisa" (casual-sitting) for female. Keyed by voice substring so it works
-# for full DragonHD ids ("en-US-Andrew:DragonHDLatestNeural") and short
-# names alike. Extend as more voices are added to VOICES catalog.
+# Historical: we used to force-override the user-chosen avatar to match
+# the voice gender (male voice -> harry, female voice -> lisa). That
+# silently ignored the UI selection and was one of the reasons the demo
+# "always looked the same". We keep the helper here for reference /
+# frontend parity but we no longer call it in _submit_slide — the
+# caller's `avatar` argument is respected verbatim.
 _MALE_VOICE_NAMES = {
     "Andrew", "Remy", "Tristan", "Florian", "Alessio",
     "Macerio", "Yunfan", "Masaru",
@@ -53,7 +59,13 @@ _FEMALE_VOICE_NAMES = {
 
 
 def avatar_for_voice(voice: str, fallback: str = DEFAULT_AVATAR) -> str:
-    """Return an avatar character whose gender matches the voice."""
+    """Return an avatar whose gender matches the voice (suggestion only).
+
+    DEPRECATED (H1): no longer called by the render path. Kept because
+    the frontend (`uc1Api.ts`) still imports an equivalent helper and
+    we don't want to break parity if someone wires it back in. Will be
+    removed once the centralized avatar catalog lands (H2 prerequisite).
+    """
     if not voice:
         return fallback
     for name in _MALE_VOICE_NAMES:
@@ -122,16 +134,22 @@ def _request_with_429_retry(
 # ---------------------------------------------------------------------------
 
 def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
-                  avatar: str = DEFAULT_AVATAR) -> _SlideJob:
+                  avatar: str = DEFAULT_AVATAR, *, intro: bool = False) -> _SlideJob:
     job_id = str(uuid.uuid4())
     base = _get_speech_base_url(cfg)
     url = f"{base}/avatar/batchsyntheses/{job_id}?api-version=2024-08-01"
 
     voice = n.voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
-    # Override caller's avatar if it would mismatch the voice gender.
-    avatar = avatar_for_voice(voice, fallback=avatar)
+    # Respect the avatar chosen by the caller. (Previously we silently
+    # switched to harry/lisa based on voice gender, which meant the UI
+    # selection was ignored on most slides — see H1 notes.)
     avatar_char = AVATAR_MAP.get(avatar, avatar)
-    ssml = build_ssml(n.narration, language, voice=voice)
+    # Only inject an intro gesture on the very first slide, and only
+    # when the character is Max (its `gesture.welcome` is docs-verified
+    # for the `business` style). Any other character -> no-op in build_ssml.
+    intro_gesture = avatar_char if (intro and avatar_char == "max") else None
+    ssml = build_ssml(n.narration, language, voice=voice,
+                      intro_gesture_for=intro_gesture)
 
     payload = {
         "inputKind": "SSML",
@@ -147,7 +165,8 @@ def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
     }
     headers = {**_get_speech_auth_header(cfg), "Content-Type": "application/json"}
     _request_with_429_retry("PUT", url, headers=headers, json_body=payload, timeout=30)
-    log.info("uc2: submitted slide=%d job=%s", n.slide_index, job_id)
+    log.info("uc2: submitted slide=%d job=%s avatar=%s intro=%s",
+             n.slide_index, job_id, avatar_char, intro)
     return _SlideJob(narration=n, job_id=job_id)
 
 
@@ -261,8 +280,10 @@ def render_static(
 
     # Submit SERIALLY to stay under the 5-concurrent-jobs quota.
     pending: list[_SlideJob] = []
+    first_idx = narrations[0].slide_index
     for n in narrations:
-        pending.append(_submit_slide(cfg, n, script.language, avatar=avatar))
+        is_intro = n.slide_index == first_idx
+        pending.append(_submit_slide(cfg, n, script.language, avatar=avatar, intro=is_intro))
 
     # Poll concurrently.
     finished: list[_SlideJob] = []

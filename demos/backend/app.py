@@ -707,10 +707,11 @@ async def voice_websocket(ws: WebSocket):
         first_msg = await ws.receive_text()
         msg = json.loads(first_msg)
 
-        avatar_character = "lisa"
-        avatar_style = "casual-sitting"
+        avatar_character = "harry"
+        avatar_style = "youthful"
         language = "en-US"
         instructions = None
+        voice_name = None
 
         if msg.get("type") == "session.update":
             session = msg.get("session", {})
@@ -719,6 +720,13 @@ async def voice_websocket(ws: WebSocket):
             avatar_style = avatar.get("style", avatar_style)
             language = session.get("language", language)
             instructions = session.get("instructions")
+            voice = session.get("voice")
+            if isinstance(voice, str) and voice.strip():
+                voice_name = voice.strip()
+            elif isinstance(voice, dict):
+                candidate = voice.get("name")
+                if isinstance(candidate, str) and candidate.strip():
+                    voice_name = candidate.strip()
 
         await handle_voice_proxy(
             client_ws=ws,
@@ -727,6 +735,7 @@ async def voice_websocket(ws: WebSocket):
             avatar_style=avatar_style,
             language=language,
             instructions=instructions,
+            voice_name=voice_name,
         )
     except WebSocketDisconnect:
         logger.info("Voice WebSocket client disconnected")
