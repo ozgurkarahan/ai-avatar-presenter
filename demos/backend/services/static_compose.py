@@ -51,7 +51,13 @@ SLIDE_W = 1344           # left column width
 AVATAR_COL_W = VIDEO_W - SLIDE_W   # 576 right column
 AVATAR_SIZE = 560        # circular avatar inside right column
 SLIDE_BG = "0xF5F5F0"    # warm neutral behind letterboxed slide
-AVATAR_BG = "0x1E293B"   # dark slate behind avatar — studio feel
+# Avatar panel bg matches the avatar WebM's matte (near-black) so the
+# circular mask's edge is invisible. VP9-alpha decode via ffmpeg geq
+# doesn't cleanly zero the avatar's transparent pixels, so a contrasting
+# panel colour would show a visible disc around the character. A solid
+# near-black panel hides the halo while still reading as a distinct
+# "studio backdrop" next to the warm slide area.
+AVATAR_BG = "0x0B0E14"
 
 
 def _find_font() -> Optional[str]:
