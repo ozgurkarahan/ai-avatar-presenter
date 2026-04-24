@@ -31,10 +31,27 @@ VIDEO_W = 1920
 VIDEO_H = 1080
 FPS = 25
 
-# Avatar PiP (bottom-right).
-PIP_W = 360
-PIP_H = 360
-PIP_MARGIN = 40  # distance from the right/bottom edges
+# Layout: "anchor" — slide on the left, avatar in a dedicated right panel
+# with its own studio backdrop. Replaces the previous PIP-over-slide which
+# hid content in the bottom-right corner and kept the avatar small.
+#
+#   +-----------------------------+----------+
+#   |                             |          |
+#   |         SLIDE 1344px        |  AVATAR  |
+#   |       (letterbox #F5F5F0)   |  576px   |
+#   |                             | (#1E293B)|
+#   |                             |          |
+#   +-----------------------------+----------+
+#
+# H1.5 2026-04-24: client called out "avatar too small" + "background
+# always the same" on 2026-04-23. This layout more than doubles the
+# avatar surface (560x560 vs 360x360, +2.4x area) and introduces a
+# contrasting studio backdrop distinct from the slide.
+SLIDE_W = 1344           # left column width
+AVATAR_COL_W = VIDEO_W - SLIDE_W   # 576 right column
+AVATAR_SIZE = 560        # circular avatar inside right column
+SLIDE_BG = "0xF5F5F0"    # warm neutral behind letterboxed slide
+AVATAR_BG = "0x1E293B"   # dark slate behind avatar — studio feel
 
 
 def _find_font() -> Optional[str]:
@@ -156,10 +173,12 @@ def _render_segment(
     duration: float,
     out: Path,
 ) -> None:
-    """One 1920x1080 MP4 segment: slide background + avatar PiP bottom-right.
+    """One 1920x1080 MP4 segment: anchor layout (slide left, avatar right panel).
 
-    The PiP mask is a soft-edged circle carved with `geq`. We keep audio from
-    the avatar clip as the segment's audio track.
+    Slide is letterboxed to the 1344-wide left column with a warm neutral
+    background, avatar is rendered at 560x560 with a circular soft mask
+    centered in a 576-wide dark slate right column. The two columns are
+    stacked horizontally. Keeps audio from the avatar clip.
     """
     # Inputs:
     #   0 = slide image (looped)
@@ -169,21 +188,31 @@ def _render_segment(
         "-i", str(clip_path),
     ]
 
-    # Slide scaled to full frame; avatar scaled to PIP_W x PIP_H with a
-    # circular alpha mask, overlaid in the bottom-right corner.
+    half = AVATAR_SIZE // 2
+    edge = half - 4  # solid inside this radius; feather over the last 4px
     fc = (
-        f"[0:v]scale={VIDEO_W}:{VIDEO_H}:force_original_aspect_ratio=decrease,"
-        f"pad={VIDEO_W}:{VIDEO_H}:(ow-iw)/2:(oh-ih)/2:color=#0B1220,"
-        f"setsar=1,fps={FPS}[bg];"
-        f"[1:v]scale={PIP_W}:{PIP_H}:force_original_aspect_ratio=increase,"
-        f"crop={PIP_W}:{PIP_H},format=yuva420p,"
-        # Circular soft mask: keep alpha inside radius, fade at edge.
+        # Left column: slide fit-and-pad into 1344x1080 with warm neutral bg.
+        f"[0:v]scale={SLIDE_W}:{VIDEO_H}:force_original_aspect_ratio=decrease,"
+        f"pad={SLIDE_W}:{VIDEO_H}:(ow-iw)/2:(oh-ih)/2:color={SLIDE_BG},"
+        f"setsar=1,fps={FPS}[slide];"
+        # Right column backdrop: solid studio colour.
+        f"color=c={AVATAR_BG}:s={AVATAR_COL_W}x{VIDEO_H}:r={FPS},format=yuv420p[rpanel];"
+        # Avatar: scale-crop to AVATAR_SIZE square. Combine the WebM's own
+        # alpha (character silhouette, transparent background) with a soft
+        # circular mask — keeps the character fully opaque but also carves
+        # the avatar into a circle over the studio panel.
+        f"[1:v]scale={AVATAR_SIZE}:{AVATAR_SIZE}:force_original_aspect_ratio=increase,"
+        f"crop={AVATAR_SIZE}:{AVATAR_SIZE},format=yuva420p,"
         f"geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
-        f"a='if(lte(hypot(X-{PIP_W//2},Y-{PIP_H//2}),{PIP_W//2 - 4}),255,"
-        f"if(lte(hypot(X-{PIP_W//2},Y-{PIP_H//2}),{PIP_W//2}),"
-        f"255*({PIP_W//2}-hypot(X-{PIP_W//2},Y-{PIP_H//2}))/4,0))',"
+        f"a='alpha(X,Y)*"
+        f"if(lte(hypot(X-{half},Y-{half}),{edge}),1,"
+        f"if(lte(hypot(X-{half},Y-{half}),{half}),"
+        f"({half}-hypot(X-{half},Y-{half}))/4,0))',"
         f"setsar=1,fps={FPS}[pip];"
-        f"[bg][pip]overlay=W-w-{PIP_MARGIN}:H-h-{PIP_MARGIN}:shortest=0[vout];"
+        # Avatar centred in the right panel.
+        f"[rpanel][pip]overlay=x=(W-w)/2:y=(H-h)/2:shortest=1[rightcol];"
+        # Horizontal stack: slide | right panel.
+        f"[slide][rightcol]hstack=inputs=2[vout];"
         f"[1:a]anull[aout]"
     )
 
@@ -286,7 +315,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Karaoke,Arial,34,&H00FFFFFF&,&H0000C8FF&,&H00000000&,&H80000000&,1,0,0,0,100,100,0,0,1,3,1,2,80,80,30,1
+Style: Karaoke,Arial,34,&H00FFFFFF&,&H0000C8FF&,&H00000000&,&H80000000&,1,0,0,0,100,100,0,0,1,3,1,2,80,656,30,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text

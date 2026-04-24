@@ -40,6 +40,9 @@ param storageAccountName string
 @description('Azure Blob container name')
 param blobContainerName string = 'slide-images'
 
+@description('Microsoft Entra ID App Registration client ID for Easy Auth (leave empty to disable)')
+param authClientId string = ''
+
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: acrName
   location: location
@@ -149,6 +152,34 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
   tags: {
     'azd-service-name': 'backend'
     project: 'ai-presenter'
+  }
+}
+
+// Easy Auth – Microsoft Entra ID (enabled when authClientId is provided)
+resource authConfig 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (!empty(authClientId)) {
+  parent: containerApp
+  name: 'current'
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      unauthenticatedClientAction: 'RedirectToLoginPage'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          clientId: authClientId
+          openIdIssuer: 'https://sts.windows.net/${tenant().tenantId}/v2.0'
+        }
+        validation: {
+          allowedAudiences: [
+            'api://${authClientId}'
+          ]
+        }
+      }
+    }
   }
 }
 

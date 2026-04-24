@@ -15,6 +15,9 @@ param chatModelName string = 'gpt-4.1'
 @description('Embedding model deployment name')
 param embeddingModelName string = 'text-embedding-3-small'
 
+@description('Microsoft Entra ID App Registration client ID for Easy Auth (leave empty to disable)')
+param authClientId string = ''
+
 var abbrs = {
   resourceGroup: 'rg-'
   containerEnv: 'cae-'
@@ -92,6 +95,7 @@ module containerapp 'modules/containerapp.bicep' = {
     openAiEmbeddingDeployment: embeddingModelName
     cosmosEndpoint: cosmos.outputs.endpoint
     storageAccountName: storage.outputs.name
+    authClientId: authClientId
   }
 }
 

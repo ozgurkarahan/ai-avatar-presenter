@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 VOICE_API_VERSION = "2025-05-01-preview"
 COGNITIVE_DOMAIN = "cognitiveservices.azure.com"
 
-DEFAULT_AVATAR_CHARACTER = "harry"
-DEFAULT_AVATAR_STYLE = "youthful"
+DEFAULT_AVATAR_CHARACTER = "lisa"
+DEFAULT_AVATAR_STYLE = "casual-sitting"
 DEFAULT_VOICE_NAME = "en-US-Ava:DragonHDLatestNeural"
 DEFAULT_VOICE_TYPE = "azure-standard"
 

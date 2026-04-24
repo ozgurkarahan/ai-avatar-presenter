@@ -31,22 +31,46 @@ AVATAR_MAP = {
 
 # Azure Batch Avatar Synthesis: each character supports a specific set of styles.
 # Mismatched style -> 400 "style X is not supported for avatar character Y".
-# Ref: https://learn.microsoft.com/azure/ai-services/speech-service/batch-synthesis-avatar
+# Ref: https://learn.microsoft.com/azure/ai-services/speech-service/text-to-speech-avatar/standard-avatars
 AVATAR_STYLES = {
     "lisa": "casual-sitting",
-    "harry": "youthful",
+    "harry": "business",
     "jeff": "business",
     "lori": "casual",
     "max": "business",
     "meg": "business",
 }
 
-# New defaults (H1 2026-04-24): max/business is the most gesture-rich standard
-# avatar for training content (applaud, welcome, thanks, encourage,
-# introduction-to-products, nodding). Replaces the previous lisa/casual-sitting
-# default which was the least dynamic option in the standard lineup.
-DEFAULT_AVATAR = "max"
-DEFAULT_AVATAR_STYLE = "business"
+# Docs-verified intro gestures per (character, style). Used when the caller
+# asks for an opening gesture on slide 1. Entries are pulled directly from
+# the Azure standard-avatar docs, so any value here is known to render.
+# Missing keys -> no gesture injected (safe fallback).
+AVATAR_INTRO_GESTURES: dict[tuple[str, str], str] = {
+    ("lisa", "casual-sitting"): "show-front-1",
+    ("lisa", "graceful-sitting"): "wave-left-1",
+    ("lisa", "technical-sitting"): "wave-left-1",
+    ("harry", "business"): "hello",
+    ("harry", "casual"): "hello",
+    ("harry", "youthful"): "hello",
+    ("jeff", "business"): "here",
+    ("lori", "casual"): "hello",
+    ("lori", "graceful"): "welcome",
+    ("lori", "formal"): "hi",
+    ("max", "business"): "welcome",
+    ("max", "casual"): "hello",
+    ("meg", "business"): "say-hi",
+    ("meg", "casual"): "say-hi",
+    ("meg", "formal"): "say-hi",
+}
+
+# H1.5 2026-04-24: Lisa casual-sitting is the most photo-realistic standard
+# avatar in Azure's catalog (per docs + public demos) and ships with
+# presenter-friendly gestures (show-front-1..9, think-twice, thumbsup).
+# Harry/business is the male counterpart with welcome/hello/thanks gestures.
+# We previously defaulted to Max (more gestures, but noticeably 3D-stylized)
+# — client feedback 2026-04-23 called this out as "not natural enough".
+DEFAULT_AVATAR = "lisa"
+DEFAULT_AVATAR_STYLE = "casual-sitting"
 
 
 def style_for(avatar: str) -> str:
@@ -176,18 +200,20 @@ def build_ssml(
         text: Narration plain text. Special XML chars are escaped.
         language: BCP-47 locale (e.g. "en-US").
         voice: Explicit voice name (overrides VOICE_MAP).
-        intro_gesture_for: If set to "max", inject a `gesture.welcome`
-            bookmark right after the leading pause. Only Max is validated
-            to support this gesture in the current Azure catalog, so any
-            other value is a no-op — keeps us safe against
-            character/style-specific gesture availability. Callers should
-            pass this ONLY on the first slide of a deck.
+        intro_gesture_for: Character name (e.g. "lisa", "harry", "max").
+            If set AND the (character, style) pair has a docs-verified
+            gesture in AVATAR_INTRO_GESTURES, inject the bookmark right
+            after the leading pause. Unknown pairs -> no gesture (safe).
+            Callers should pass this ONLY on the first slide of a deck.
     """
     voice_name = voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
     safe_text = _xml_escape(text or "")
     gesture = ""
-    if intro_gesture_for == "max":
-        gesture = "<bookmark mark='gesture.welcome'/>"
+    if intro_gesture_for:
+        style = AVATAR_STYLES.get(intro_gesture_for, "")
+        gesture_name = AVATAR_INTRO_GESTURES.get((intro_gesture_for, style))
+        if gesture_name:
+            gesture = f"<bookmark mark='gesture.{gesture_name}'/>"
     return (
         f'<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" '
         f'xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="{language}">'

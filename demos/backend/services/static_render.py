@@ -36,16 +36,13 @@ log = logging.getLogger(__name__)
 
 
 # Default avatar for UC2 single-narrator picture-in-picture.
-# H1 2026-04-24: max/business — widest validated gesture vocabulary for
-# training content (welcome, thanks, applaud, encourage, nodding,
-# introduction-to-products, display-number, press-down). Replaces the
-# previous "lisa" default which was the least dynamic standard avatar.
-DEFAULT_AVATAR = "max"
+# H1.5 2026-04-24: lisa/casual-sitting — most photo-realistic standard
+# avatar in Azure's catalog, with 14 presenter-friendly gestures.
+# Replaces max/business (too 3D-stylized, client feedback 2026-04-23).
+DEFAULT_AVATAR = "lisa"
 
-# Gender-based avatar matching. H1 2026-04-24: used as a *fallback* when
-# the caller hasn't explicitly chosen an avatar. Previously this was
-# called unconditionally in `_submit_slide`, which silently overrode
-# any UI selection. Now the helper only fires when `avatar is None`.
+# Gender-based avatar matching. Used as a *fallback* when the caller
+# hasn't explicitly chosen an avatar.
 _MALE_VOICE_NAMES = {
     "Andrew", "Remy", "Tristan", "Florian", "Alessio",
     "Macerio", "Yunfan", "Masaru",
@@ -55,17 +52,18 @@ _FEMALE_VOICE_NAMES = {
     "Thalita", "Xiaochen", "Nanami",
 }
 
-# Gender-matched defaults. Both use a "business" style for UC2 training
-# consistency (widest docs-verified gesture vocabulary for both chars).
-_MALE_DEFAULT = "max"      # business  — has gesture.welcome
-_FEMALE_DEFAULT = "meg"    # business  — female counterpart to max
+# H1.5: lisa (casual-sitting) = most natural female; harry (business) =
+# natural male counterpart with welcome/hello/thanks gestures. Both chosen
+# over max/meg to favor photo-realism over gesture variety.
+_MALE_DEFAULT = "harry"
+_FEMALE_DEFAULT = "lisa"
 
 
 def avatar_for_voice(voice: str, fallback: str = DEFAULT_AVATAR) -> str:
     """Return an avatar whose gender matches the voice.
 
     Used as the *default* resolver when the caller doesn't pass an
-    explicit avatar choice. Male voice -> max, female voice -> meg.
+    explicit avatar choice. Male voice -> harry, female voice -> lisa.
     Unknown voice -> fallback (DEFAULT_AVATAR).
     """
     if not voice:
@@ -143,14 +141,14 @@ def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
 
     voice = n.voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
     # If the caller didn't pick an avatar, fall back to gender-matched
-    # default (female voice -> meg, male voice -> max). If the caller
+    # default (female voice -> lisa, male voice -> harry). If the caller
     # *did* pass an explicit avatar, respect it verbatim.
     resolved_avatar = avatar if avatar else avatar_for_voice(voice)
     avatar_char = AVATAR_MAP.get(resolved_avatar, resolved_avatar)
-    # Only inject an intro gesture on the very first slide, and only
-    # when the character is Max (its `gesture.welcome` is docs-verified
-    # for the `business` style). Any other character -> no-op in build_ssml.
-    intro_gesture = avatar_char if (intro and avatar_char == "max") else None
+    # Only inject an intro gesture on the very first slide. build_ssml
+    # looks up a docs-verified gesture per (character, style) — unknown
+    # pairs are silently skipped, so this is safe for all characters.
+    intro_gesture = avatar_char if intro else None
     ssml = build_ssml(n.narration, language, voice=voice,
                       intro_gesture_for=intro_gesture)
 

@@ -45,7 +45,7 @@ export default function Uc1PathPlayerPage() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [autoPlayVideo, setAutoPlayVideo] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<string>(UC1_VOICES[1].id);
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('harry');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('lisa');
   const [started, setStarted] = useState(false);
 
   // Load path + progress, and initialize language once from the first deck
