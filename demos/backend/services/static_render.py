@@ -42,12 +42,10 @@ log = logging.getLogger(__name__)
 # previous "lisa" default which was the least dynamic standard avatar.
 DEFAULT_AVATAR = "max"
 
-# Historical: we used to force-override the user-chosen avatar to match
-# the voice gender (male voice -> harry, female voice -> lisa). That
-# silently ignored the UI selection and was one of the reasons the demo
-# "always looked the same". We keep the helper here for reference /
-# frontend parity but we no longer call it in _submit_slide — the
-# caller's `avatar` argument is respected verbatim.
+# Gender-based avatar matching. H1 2026-04-24: used as a *fallback* when
+# the caller hasn't explicitly chosen an avatar. Previously this was
+# called unconditionally in `_submit_slide`, which silently overrode
+# any UI selection. Now the helper only fires when `avatar is None`.
 _MALE_VOICE_NAMES = {
     "Andrew", "Remy", "Tristan", "Florian", "Alessio",
     "Macerio", "Yunfan", "Masaru",
@@ -57,23 +55,27 @@ _FEMALE_VOICE_NAMES = {
     "Thalita", "Xiaochen", "Nanami",
 }
 
+# Gender-matched defaults. Both use a "business" style for UC2 training
+# consistency (widest docs-verified gesture vocabulary for both chars).
+_MALE_DEFAULT = "max"      # business  — has gesture.welcome
+_FEMALE_DEFAULT = "meg"    # business  — female counterpart to max
+
 
 def avatar_for_voice(voice: str, fallback: str = DEFAULT_AVATAR) -> str:
-    """Return an avatar whose gender matches the voice (suggestion only).
+    """Return an avatar whose gender matches the voice.
 
-    DEPRECATED (H1): no longer called by the render path. Kept because
-    the frontend (`uc1Api.ts`) still imports an equivalent helper and
-    we don't want to break parity if someone wires it back in. Will be
-    removed once the centralized avatar catalog lands (H2 prerequisite).
+    Used as the *default* resolver when the caller doesn't pass an
+    explicit avatar choice. Male voice -> max, female voice -> meg.
+    Unknown voice -> fallback (DEFAULT_AVATAR).
     """
     if not voice:
         return fallback
     for name in _MALE_VOICE_NAMES:
         if name in voice:
-            return "harry"
+            return _MALE_DEFAULT
     for name in _FEMALE_VOICE_NAMES:
         if name in voice:
-            return "lisa"
+            return _FEMALE_DEFAULT
     return fallback
 
 
@@ -134,16 +136,17 @@ def _request_with_429_retry(
 # ---------------------------------------------------------------------------
 
 def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
-                  avatar: str = DEFAULT_AVATAR, *, intro: bool = False) -> _SlideJob:
+                  avatar: Optional[str] = None, *, intro: bool = False) -> _SlideJob:
     job_id = str(uuid.uuid4())
     base = _get_speech_base_url(cfg)
     url = f"{base}/avatar/batchsyntheses/{job_id}?api-version=2024-08-01"
 
     voice = n.voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
-    # Respect the avatar chosen by the caller. (Previously we silently
-    # switched to harry/lisa based on voice gender, which meant the UI
-    # selection was ignored on most slides — see H1 notes.)
-    avatar_char = AVATAR_MAP.get(avatar, avatar)
+    # If the caller didn't pick an avatar, fall back to gender-matched
+    # default (female voice -> meg, male voice -> max). If the caller
+    # *did* pass an explicit avatar, respect it verbatim.
+    resolved_avatar = avatar if avatar else avatar_for_voice(voice)
+    avatar_char = AVATAR_MAP.get(resolved_avatar, resolved_avatar)
     # Only inject an intro gesture on the very first slide, and only
     # when the character is Max (its `gesture.welcome` is docs-verified
     # for the `business` style). Any other character -> no-op in build_ssml.
@@ -267,7 +270,7 @@ def render_static(
     work_dir: Optional[Path] = None,
     timeout: int = 900,
     poll_interval: int = 5,
-    avatar: str = DEFAULT_AVATAR,
+    avatar: Optional[str] = None,
 ) -> list[SlideClip]:
     """Render every SlideNarration into a transparent-WebM clip."""
     work_dir = Path(work_dir) if work_dir else Path("data/static_video") / uuid.uuid4().hex[:8]
