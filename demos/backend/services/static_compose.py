@@ -59,6 +59,23 @@ SLIDE_BG = "0xF5F5F0"    # warm neutral behind letterboxed slide
 # "studio backdrop" next to the warm slide area.
 AVATAR_BG = "0x0B0E14"
 
+# H1.6 2026-04-28: tight head close-up. Earlier we used scale-fit + center
+# crop on the 1920x1080 source which produced an upper-body wide shot,
+# leaving the face small inside the 560px circle. User feedback after the
+# 2026-04-27 A/B test on max/business: the close-up framing is much more
+# expressive — they want the head as large as possible everywhere.
+#
+# Crop window applied to the source WebM BEFORE the circular mask scale.
+# Tuned on max/business (head center ≈ (945, 180) in the 1920x1080
+# Azure standard avatar canvas). Validated to also frame lisa/casual-
+# sitting (head ≈ (980, 230)) and harry/business (head ≈ (990, 145))
+# acceptably — all standard Azure avatars render the character roughly
+# centered around x≈970, head in the upper third.
+HEAD_CROP_W = 560
+HEAD_CROP_H = 560
+HEAD_CROP_X = 660
+HEAD_CROP_Y = 20
+
 
 def _find_font() -> Optional[str]:
     for c in [
@@ -203,12 +220,12 @@ def _render_segment(
         f"setsar=1,fps={FPS}[slide];"
         # Right column backdrop: solid studio colour.
         f"color=c={AVATAR_BG}:s={AVATAR_COL_W}x{VIDEO_H}:r={FPS},format=yuv420p[rpanel];"
-        # Avatar: scale-crop to AVATAR_SIZE square. Combine the WebM's own
-        # alpha (character silhouette, transparent background) with a soft
-        # circular mask — keeps the character fully opaque but also carves
-        # the avatar into a circle over the studio panel.
-        f"[1:v]scale={AVATAR_SIZE}:{AVATAR_SIZE}:force_original_aspect_ratio=increase,"
-        f"crop={AVATAR_SIZE}:{AVATAR_SIZE},format=yuva420p,"
+        # Avatar: HEAD-ZOOM crop on the source first, then scale to
+        # AVATAR_SIZE. Keeps the WebM's own alpha (character silhouette)
+        # combined with a soft circular mask — the character is fully
+        # opaque but carved into a circle over the studio panel.
+        f"[1:v]crop={HEAD_CROP_W}:{HEAD_CROP_H}:{HEAD_CROP_X}:{HEAD_CROP_Y},"
+        f"scale={AVATAR_SIZE}:{AVATAR_SIZE},format=yuva420p,"
         f"geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
         f"a='alpha(X,Y)*"
         f"if(lte(hypot(X-{half},Y-{half}),{edge}),1,"

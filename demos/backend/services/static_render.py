@@ -28,6 +28,7 @@ from services.avatar import (
     _get_speech_auth_header,
     _get_speech_base_url,
     build_ssml,
+    plan_gestures,
     style_for,
 )
 from services.static_models import SlideNarration, StaticScript
@@ -145,12 +146,15 @@ def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
     # *did* pass an explicit avatar, respect it verbatim.
     resolved_avatar = avatar if avatar else avatar_for_voice(voice)
     avatar_char = AVATAR_MAP.get(resolved_avatar, resolved_avatar)
-    # Only inject an intro gesture on the very first slide. build_ssml
-    # looks up a docs-verified gesture per (character, style) — unknown
-    # pairs are silently skipped, so this is safe for all characters.
-    intro_gesture = avatar_char if intro else None
+    gestures = plan_gestures(
+        avatar_char,
+        n.narration,
+        slide_index=n.slide_index,
+        intro=intro,
+        max_gestures=3,
+    )
     ssml = build_ssml(n.narration, language, voice=voice,
-                      intro_gesture_for=intro_gesture)
+                      gesture_names=gestures)
 
     payload = {
         "inputKind": "SSML",
@@ -166,8 +170,8 @@ def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
     }
     headers = {**_get_speech_auth_header(cfg), "Content-Type": "application/json"}
     _request_with_429_retry("PUT", url, headers=headers, json_body=payload, timeout=30)
-    log.info("uc2: submitted slide=%d job=%s avatar=%s intro=%s",
-             n.slide_index, job_id, avatar_char, intro)
+    log.info("uc2: submitted slide=%d job=%s avatar=%s gestures=%s",
+             n.slide_index, job_id, avatar_char, gestures)
     return _SlideJob(narration=n, job_id=job_id)
 
 
