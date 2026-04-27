@@ -6,6 +6,7 @@ Blob layout (same container as UC3, prefix `static-videos/`):
     static-videos/{job_id}/video.mp4
     static-videos/{job_id}/audio.mp3
     static-videos/{job_id}/subtitles.srt
+    static-videos/{job_id}/scorm.zip
     static-videos/{job_id}/manifest.json   <-- written LAST (publish flag)
 
 Manifest holds blob names only — SAS tokens are minted at read time from
@@ -43,6 +44,7 @@ class StaticLibraryFiles:
     mp3: Path
     srt: Path
     thumb: Optional[Path] = None
+    scorm: Optional[Path] = None
 
 
 class StaticVideoLibrary:
@@ -123,6 +125,11 @@ class StaticVideoLibrary:
                          content_type="audio/mpeg")
             self._upload(f"{prefix}/subtitles.srt", files.srt.read_bytes(),
                          content_type="application/x-subrip")
+            scorm_blob: Optional[str] = None
+            if files.scorm and files.scorm.exists():
+                self._upload(f"{prefix}/scorm.zip", files.scorm.read_bytes(),
+                             content_type="application/zip")
+                scorm_blob = f"{prefix}/scorm.zip"
 
             manifest = {
                 "schema_version": SCHEMA_VERSION,
@@ -138,6 +145,7 @@ class StaticVideoLibrary:
                 "audio_blob": f"{prefix}/audio.mp3",
                 "subtitle_blob": f"{prefix}/subtitles.srt",
                 "thumbnail_blob": thumb_blob,
+                "scorm_blob": scorm_blob,
             }
             # Manifest LAST — its presence is the publish flag.
             self._upload(
@@ -202,6 +210,7 @@ class StaticVideoLibrary:
         m["audio_url"] = self._sas(m.get("audio_blob"))
         m["srt_url"] = self._sas(m.get("subtitle_blob"))
         m["thumbnail_url"] = self._sas(m.get("thumbnail_blob"))
+        m["scorm_url"] = self._sas(m.get("scorm_blob"))
         return m
 
     def delete(self, job_id: str) -> bool:

@@ -350,6 +350,7 @@ def get_library_item(job_id: str, cfg: AzureConfig = Depends(get_cfg)) -> Librar
         "mp4_url": item.get("mp4_url"),
         "mp3_url": item.get("mp3_url"),
         "srt_url": item.get("srt_url"),
+        "scorm_url": item.get("scorm_url"),
     })
 
 
@@ -404,8 +405,11 @@ async def _run_render_job(job_id: str, cfg: AzureConfig) -> None:
             srt_url=f"/api/podcast/jobs/{job.id}/file/srt",
         )
         # Persist file locations for the local download route.
-        _JOB_FILES[job.id] = {"mp4": result.mp4, "mp3": result.mp3, "srt": result.srt}
-        _update(JobState.done, "done", completed=len(clips), message="Ready")
+        _JOB_FILES[job.id] = {
+            "mp4": result.mp4,
+            "mp3": result.mp3,
+            "srt": result.srt,
+        }
 
         # Archive to blob library (fire-and-forget semantics — failure doesn't
         # fail the job, just marks archive_state=failed for UI feedback).
@@ -415,10 +419,19 @@ async def _run_render_job(job_id: str, cfg: AzureConfig) -> None:
             lib = _get_library(cfg)
             if lib.available:
                 title = (doc.title if doc else script.id) or script.id
+                scorm_path = await asyncio.to_thread(
+                    build_scorm_package,
+                    title=title,
+                    language=script.language,
+                    media_path=result.mp3,
+                    srt_path=result.srt,
+                    out_dir=out_dir,
+                )
+                _JOB_FILES[job.id]["scorm"] = scorm_path
                 manifest = await asyncio.to_thread(
                     lib.publish,
                     job.id,
-                    LibraryFiles(mp4=result.mp4, mp3=result.mp3, srt=result.srt),
+                    LibraryFiles(mp4=result.mp4, mp3=result.mp3, srt=result.srt, scorm=scorm_path),
                     title=title,
                     document_title=(doc.title if doc else ""),
                     language=script.language,
@@ -440,6 +453,8 @@ async def _run_render_job(job_id: str, cfg: AzureConfig) -> None:
             job.archive_state = "failed"
         finally:
             job.updated_at = _now()
+
+        _update(JobState.done, "done", completed=len(clips), message="Ready")
     except Exception as e:  # noqa: BLE001
         logger.exception("render job %s failed", job_id)
         _update(JobState.failed, "failed", error=str(e))

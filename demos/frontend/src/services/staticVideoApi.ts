@@ -1,7 +1,9 @@
 // Typed API client for the UC2 /api/static-video/* endpoints.
 // Slide-first script model (one narration per slide, NOT turn-based).
 
-export type JobState = 'queued' | 'rendering' | 'composing' | 'done' | 'failed' | 'cancelled';
+export type JobState = 'queued' | 'rendering' | 'composing' | 'publishing' | 'done' | 'failed';
+export type ArchiveState = 'none' | 'archiving' | 'published' | 'failed';
+export type ScriptStyle = 'casual' | 'formal' | 'explainer' | 'marketing';
 
 export interface SlideInfo {
   index: number;
@@ -31,6 +33,8 @@ export interface SlideNarration {
 export interface StaticScript {
   doc_id: string;
   language: string;
+  style?: ScriptStyle | null;
+  focus?: string | null;
   voice: string;
   narrations: SlideNarration[];
   title?: string;
@@ -39,31 +43,54 @@ export interface StaticScript {
 
 export interface VoiceOption {
   id: string;
-  name: string;
+  display_name: string;
+  language: string;
   gender: 'male' | 'female' | 'neutral';
-  styles: string[];
+  hd: boolean;
 }
 
 export interface LanguageOption {
   code: string;
-  label: string;
-  voices_count: number;
+  name: string;
 }
 
 export interface JobProgress {
-  state: JobState;
-  percent: number;
   stage: string;
+  percent: number;
+  completed: number;
+  total: number;
   message: string;
+}
+
+export interface JobOutputs {
+  video_url?: string | null;
+  audio_url?: string | null;
+  srt_url?: string | null;
+  thumbnail_url?: string | null;
+  duration_sec?: number | null;
+}
+
+export interface StaticJob {
+  job_id: string;
+  doc_id: string;
+  state: JobState;
+  progress: JobProgress;
+  outputs: JobOutputs;
+  error?: string | null;
+  created_at: string;
+  updated_at: string;
+  archive_state: ArchiveState;
 }
 
 export interface LibrarySummary {
   job_id: string;
   title: string;
+  document_title: string;
   language: string;
+  voice: string;
   created_at: string;
-  thumb_url: string | null;
-  duration_s: number | null;
+  thumbnail_url: string | null;
+  duration_sec: number | null;
   slide_count: number;
 }
 
@@ -71,11 +98,12 @@ export interface LibraryItem extends LibrarySummary {
   video_url: string | null;
   audio_url: string | null;
   srt_url: string | null;
+  scorm_url: string | null;
 }
 
 export interface ScriptRequest {
   language: string;
-  style?: string;
+  style?: ScriptStyle;
   focus?: string;
   voice: string;
 }
@@ -115,6 +143,7 @@ export async function streamScript(
       const reader = r.body.getReader();
       const dec = new TextDecoder();
       let buf = '';
+      let doneSeen = false;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { value, done } = await reader.read();
@@ -126,22 +155,24 @@ export async function streamScript(
           buf = buf.slice(nl + 1);
           if (!line) continue;
           try {
-            const obj = JSON.parse(line);
-            if (obj && typeof obj.slide_index === 'number') {
-              onItem(obj as SlideNarration);
-            }
-          } catch { /* ignore malformed */ }
+            doneSeen = handleScriptEvent(JSON.parse(line), onItem, onDone, onError) || doneSeen;
+          } catch (e: unknown) {
+            onError(`Malformed script stream event: ${String(e)}`);
+            doneSeen = true;
+          }
         }
       }
       if (buf.trim()) {
         try {
-          const obj = JSON.parse(buf.trim());
-          if (obj && typeof obj.slide_index === 'number') onItem(obj as SlideNarration);
-        } catch { /* ignore */ }
+          doneSeen = handleScriptEvent(JSON.parse(buf.trim()), onItem, onDone, onError) || doneSeen;
+        } catch (e: unknown) {
+          onError(`Malformed script stream event: ${String(e)}`);
+          doneSeen = true;
+        }
       }
-      onDone();
-    } catch (e: any) {
-      if (e?.name !== 'AbortError') onError(String(e?.message ?? e));
+      if (!doneSeen) onDone();
+    } catch (e: unknown) {
+      if (!isAbortError(e)) onError(errorMessage(e));
     }
   })();
   return () => ctrl.abort();
@@ -177,7 +208,7 @@ export async function startRender(docId: string): Promise<{ job_id: string }> {
   return r.json();
 }
 
-export async function getJob(jobId: string): Promise<JobProgress> {
+export async function getJob(jobId: string): Promise<StaticJob> {
   const r = await fetch(`${API}/jobs/${jobId}`);
   if (!r.ok) throw new Error(await safeText(r));
   return r.json();
@@ -221,6 +252,54 @@ async function safeText(r: Response): Promise<string> {
   try { return await r.text(); } catch { return `HTTP ${r.status}`; }
 }
 
+function handleScriptEvent(
+  obj: unknown,
+  onItem: (n: SlideNarration) => void,
+  onDone: () => void,
+  onError: (m: string) => void,
+): boolean {
+  if (!obj || typeof obj !== 'object') return false;
+  const event = obj as { event?: string; data?: unknown; script?: unknown; slide_index?: unknown };
+
+  if (event.event === 'narration' && isSlideNarration(event.data)) {
+    onItem(event.data);
+    return false;
+  }
+  if (event.event === 'done') {
+    onDone();
+    return true;
+  }
+  if (event.event === 'error') {
+    onError(errorMessageFromData(event.data));
+    return true;
+  }
+  if (isSlideNarration(event)) {
+    onItem(event);
+  }
+  return false;
+}
+
+function isSlideNarration(value: unknown): value is SlideNarration {
+  return !!value && typeof value === 'object'
+    && typeof (value as { slide_index?: unknown }).slide_index === 'number'
+    && typeof (value as { narration?: unknown }).narration === 'string';
+}
+
+function errorMessageFromData(data: unknown): string {
+  if (data && typeof data === 'object' && typeof (data as { message?: unknown }).message === 'string') {
+    return (data as { message: string }).message;
+  }
+  return 'Script generation failed';
+}
+
+function isAbortError(e: unknown): boolean {
+  return e instanceof DOMException && e.name === 'AbortError';
+}
+
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 function stripExt(name: string): string {
   const i = name.lastIndexOf('.');
   return i > 0 ? name.slice(0, i) : name;
@@ -240,11 +319,11 @@ export const DRAGONHD_LANGUAGES: { code: string; label: string }[] = [
 /** Fallback DragonHD voice id per language (used when /voices fails). */
 export const DEFAULT_VOICE_BY_LANG: Record<string, string> = {
   'en-US': 'en-US-Ava:DragonHDLatestNeural',
-  'fr-FR': 'fr-FR-VivienneMultilingualNeural',
-  'es-ES': 'es-ES-XimenaMultilingualNeural',
-  'de-DE': 'de-DE-SeraphinaMultilingualNeural',
-  'it-IT': 'it-IT-IsabellaMultilingualNeural',
-  'pt-BR': 'pt-BR-ThalitaMultilingualNeural',
-  'zh-CN': 'zh-CN-XiaoxiaoMultilingualNeural',
-  'ja-JP': 'ja-JP-MasaruMultilingualNeural',
+  'fr-FR': 'fr-FR-Vivienne:DragonHDLatestNeural',
+  'es-ES': 'es-ES-Ximena:DragonHDLatestNeural',
+  'de-DE': 'de-DE-Seraphina:DragonHDLatestNeural',
+  'it-IT': 'it-IT-Isabella:DragonHDLatestNeural',
+  'pt-BR': 'pt-BR-Thalita:DragonHDLatestNeural',
+  'zh-CN': 'zh-CN-Xiaochen:DragonHDLatestNeural',
+  'ja-JP': 'ja-JP-Nanami:DragonHDLatestNeural',
 };

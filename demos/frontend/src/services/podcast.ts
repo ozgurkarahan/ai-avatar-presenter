@@ -86,6 +86,7 @@ export interface LibraryItem extends LibrarySummary {
   mp4_url: string | null;
   mp3_url: string | null;
   srt_url: string | null;
+  scorm_url: string | null;
 }
 
 const API = '/api/podcast';

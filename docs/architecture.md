@@ -119,7 +119,7 @@ The AI Presenter is a web-based application that allows users to upload PowerPoi
 | **UC2** — Automated batch video generation | Slide-first pipeline (`/video`) — Batch Avatar per slide + ffmpeg compose | ✅ Implemented |
 | **UC3** — Podcast-style video generation | Dual-avatar podcast (`/podcast`) — GPT-4.1 dialogue + parallel TTS + ffmpeg compose | ✅ Implemented |
 | **Multilingual** (37+ languages) | 10 languages (6 native DragonHD + 4 multilingual fallback) | ✅ Partial |
-| **LMS/SCORM integration** | Not yet implemented | 🔲 Roadmap |
+| **LMS/SCORM integration** | UC2/UC3 render jobs generate SCORM ZIPs and persist them with library assets in Blob Storage | ✅ Implemented |
 | **M365 Copilot / Teams integration** | Agent Framework + Teams Static Tab | ✅ Partial |
 | **GDPR compliance** | Managed Identity, no keys in client, Azure-hosted | ✅ PoC level |
 

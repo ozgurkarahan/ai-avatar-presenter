@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DRAGONHD_LANGUAGES, DEFAULT_VOICE_BY_LANG,
-  IngestResponse, JobProgress, SlideInfo, SlideNarration, VoiceOption,
+  IngestResponse, ScriptStyle, SlideInfo, SlideNarration, StaticJob, VoiceOption,
   getJob, getScript, ingestFile, listVoices, patchScript,
   startRender, streamScript,
 } from '../services/staticVideoApi';
@@ -29,7 +29,7 @@ export default function StaticVideoPage() {
   const [uploadBusy, setUploadBusy] = useState(false);
 
   const [language, setLanguage] = useState('en-US');
-  const [style, setStyle] = useState<string>('professional');
+  const [style, setStyle] = useState<ScriptStyle>('explainer');
   const [focus, setFocus] = useState('');
   const [voice, setVoice] = useState<string>(DEFAULT_VOICE_BY_LANG['en-US']);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
@@ -41,7 +41,7 @@ export default function StaticVideoPage() {
   const abortRef = useRef<(() => void) | null>(null);
 
   const [jobId, setJobId] = useState<string | null>(null);
-  const [job, setJob] = useState<JobProgress | null>(null);
+  const [job, setJob] = useState<StaticJob | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
 
   // ---- load voices when language changes ---------------------------------
@@ -67,7 +67,7 @@ export default function StaticVideoPage() {
   // ---- poll job ----------------------------------------------------------
   useEffect(() => {
     if (!jobId || !job) return;
-    if (['done', 'failed', 'cancelled'].includes(job.state)) return;
+    if (['done', 'failed'].includes(job.state)) return;
     const t = setTimeout(async () => {
       try { setJob(await getJob(jobId)); }
       catch { /* ignore transient */ }
@@ -117,11 +117,20 @@ export default function StaticVideoPage() {
       n.slide_index === slideIndex ? { ...n, narration: text } : n));
   }
 
-  async function saveSlidePatch(slideIndex: number, text: string) {
+  function updateSlideVoice(slideIndex: number, nextVoice: string) {
+    setNarrations((prev) => prev.map((n) =>
+      n.slide_index === slideIndex ? { ...n, voice: nextVoice } : n));
+  }
+
+  async function saveSlidePatch(slideIndex: number, text: string, nextVoice?: string) {
     if (!doc) return;
     setSavingPatch(true);
     try {
-      const updated = await patchScript(doc.doc_id, [{ slide_index: slideIndex, narration: text }]);
+      const updated = await patchScript(doc.doc_id, [{
+        slide_index: slideIndex,
+        narration: text,
+        voice: nextVoice,
+      }]);
       setNarrations(updated.narrations);
     } catch (e: any) {
       alert(`Save failed: ${e?.message ?? e}`);
@@ -163,9 +172,14 @@ export default function StaticVideoPage() {
     try {
       const { job_id } = await startRender(doc.doc_id);
       setJobId(job_id);
-      setJob({ state: 'queued', percent: 0, stage: 'queued', message: 'Queued for rendering…' });
+      setJob(makeQueuedJob(job_id, doc.doc_id, doc.slides.length));
       setPhase('rendering');
       setRenderError(null);
+      try {
+        setJob(await getJob(job_id));
+      } catch (e: any) {
+        setRenderError(`Render started, but polling failed: ${e?.message ?? e}`);
+      }
     } catch (e: any) {
       setRenderError(String(e?.message ?? e));
       alert(`Render failed to start: ${e?.message ?? e}`);
@@ -207,6 +221,7 @@ export default function StaticVideoPage() {
                 onSelect={setSelectedIdx}
                 voices={voices}
                 onNarrationChange={updateSlideNarration}
+                onVoiceChange={updateSlideVoice}
                 onSavePatch={saveSlidePatch}
                 onRegenerate={regenerateSlide}
                 savingPatch={savingPatch}
@@ -244,6 +259,27 @@ const fade = {
   exit: { opacity: 0, y: -10 }, transition: { duration: 0.25 },
 };
 
+function makeQueuedJob(jobId: string, docId: string, total: number): StaticJob {
+  const now = new Date().toISOString();
+  return {
+    job_id: jobId,
+    doc_id: docId,
+    state: 'queued',
+    progress: {
+      stage: 'queued',
+      percent: 0,
+      completed: 0,
+      total,
+      message: 'Queued for rendering…',
+    },
+    outputs: {},
+    error: null,
+    created_at: now,
+    updated_at: now,
+    archive_state: 'none',
+  };
+}
+
 function Hero() {
   return (
     <div style={{
@@ -272,7 +308,7 @@ interface SetupProps {
   doc: IngestResponse | null;
   uploadBusy: boolean;
   focus: string; onFocusChange: (v: string) => void;
-  style: string; onStyle: (s: string) => void;
+  style: ScriptStyle; onStyle: (s: ScriptStyle) => void;
   language: string; onLanguage: (l: string) => void;
   voice: string; onVoice: (v: string) => void;
   voices: VoiceOption[];
@@ -308,11 +344,11 @@ function SetupPhase(p: SetupProps) {
         <Card title="3. Narration settings">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
             <Field label="Style">
-              <select value={p.style} onChange={(e) => p.onStyle(e.target.value)} style={selectStyle}>
-                <option value="professional">Professional</option>
+              <select value={p.style} onChange={(e) => p.onStyle(e.target.value as ScriptStyle)} style={selectStyle}>
+                <option value="explainer">Explainer</option>
+                <option value="formal">Formal</option>
                 <option value="casual">Casual</option>
-                <option value="enthusiastic">Enthusiastic</option>
-                <option value="educational">Educational</option>
+                <option value="marketing">Marketing</option>
               </select>
             </Field>
             <Field label="Language">
@@ -329,7 +365,7 @@ function SetupPhase(p: SetupProps) {
                 ) : (
                   p.voices.map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.name} · {v.gender}
+                      {v.display_name} · {v.gender}
                     </option>
                   ))
                 )}
@@ -477,7 +513,7 @@ function ScriptStreamingView({ narrations, error, total }: {
 // ---- Review (per-slide editor) -------------------------------------------
 function ScriptReview({
   slides, narrations, selectedIdx, onSelect,
-  voices, onNarrationChange, onSavePatch, onRegenerate, savingPatch,
+  voices, onNarrationChange, onVoiceChange, onSavePatch, onRegenerate, savingPatch,
   onRender, onBack,
 }: {
   slides: SlideInfo[];
@@ -486,7 +522,8 @@ function ScriptReview({
   onSelect: (i: number) => void;
   voices: VoiceOption[];
   onNarrationChange: (slideIndex: number, text: string) => void;
-  onSavePatch: (slideIndex: number, text: string) => Promise<void>;
+  onVoiceChange: (slideIndex: number, voice: string) => void;
+  onSavePatch: (slideIndex: number, text: string, voice?: string) => Promise<void>;
   onRegenerate: (slideIndex: number) => Promise<void>;
   savingPatch: boolean;
   onRender: () => void;
@@ -596,24 +633,20 @@ function ScriptReview({
                   value={currentNar?.voice ?? ''}
                   onChange={async (e) => {
                     if (!currentNar) return;
-                    // patch handled via Save button if you want; but voice change is immediate.
                     const nv = e.target.value;
-                    onNarrationChange(selectedIdx, draft);
-                    // update just the voice via patch
+                    onVoiceChange(selectedIdx, nv);
                     try {
-                      // We persist text + new voice together to avoid desync
-                      await onSavePatch(selectedIdx, draft);
-                      // Voice field doesn't go through patchScript in current contract,
-                      // so we leave it optimistically on the client.
-                      (currentNar as any).voice = nv;
-                    } catch { /* noop */ }
+                      await onSavePatch(selectedIdx, draft, nv);
+                    } catch (err) {
+                      alert(`Voice update failed: ${err instanceof Error ? err.message : String(err)}`);
+                    }
                   }}
                   style={selectStyle}>
                   {voices.length === 0 ? (
                     <option value={currentNar?.voice ?? ''}>{currentNar?.voice ?? '—'}</option>
                   ) : (
                     voices.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name} · {v.gender}</option>
+                      <option key={v.id} value={v.id}>{v.display_name} · {v.gender}</option>
                     ))
                   )}
                 </select>
@@ -646,11 +679,12 @@ function ScriptReview({
 
 // ---- Rendering progress ---------------------------------------------------
 function RenderingView({ job, slideCount, error }: {
-  job: JobProgress; slideCount: number; error: string | null;
+  job: StaticJob; slideCount: number; error: string | null;
 }) {
-  const pct = Math.max(0, Math.min(100, Math.round(job.percent ?? 0)));
+  const pct = Math.max(0, Math.min(100, Math.round(job.progress.percent ?? 0)));
   const failed = job.state === 'failed';
   const done = job.state === 'done';
+  const effectiveError = error ?? job.error ?? null;
   return (
     <div style={{ background: theme.card, borderRadius: 14, padding: 32, boxShadow: theme.shadow }}>
       <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 20 }}>
@@ -664,10 +698,10 @@ function RenderingView({ job, slideCount, error }: {
       }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: theme.brand, textTransform: 'uppercase',
           letterSpacing: 1, marginBottom: 4 }}>
-          {job.stage || job.state}
+          {job.progress.stage || job.state}
         </div>
         <div style={{ fontSize: 14, color: theme.text }}>
-          {job.message || (done ? 'Complete.' : 'Working…')}
+          {job.progress.message || (done ? 'Complete.' : 'Working…')}
         </div>
       </div>
       <div>
@@ -682,8 +716,8 @@ function RenderingView({ job, slideCount, error }: {
               background: `linear-gradient(90deg, ${theme.brand}, ${theme.accent})` }} />
         </div>
       </div>
-      {error && (
-        <div style={{ color: '#dc2626', marginTop: 16, fontWeight: 600 }}>{error}</div>
+      {effectiveError && (
+        <div style={{ color: '#dc2626', marginTop: 16, fontWeight: 600 }}>{effectiveError}</div>
       )}
       <div style={{ marginTop: 24, fontSize: 12, color: theme.muted }}>
         {slideCount} slides · typical render takes 2–5 minutes.

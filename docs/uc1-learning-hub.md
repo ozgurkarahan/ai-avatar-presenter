@@ -48,8 +48,8 @@ On top of Silver, it also delivers an early **Gold**-tier capability: the AI pat
    │      (srch-clgsqan6efeuy, Free SKU, swedencentral)
    │
    └─► Azure Cosmos DB
-          container `presentations`  → decks (partition key: /id)
-          container `paths`          → learning paths + progress
+          container `presentations`  → decks + path docs (partition key: /id)
+          container `uc1_progress`   → per-user path progress (partition key: /user_id)
 ```
 
 ---
@@ -103,7 +103,7 @@ A **Learning Path** is an ordered list of decks the user navigates sequentially.
 }
 ```
 
-Stored in Cosmos container `paths` (partition key `/id`). Steps store only `deck_id`; title + slide count are hydrated on read by joining against `presentations`.
+Stored in the Cosmos `presentations` container (partition key `/id`) with `source: "uc1-path"`. Steps store only `deck_id`; title + slide count are hydrated on read by joining against deck records in the same container. Per-user progress is stored separately in `uc1_progress` (partition key `/user_id`).
 
 ### 4.2 Endpoints
 
@@ -219,7 +219,7 @@ python tests/e2e_render.py --base-url https://ca-clgsqan6efeuy.thankfulhill-3503
 | Resource | Name | Purpose |
 |---|---|---|
 | Azure AI Search | `srch-clgsqan6efeuy` | Free SKU, swedencentral, index `uc1-decks`, hybrid search |
-| Cosmos DB (Serverless) | `cosmos-clgsqan6efeuy` | Containers `presentations` (decks) + `paths` (learning paths) |
+| Cosmos DB (Serverless) | `cosmos-clgsqan6efeuy` | Containers `presentations` (decks + `source="uc1-path"` learning paths) + `uc1_progress` |
 | Blob Storage | `stclgsqan6efeuy` | Slide PNGs + PPTX sources |
 | Azure OpenAI | `oai-*` | `gpt-4.1` (chat + recommend) + `text-embedding-3-small` (indexing) |
 | Azure AI Speech | `speech-*` | DragonHD TTS + batch avatar |

@@ -8,7 +8,7 @@
 
 ## 1. Purpose
 
-Turn a `.pptx` into a narrated, lip-synced **MP4 video** automatically — pick a voice, pick a language, pick an avatar. No live presenter needed. The output is stored in a public library so anyone with the link can watch (or re-download MP3 / SRT).
+Turn a `.pptx` into a narrated, lip-synced **MP4 video** automatically — pick a voice, pick a language, pick an avatar. No live presenter needed. The output is stored in a library so anyone with access can watch or re-download MP4 / MP3 / SRT / SCORM.
 
 This complements:
 
@@ -28,7 +28,7 @@ flowchart LR
     E -->|Looks good| F[Click Render]
     E -->|Tweak| D
     F --> G[Poll progress]
-    G --> H[Download MP4 / MP3 / SRT<br/>+ published to Library]
+    G --> H[Download MP4 / MP3 / SRT / SCORM<br/>+ published to Library]
 ```
 
 Every generated video lands in the **Library** (`/video/library`) — a grid of thumbnails per language/title.
@@ -107,12 +107,12 @@ sequenceDiagram
     FE->>API: POST /api/static-video/script/{doc_id}
     API->>OAI: system prompt + slide bodies
     OAI-->>API: 1 narration per slide
-    API-->>FE: StaticScript (editable)
+    API-->>FE: NDJSON events<br/>{event:"narration", data}<br/>{event:"done", data: StaticScript}
 
     U->>FE: (optional edits) + click Render
     FE->>API: POST /api/static-video/render/{doc_id}
     API->>API: create job, pick avatar by voice gender
-    API-->>FE: {job_id, state: submitted}
+    API-->>FE: {job_id}
 
     par parallel slides
         API->>BA: PUT batchsynthesis/{slide_n} (SSML)
@@ -125,7 +125,7 @@ sequenceDiagram
     API->>FF: concat all slide mp4s -> final.mp4
     FF-->>API: final.mp4 + full.srt + audio.mp3
 
-    API->>BLOB: upload mp4 + mp3 + srt + manifest.json
+    API->>BLOB: upload mp4 + mp3 + srt + scorm.zip + manifest.json
     BLOB-->>API: public URLs
     API-->>FE: state=done + library entry
 
@@ -136,11 +136,10 @@ sequenceDiagram
 
 | State | Stage | Percent | What's happening |
 |---|---|---|---|
-| `submitted` | queued | 0 | Job accepted, awaiting start |
-| `rendering` | submitting | 5 | Creating batch-avatar jobs |
-| `rendering` | synthesizing | 5–75 | N/M slides done by Batch Avatar |
+| `queued` | queued | 0 | Job accepted, awaiting start |
+| `rendering` | rendering | 5–75 | N/M slides done by Batch Avatar |
 | `composing` | compositing | 75–90 | ffmpeg: slide + avatar PiP + subtitles |
-| `publishing` | uploading | 90–98 | Push mp4/mp3/srt to Blob |
+| `publishing` | publishing | 90–98 | Build SCORM and push mp4/mp3/srt/scorm to Blob |
 | `done` | done | 100 | Manifest written, entry in library |
 
 ---
@@ -194,15 +193,15 @@ All under `/api/static-video` (prefix from `routers/static_video.py`).
 | Method | Path | Purpose |
 |---|---|---|
 | `GET`  | `/languages` | supported target languages |
-| `GET`  | `/voices` | 16 DragonHD voices w/ gender + style hints |
+| `GET`  | `/voices` | 16 DragonHD voices w/ `display_name`, language, gender, HD flag |
 | `POST` | `/ingest` | multipart upload, returns `doc_id` + parsed slides |
-| `POST` | `/script/{doc_id}` | LLM → narrations per slide |
+| `POST` | `/script/{doc_id}` | NDJSON stream: `{event:"narration", data}` per slide, final `{event:"done", data: StaticScript}` |
 | `GET`  | `/script/{doc_id}` | fetch current narrations |
 | `POST` | `/render/{doc_id}` | start render job |
-| `GET`  | `/jobs/{job_id}` | poll state + percent + per-stage message |
-| `GET`  | `/jobs/{job_id}/file/{kind}` | stream `mp4` / `mp3` / `srt` / `thumb` |
+| `GET`  | `/jobs/{job_id}` | poll `StaticJob` with nested `progress` + outputs |
+| `GET`  | `/jobs/{job_id}/file/{kind}` | local fallback stream `mp4` / `mp3` / `srt` / `thumb` / `scorm` |
 | `GET`  | `/library` | list published videos |
-| `GET`  | `/library/{job_id}` | full manifest of one entry |
+| `GET`  | `/library/{job_id}` | full manifest of one entry with fresh MP4 / MP3 / SRT / SCORM SAS URLs |
 | `DELETE` | `/library/{job_id}` | remove from library |
 
 ---
@@ -261,6 +260,8 @@ az storage account update -n <name> -g <rg> `
 
 Symptom when this is wrong: job goes `state=done` but `archive_state=failed` and `library` returns `[]`.
 
+The Bicep modules set Container Apps `minReplicas: 0` by default. This keeps idle demo cost low and prevents stale Speech streaming sessions from surviving after a presentation.
+
 ---
 
 ## 9. Testing
@@ -283,7 +284,7 @@ Expected output: 4 jobs done, 4 library entries, ~8 min total wall-clock.
 
 ## 10. Known limits (PoC only)
 
-- **In-memory state** — `JOBS`, `SCRIPTS`, `DOCUMENTS` live in Python process memory. Container restart = lost in-flight work. Persisted-job work ends up in Blob regardless.
+- **In-memory state** — `JOBS`, `SCRIPTS`, `DOCUMENTS` live in Python process memory. Container restart = lost in-flight work; published library assets, including SCORM packages, remain in Blob.
 - **No job queue** — `BackgroundTasks` only. One replica = one workload. For prod, replace with Azure Queue + worker.
 - **No auth** — public endpoints. Fine for demo-behind-a-link; for real use, front with AAD + per-tenant isolation.
 - **No observability UI** — logs go to Log Analytics; no dashboard. Use KQL directly for now.

@@ -5,6 +5,7 @@
 # Claude / Copilot
 .claude/
 .copilot-instructions.md
+.playwright-mcp/
 
 # Azure
 .azure/
@@ -12,11 +13,14 @@
 # Python
 **/__pycache__/
 **/*.pyc
+**/.pytest_cache/
 **/.venv/
 **/venv/
 
 # Node
+node_modules/
 demos/frontend/node_modules/
+dist/
 
 # Environment files (secrets)
 **/.env
@@ -25,9 +29,17 @@ demos/frontend/node_modules/
 
 # Data (local uploads)
 demos/backend/data/
+output/
+test-results/
+playwright-report/
+blob-report/
 
 # Docs
 docs/
 
 # Test files
 demos/backend/test_upload.pptx
+
+# Generated infra templates
+infra/main.json
+infra/uc3/main.json

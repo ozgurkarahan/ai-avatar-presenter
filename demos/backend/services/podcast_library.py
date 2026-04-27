@@ -5,6 +5,7 @@ Blob layout (all inside the existing blob container, prefix `podcast-library/`):
     podcast-library/{job_id}/video.mp4
     podcast-library/{job_id}/audio.mp3
     podcast-library/{job_id}/subtitles.srt
+    podcast-library/{job_id}/scorm.zip
     podcast-library/{job_id}/thumb.jpg
     podcast-library/{job_id}/manifest.json      <-- written LAST; presence = published
 
@@ -45,6 +46,7 @@ class LibraryFiles:
     mp4: Path
     mp3: Path
     srt: Path
+    scorm: Optional[Path] = None
 
 
 class PodcastLibrary:
@@ -142,6 +144,11 @@ class PodcastLibrary:
                          content_type="audio/mpeg")
             self._upload(f"{prefix}/subtitles.srt", files.srt.read_bytes(),
                          content_type="application/x-subrip")
+            scorm_blob: Optional[str] = None
+            if files.scorm and files.scorm.exists():
+                self._upload(f"{prefix}/scorm.zip", files.scorm.read_bytes(),
+                             content_type="application/zip")
+                scorm_blob = f"{prefix}/scorm.zip"
 
             # 4. Finally, write the manifest (presence => published)
             manifest = {
@@ -159,6 +166,7 @@ class PodcastLibrary:
                 "audio_blob": f"{prefix}/audio.mp3",
                 "subtitle_blob": f"{prefix}/subtitles.srt",
                 "thumbnail_blob": f"{prefix}/thumb.jpg" if thumb_ok else None,
+                "scorm_blob": scorm_blob,
             }
             self._upload(
                 f"{prefix}/{MANIFEST_NAME}",
@@ -240,6 +248,7 @@ class PodcastLibrary:
         m["mp3_url"] = self._sas(m.get("audio_blob"))
         m["srt_url"] = self._sas(m.get("subtitle_blob"))
         m["thumbnail_url"] = self._sas(m.get("thumbnail_blob"))
+        m["scorm_url"] = self._sas(m.get("scorm_blob"))
         return m
 
     def delete(self, job_id: str) -> bool:

@@ -372,6 +372,7 @@ def get_library_item(job_id: str, cfg: AzureConfig = Depends(get_cfg)) -> Librar
         "video_url": item.get("video_url"),
         "audio_url": item.get("audio_url"),
         "srt_url": item.get("srt_url"),
+        "scorm_url": item.get("scorm_url"),
     })
 
 
@@ -451,12 +452,22 @@ async def _run_render_job(job_id: str, cfg: AzureConfig) -> None:
             lib = _get_library(cfg)
             if lib.available:
                 title = (doc.title if doc else script.doc_id) or script.doc_id
+                scorm_path = await asyncio.to_thread(
+                    build_scorm_package,
+                    title=title,
+                    language=script.language,
+                    media_path=result.mp4,
+                    srt_path=result.srt,
+                    out_dir=out_dir,
+                    thumbnail_path=result.thumbnail,
+                )
+                _JOB_FILES[job.job_id]["scorm"] = scorm_path
                 manifest = await asyncio.to_thread(
                     lib.publish,
                     job.job_id,
                     StaticLibraryFiles(
                         mp4=result.mp4, mp3=result.mp3, srt=result.srt,
-                        thumb=result.thumbnail,
+                        thumb=result.thumbnail, scorm=scorm_path,
                     ),
                     title=title,
                     document_title=(doc.title if doc else ""),

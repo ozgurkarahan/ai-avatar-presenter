@@ -17,8 +17,8 @@ The app bundles three complementary use cases, each exposed as its own section o
 |---|---|---|---|
 | **UC1 (legacy)** | 🎙️ Live Avatar | `/` | Upload a single `.pptx`, a photorealistic avatar presents each slide in real time via WebRTC with multilingual TTS and slide-level Q&A |
 | **UC1 (Hub)** | 🎓 Learning Hub | `/uc1` | Multi-deck corpus with Azure AI Search (hybrid vector + keyword), **Learning Paths** (multi-deck sequences with per-step progress) and **AI-powered path recommendation** (GPT-4.1 picks a coherent deck sequence for any topic). [Design →](docs/uc1-learning-hub.md) |
-| **UC2** | 🎬 Static Video | `/video` + `/video/library` | Automated pre-rendered narrated MP4 from a `.pptx` (slide-first pipeline + Batch Avatar). Outputs MP4 / MP3 / SRT. [Design →](docs/uc2-static-video.md) |
-| **UC3** | 🎧 Podcast | `/podcast` + `/podcast/library` | Turn any document into a two-host podcast conversation with distinct AI avatars. [Design →](docs/uc3-podcast-design.md) |
+| **UC2** | 🎬 Static Video | `/video` + `/video/library` | Automated pre-rendered narrated MP4 from a `.pptx` (slide-first pipeline + Batch Avatar). Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/uc2-static-video.md) |
+| **UC3** | 🎧 Podcast | `/podcast` + `/podcast/library` | Turn any document into a two-host podcast conversation with distinct AI avatars. Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/uc3-podcast-design.md) |
 
 The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `UC2 · Static Video`, `UC3 · Podcast` with hover tooltips on every link.
 
@@ -58,8 +58,8 @@ The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `
 │  │  Static Video + Lib  │  │      │  │  pptx_parser, voice,   │─────────▶│                             │
 │  │                      │  │      │  │  qa, translation,      │  │      │  Azure Cosmos DB (Serverless)│
 │  │ UC3 (/podcast)       │  │      │  │  uc1_search,           │  │      │   ├─ presentations           │
-│  │  Podcast + Library   │  │      │  │  static_* (×6),        │  │      │   └─ paths                   │
-│  └──────────────────────┘  │      │  │  podcast_* (×7),       │  │      │                              │
+│  │  Podcast + Library   │  │      │  │  static_* (×6),        │  │      │   │  (decks + uc1-path docs) │
+│  └──────────────────────┘  │      │  │  podcast_* (×7),       │  │      │   └─ uc1_progress            │
 │                            │      │  │  storage               │─────────▶│  Azure Blob Storage         │
 └───────────────────────────┘      │  └────────────────────────┘  │      │   └─ PPTX + slides + media   │
                                     │           │                  │      │                              │
@@ -86,7 +86,7 @@ The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `
 | **Slide Render** | LibreOffice Impress (headless) → PDF → pdf2image (Poppler)  |
 | **Video/Audio**  | ffmpeg + ffprobe — UC2 slide compose, UC3 podcast compose, SRT generation |
 | **Vector Search**| Azure AI Search (UC1 Hub) + in-memory numpy cosine similarity (UC1 legacy Q&A) |
-| **Persistence**  | Azure Cosmos DB (Serverless) — containers `presentations` + `paths` — and Azure Blob Storage (SAS URLs) |
+| **Persistence**  | Azure Cosmos DB (Serverless) — `presentations` (`/id`) + `uc1_progress` (`/user_id`) — and Azure Blob Storage (SAS URLs) |
 | **Auth**         | Azure AD / Managed Identity (`DefaultAzureCredential`)      |
 | **Infra**        | Azure Container Apps, ACR, Bicep IaC, Azure Developer CLI (`azd`) |
 | **Teams**        | `@microsoft/teams-js` SDK, Static Tab manifest (v1.17)      |
@@ -226,6 +226,8 @@ The Bicep templates in `infra/` provision:
 - **RBAC role assignments** for managed identity access to all services
 - **Log Analytics** workspace for container monitoring
 
+The Container App Bicep modules default to `minReplicas: 0` so the demo scales to zero when idle and avoids stale Azure Speech/WebRTC sessions after demos.
+
 > Configure deployment parameters in `infra/main.parameters.json` before running `azd up`.
 
 For parallel deployments (e.g., copilot instance), see [docs/deploy-copilot.md](docs/deploy-copilot.md).
@@ -294,14 +296,16 @@ Then sideload `teams-app-package.zip` in Teams:
 | `POST` | `/api/static-video/script/{doc_id}`           | Streaming NDJSON script generation (GPT-4.1)                                      |
 | `POST` | `/api/static-video/render/{doc_id}`           | Start render job (batch avatar + ffmpeg compose)                                  |
 | `GET`  | `/api/static-video/jobs/{job_id}`             | Poll job state                                                                    |
-| `GET`  | `/api/static-video/jobs/{job_id}/file/{kind}` | Download `mp4` / `mp3` / `srt` / `thumb`                                          |
+| `GET`  | `/api/static-video/jobs/{job_id}/file/{kind}` | Local fallback download `mp4` / `mp3` / `srt` / `thumb` / `scorm`                  |
 | `GET`  | `/api/static-video/library`                   | Published videos                                                                  |
+| `GET`  | `/api/static-video/library/{job_id}`          | Published video with fresh MP4 / MP3 / SRT / SCORM SAS URLs                       |
 | `POST` | `/api/podcast/ingest`                         | Ingest a document into a podcast-ready Document                                   |
 | `POST` | `/api/podcast/script/stream`                  | SSE dialogue generation (2-speaker)                                               |
 | `POST` | `/api/podcast/render`                         | Start dual-avatar render job                                                      |
 | `GET`  | `/api/podcast/jobs/{job_id}`                  | Poll podcast job state                                                            |
-| `GET`  | `/api/podcast/jobs/{job_id}/file/{kind}`      | Download `mp4` / `mp3` / `srt`                                                    |
+| `GET`  | `/api/podcast/jobs/{job_id}/file/{kind}`      | Local fallback download `mp4` / `mp3` / `srt` / `scorm`                            |
 | `GET`  | `/api/podcast/library`                        | Published podcasts                                                                |
+| `GET`  | `/api/podcast/library/{job_id}`               | Published podcast with fresh MP4 / MP3 / SRT / SCORM SAS URLs                     |
 | `GET`  | `/api/health`                                 | Health check                                                                      |
 
 > Full interactive API documentation is available at `/docs` (Swagger UI) when the server is running.
@@ -458,8 +462,8 @@ Detailed technical documentation is available in the [`docs/`](docs/) directory 
 | [**Docs Index**](docs/index.md) | Full navigation map of all docs & diagrams |
 | [Architecture](docs/architecture.md) | Component architecture, data flows, API contract, deployment topology |
 | [UC1 · Learning Hub](docs/uc1-learning-hub.md) | Hub, hybrid search, Learning Paths, AI path recommendation, path player auto-start |
-| [UC2 · Static Video](docs/uc2-static-video.md) | Slide-first pipeline, voice→avatar matching, deployment, MCAPS gotchas |
-| [UC3 · Podcast Design](docs/uc3-podcast-design.md) | Dual-avatar podcast generator design |
+| [UC2 · Static Video](docs/uc2-static-video.md) | Slide-first pipeline, voice→avatar matching, Blob-backed media/SCORM library, deployment, MCAPS gotchas |
+| [UC3 · Podcast Design](docs/uc3-podcast-design.md) | Dual-avatar podcast generator with Blob-backed media/SCORM library |
 | [Deep Dive: Azure Deployment](docs/deep-dive-azure.md) | Full technical walkthrough — infrastructure, Bicep modules, security, CI/CD |
 | [Teams Integration](docs/teams-integration.md) | Feasibility analysis and architecture options for Teams embedding |
 | [Deploy Copilot Instance](docs/deploy-copilot.md) | Guide for deploying a parallel "copilot" instance to Azure |

@@ -1,6 +1,6 @@
 # UC3 — Podcast-Style Dual-Avatar Video Generation — Design
 
-**Status:** Draft v3 — pivoted to presales-PoC posture (2026-04-17)
+**Status:** Implemented PoC — presales posture with Blob-backed media library
 
 > **Demo-quality PoC, not production.** This doc has been re-scoped away from production robustness (workers, idempotent manifests, global semaphores, chunk-reduce) toward **customer-facing polish**: split-screen layout with live speaker highlight, scrolling subtitles under each avatar, waveform pulse, premium HD voices, branded intro/outro, sample prompt gallery, streaming script generation. The goal is to make Acme say "yes" in the demo.
 **Branch:** `feat/uc3-podcast-dual-avatar`
@@ -13,14 +13,14 @@
 
 ### Goals
 - Upload documents (PPTX, PDF, DOCX, TXT, URL) + optional instructions → get a **podcast-style video** with two distinct AI avatars having a conversation.
-- Produce three deliverables per job: **MP4** (dual-avatar video), **MP3** (audio-only), **SRT transcript** with speaker labels and timestamps.
+- Produce four deliverables per job: **MP4** (dual-avatar video), **MP3** (audio-only), **SRT transcript** with speaker labels and timestamps, and a **SCORM ZIP** for LMS upload.
 - Preserve per-speaker lip-sync quality by using **one batch job per `(avatar, voice)` pair** with multiple SSML inputs (one per turn of that speaker), yielding one clip per turn while minimizing remote-job overhead and quota pressure.
 - Keep infrastructure isolated in its own resource group (`uc3-podcast-rg`) for easy teardown.
 - Ship as a second page (`/podcast`) in the existing React app, sharing the backend and auth of UC1/UC2.
 
 ### Non-Goals (Phase 1)
 - Real-time (streaming) dual-avatar conversations.
-- SCORM packaging, background music, transitions — Phase 2.
+- Background music and advanced transitions.
 - Custom (trained) avatars.
 - Mixing languages within a single podcast.
 - Teams embedding — reuse manifest later if needed.
@@ -51,7 +51,9 @@ PATCH  /api/podcast/script/{script_id}   → Save edited script
 POST   /api/podcast/render               → Start render job from script_id + role config
 GET    /api/podcast/jobs/{job_id}        → Job status + outputs
 GET    /api/podcast/jobs                 → List recent jobs
-DELETE /api/podcast/jobs/{job_id}        → Cancel/delete
+GET    /api/podcast/library              → Published podcasts
+GET    /api/podcast/library/{job_id}     → MP4 / MP3 / SRT / SCORM SAS URLs
+DELETE /api/podcast/library/{job_id}     → Delete published item
 GET    /api/podcast/voices               → Available voices per language (subset of UC1 list)
 GET    /api/podcast/avatars              → Available pre-built avatars (harry, lisa, …)
 ```
@@ -104,7 +106,7 @@ GET    /api/podcast/avatars              → Available pre-built avatars (harry,
     "interviewer": { "id": "…", "status": "…", "inputsCount": 4 },
     "expert":      { "id": "…", "status": "…", "inputsCount": 4 }
   },
-  "outputs": { "mp4Blob": "…", "mp3Blob": "…", "srtBlob": "…" },
+   "outputs": { "mp4Blob": "…", "mp3Blob": "…", "srtBlob": "…", "scormBlob": "…" },
   "error": null, "cancelRequested": false,
   "createdAt": "…", "updatedAt": "…" }
 ```
@@ -237,7 +239,7 @@ src/components/podcast/JobStatus.tsx          // progress + final player
 ## 6. Security & compliance
 
 - **No secrets in code.** All Azure auth via `DefaultAzureCredential` (existing pattern in `services/avatar.py`).
-- **SAS tokens**: minted on demand with 1-hour expiry for video/audio/SRT downloads; no long-lived public URLs.
+- **SAS tokens**: minted on demand for video/audio/SRT/SCORM downloads; no long-lived public URLs.
 - **Content filtering**: Azure OpenAI default content filter stays on; script output is shown in the editor so users can remove undesired content before render.
 - **PII**: Documents uploaded are stored in blob (encrypted at rest) for the lifetime of the job; lifecycle rule deletes after 30 days.
 - **Rate limits / abuse**: cap render to N turns per job (e.g. 16) and N jobs per user per day (e.g. 5) to control spend.
@@ -302,8 +304,6 @@ src/components/podcast/JobStatus.tsx          // progress + final player
 
 ## 10. Delivery phases
 
-**Phase 1 (current — design only):** this doc + plan.md + rubber-duck review + Bicep drafts. No deploy.
+**Current PoC:** backend router + services, frontend route, render pipeline, library, and Blob-backed MP4 / MP3 / SRT / SCORM deliverables.
 
-**Phase 2 (MVP implementation, on approval):** backend router + services + frontend route + minimal UI. Deploy Bicep. End-to-end smoke.
-
-**Phase 3 (polish):** split-screen / PiP layout (requires transparent-bg WebM/VP9 output from Speech), regenerate single turn, voice preview, SCORM / LMS packaging (deferred — marked "optional" by stakeholders), background music / transitions.
+**Next polish:** split-screen / PiP layout (requires transparent-bg WebM/VP9 output from Speech), regenerate single turn, voice preview, background music, and transitions.

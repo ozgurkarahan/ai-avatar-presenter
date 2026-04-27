@@ -19,8 +19,13 @@ Desktop.ini
 # Copilot CLI
 .copilot-instructions.md
 
+# Local tool artifacts
+.playwright-mcp/
+uc1-present-*.png
+
 # Python
 __pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 .venv/
@@ -61,6 +66,7 @@ teams-app-package.zip
 /playwright/.auth/
 scripts/.env
 output/
+infra/main.json
 infra/uc3/main.json
 
 # UC1 Azure AI Search admin key (local only)

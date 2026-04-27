@@ -179,6 +179,7 @@ class LibraryItem(LibrarySummary):
     mp4_url: Optional[str] = None
     mp3_url: Optional[str] = None
     srt_url: Optional[str] = None
+    scorm_url: Optional[str] = None
 
 
 # -----------------------------------------------------------------------------

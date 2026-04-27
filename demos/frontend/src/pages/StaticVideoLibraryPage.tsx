@@ -182,8 +182,8 @@ function Card({ item, onOpen, onDelete, deleting }: {
         position: 'relative', aspectRatio: '16 / 9',
         background: `linear-gradient(135deg, ${theme.brand} 0%, ${theme.brandLight} 100%)`,
       }}>
-        {item.thumb_url ? (
-          <img src={item.thumb_url} alt=""
+        {item.thumbnail_url ? (
+          <img src={item.thumbnail_url} alt=""
                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{
@@ -197,7 +197,7 @@ function Card({ item, onOpen, onDelete, deleting }: {
           background: 'rgba(0,0,0,0.65)', color: 'white',
           padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
         }}>
-          ⏱ {fmtDuration(item.duration_s)}
+          ⏱ {fmtDuration(item.duration_sec)}
         </div>
         <div style={{
           position: 'absolute', top: 8, left: 8,
@@ -301,7 +301,7 @@ function PlayerModal({ item, loading, onClose }: {
               <h3 style={{ margin: 0, fontSize: 18 }}>{item.title}</h3>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
                 <Chip>📅 {fmtDate(item.created_at)}</Chip>
-                <Chip>⏱ {fmtDuration(item.duration_s)}</Chip>
+                <Chip>⏱ {fmtDuration(item.duration_sec)}</Chip>
                 <Chip>🌍 {item.language}</Chip>
                 <Chip>🗂 {item.slide_count} slides</Chip>
               </div>
@@ -321,9 +321,11 @@ function PlayerModal({ item, loading, onClose }: {
                     ⬇ Subtitles
                   </a>
                 )}
-                <a href={`/api/static-video/jobs/${item.job_id}/file/scorm`} download style={btn('secondary')}>
-                  📦 SCORM
-                </a>
+                {item.scorm_url && (
+                  <a href={item.scorm_url} download={`${item.title}-scorm.zip`} style={btn('secondary')}>
+                    📦 SCORM
+                  </a>
+                )}
               </div>
             </div>
           </>

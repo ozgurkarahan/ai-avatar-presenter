@@ -8,15 +8,15 @@ Prefix: /api/static-video
   POST   /ingest                 multipart file (pptx|pdf|png|jpg|jpeg)
                                  -> IngestResponse { doc_id, slides[] }
   POST   /script/{doc_id}        ScriptRequest { language, style?, focus?, voice }
-                                 -> NDJSON stream: one SlideNarration per line,
-                                    final line {"event":"done","script":StaticScript}
+                                 -> NDJSON stream: {"event":"narration","data":SlideNarration},
+                                    final line {"event":"done","data":StaticScript}
   GET    /script/{doc_id}        -> StaticScript
   PATCH  /script/{doc_id}        ScriptPatch { patches:[{slide_index, narration?}] }
                                  -> StaticScript
   POST   /render/{doc_id}        -> { job_id }
   GET    /jobs/{job_id}          -> StaticJob (state, progress, outputs)
   GET    /library                -> [LibrarySummary]
-  GET    /library/{job_id}       -> LibraryItem (SAS-minted video/audio/srt/thumb)
+  GET    /library/{job_id}       -> LibraryItem (SAS-minted video/audio/srt/scorm/thumb)
   DELETE /library/{job_id}       -> { deleted }
   GET    /voices?language=xx-XX  -> [VoiceOption]
   GET    /languages              -> [{ code, name }]  (8 DragonHD langs)
@@ -169,6 +169,7 @@ class LibraryItem(LibrarySummary):
     video_url: Optional[str] = None
     audio_url: Optional[str] = None
     srt_url: Optional[str] = None
+    scorm_url: Optional[str] = None
 
 
 # -----------------------------------------------------------------------------
