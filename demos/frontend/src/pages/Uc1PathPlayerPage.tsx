@@ -45,7 +45,7 @@ export default function Uc1PathPlayerPage() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [autoPlayVideo, setAutoPlayVideo] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<string>(UC1_VOICES[1].id);
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('lisa');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('st_gobain_female');
   const [started, setStarted] = useState(false);
 
   // Load path + progress, and initialize language once from the first deck
@@ -71,7 +71,7 @@ export default function Uc1PathPlayerPage() {
               const match = UC1_VOICES.find((v) => v.language === firstDeck.language && v.gender === 'female');
               if (match) {
                 setSelectedVoice(match.id);
-                setSelectedAvatar(avatarForVoice(match.id, 'lisa'));
+                setSelectedAvatar(avatarForVoice(match.id, 'st_gobain_female'));
               }
             }
           } catch { /* non-fatal */ }

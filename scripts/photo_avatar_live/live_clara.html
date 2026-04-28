@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Clara photo avatar — live test</title>
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #f6f6f6; }
+    #stage { display: flex; gap: 24px; }
+    #remoteVideo { width: 720px; height: 720px; background: #000; }
+    #remoteVideo video { width: 100%; height: 100%; object-fit: cover; }
+    #panel { display: flex; flex-direction: column; gap: 12px; width: 480px; }
+    textarea { width: 100%; height: 110px; font-size: 14px; }
+    select, button { font-size: 15px; padding: 8px; }
+    #log { background: #fff; border: 1px solid #ccc; padding: 10px; height: 220px; overflow: auto; font-family: monospace; font-size: 12px; }
+    button:disabled { opacity: 0.5; }
+  </style>
+</head>
+<body>
+  <h2>Clara photo avatar (live, swedencentral)</h2>
+  <div id="stage">
+    <div id="remoteVideo"></div>
+    <div id="panel">
+      <label>Avatar
+        <select id="character">
+          <option value="clara" selected>clara</option>
+          <option value="anika">anika</option>
+        </select>
+      </label>
+      <label>Voice
+        <select id="voice">
+          <option value="en-US-AvaMultilingualNeural" selected>en-US-AvaMultilingualNeural</option>
+          <option value="en-US-AndrewMultilingualNeural">en-US-AndrewMultilingualNeural</option>
+          <option value="fr-FR-VivienneMultilingualNeural">fr-FR-VivienneMultilingualNeural</option>
+        </select>
+      </label>
+      <textarea id="text">Hello, I am Clara, the new photo avatar from Microsoft Foundry. This is a live streaming test.</textarea>
+      <div>
+        <button id="startBtn">Start session</button>
+        <button id="speakBtn" disabled>Speak</button>
+        <button id="stopBtn" disabled>Stop</button>
+      </div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+<script>
+const log = (m) => { const el = document.getElementById('log'); el.innerHTML += `[${new Date().toLocaleTimeString()}] ${m}<br>`; el.scrollTop = el.scrollHeight; console.log(m); };
+let avatarSynthesizer, peerConnection;
+
+document.getElementById('startBtn').onclick = async () => {
+  document.getElementById('startBtn').disabled = true;
+  log('fetching token...');
+  const tk = await (await fetch('/token')).json();
+  log('got token, region=' + tk.region);
+
+  const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(tk.authToken, tk.region);
+  const character = document.getElementById('character').value;
+  const videoFormat = new SpeechSDK.AvatarVideoFormat();
+  videoFormat.width = 1080; videoFormat.height = 1080; videoFormat.bitrate = 500000;
+  const avatarConfig = new SpeechSDK.AvatarConfig(character, '', videoFormat);
+  avatarConfig.photoAvatarBaseModel = 'vasa-1';
+  avatarConfig.customized = false;
+  avatarConfig.useBuiltInVoice = false;
+  avatarConfig.backgroundColor = '#FFFFFFFF';
+  avatarConfig.scene = new SpeechSDK.AvatarSceneConfig(1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6);
+  avatarConfig.remoteIceServers = tk.iceServers;
+
+  peerConnection = new RTCPeerConnection({ iceServers: tk.iceServers });
+  peerConnection.ontrack = (event) => {
+    const div = document.getElementById('remoteVideo');
+    [...div.childNodes].forEach(n => { if (n.localName === event.track.kind) div.removeChild(n); });
+    const m = document.createElement(event.track.kind);
+    m.id = event.track.kind; m.srcObject = event.streams[0]; m.autoplay = true;
+    if (event.track.kind === 'video') m.playsInline = true; else m.muted = false;
+    div.appendChild(m);
+  };
+  peerConnection.oniceconnectionstatechange = () => log('ice: ' + peerConnection.iceConnectionState);
+  peerConnection.addTransceiver('video', { direction: 'sendrecv' });
+  peerConnection.addTransceiver('audio', { direction: 'sendrecv' });
+
+  avatarSynthesizer = new SpeechSDK.AvatarSynthesizer(speechConfig, avatarConfig);
+  avatarSynthesizer.avatarEventReceived = (s, e) => log('event: ' + e.description);
+
+  log('starting avatar...');
+  try {
+    const r = await avatarSynthesizer.startAvatarAsync(peerConnection);
+    log('avatar started, reason=' + r.reason);
+    document.getElementById('speakBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = false;
+  } catch (e) {
+    log('start error: ' + (e.message || e));
+    document.getElementById('startBtn').disabled = false;
+  }
+};
+
+document.getElementById('speakBtn').onclick = async () => {
+  const text = document.getElementById('text').value;
+  const voice = document.getElementById('voice').value;
+  const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'><voice name='${voice}'>${text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</voice></speak>`;
+  log('speak: ' + text.slice(0, 60) + '...');
+  try {
+    const r = await avatarSynthesizer.speakSsmlAsync(ssml);
+    log('speak done, reason=' + r.reason);
+  } catch (e) { log('speak error: ' + (e.message || e)); }
+};
+
+document.getElementById('stopBtn').onclick = () => {
+  avatarSynthesizer && avatarSynthesizer.close();
+  peerConnection && peerConnection.close();
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('speakBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = true;
+  log('stopped');
+};
+</script>
+</body>
+</html>

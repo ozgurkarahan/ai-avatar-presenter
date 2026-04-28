@@ -4,7 +4,7 @@ param principalId string
 @description('Name of the OpenAI account')
 param openAiAccountName string
 
-@description('Name of the Azure AI Services account (Speech/Avatar)')
+@description('Name of the Azure AI Services account (Speech/Avatar) — leave empty when using external Foundry resource')
 param aiServicesAccountName string
 
 @description('Name of the Cosmos DB account')
@@ -28,7 +28,7 @@ var cosmosDbDataContributorRole = '00000000-0000-0000-0000-000000000002'
 // Storage Blob Data Contributor
 var storageBlobDataContributorRole = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 
-resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = {
+resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' existing = if (!empty(aiServicesAccountName)) {
   name: aiServicesAccountName
 }
 
@@ -45,7 +45,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing 
 }
 
 // AI Services: Speech User (token issuance + TTS)
-resource aiServicesSpeechRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource aiServicesSpeechRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiServicesAccountName)) {
   name: guid(aiServices.id, principalId, cognitiveServicesSpeechUserRole)
   scope: aiServices
   properties: {
@@ -56,7 +56,7 @@ resource aiServicesSpeechRole 'Microsoft.Authorization/roleAssignments@2022-04-0
 }
 
 // AI Services: Cognitive Services User (broad access for avatar APIs)
-resource aiServicesCogUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource aiServicesCogUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aiServicesAccountName)) {
   name: guid(aiServices.id, principalId, cognitiveServicesUserRole)
   scope: aiServices
   properties: {

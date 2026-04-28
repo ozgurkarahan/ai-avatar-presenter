@@ -35,10 +35,10 @@ export default function PodcastPage() {
   const [avatars, setAvatars] = useState<AvatarOption[]>([]);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
   const [interviewer, setInterviewer] = useState<RoleConfig>({
-    display_name: 'Dr. Harry Chen', avatar: 'harry', voice: 'en-US-Andrew:DragonHDLatestNeural',
+    display_name: 'Dr. Marc Chen', avatar: 'st_gobain_male', voice: 'en-US-Andrew:DragonHDLatestNeural',
   });
   const [expert, setExpert] = useState<RoleConfig>({
-    display_name: 'Dr. Lisa Patel', avatar: 'lisa', voice: 'en-US-Ava:DragonHDLatestNeural',
+    display_name: 'Dr. Sophie Patel', avatar: 'st_gobain_female', voice: 'en-US-Ava:DragonHDLatestNeural',
   });
   const [streamingTurns, setStreamingTurns] = useState<DialogueTurn[]>([]);
   const [scriptId, setScriptId] = useState<string | null>(null);
@@ -398,7 +398,7 @@ function RolePicker({ label, role, onChange, avatars, voices }: {
               borderRadius: 10, padding: 8, background: 'white', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
             }}>
-            <div style={{ fontSize: 20 }}>{a.id === 'harry' ? '👨‍💼' : '👩‍🏫'}</div>
+            <div style={{ fontSize: 20 }}>{a.id === 'st_gobain_male' ? '👨' : '👩'}</div>
             <div style={{ fontSize: 11, fontWeight: 600 }}>{a.display_name}</div>
           </button>
         ))}

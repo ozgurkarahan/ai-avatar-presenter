@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, B
 from fastapi.responses import StreamingResponse, FileResponse
 
 from config import AzureConfig, load_config
+from services import avatar_registry
 from services.scorm_packager import build_scorm_package
 from services.podcast_models import (
     AvatarOption,
@@ -64,10 +65,13 @@ def _get_library(cfg: AzureConfig):
 # Catalog data — curated for the demo
 # ---------------------------------------------------------------------------
 AVATARS: list[AvatarOption] = [
-    AvatarOption(id="harry", display_name="Harry", default_style="business",
-                 thumbnail_url="/static/avatars/harry.png"),
-    AvatarOption(id="lisa", display_name="Lisa", default_style="graceful-sitting",
-                 thumbnail_url="/static/avatars/lisa.png"),
+    AvatarOption(
+        id=item["id"],
+        display_name=item["display_name"],
+        default_style=item["default_style"],
+        thumbnail_url=item["thumbnail_url"],
+    )
+    for item in avatar_registry.catalog()
 ]
 
 VOICES: list[VoiceOption] = [

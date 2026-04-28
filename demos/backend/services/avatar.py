@@ -643,11 +643,13 @@ def submit_batch_synthesis(
     config: AzureConfig,
     texts: list[str],
     language: str,
-    avatar: str = DEFAULT_AVATAR,
+    avatar: str | None = None,
 ) -> str:
-    """Submit a batch avatar synthesis job."""
+    """Submit a batch avatar synthesis job (legacy /api/avatar/synthesis path)."""
+    from services import avatar_registry  # local import to avoid cycle
+
     job_id = str(uuid.uuid4())
-    avatar_char = AVATAR_MAP.get(avatar, DEFAULT_AVATAR)
+    entry = avatar_registry.get(avatar) if avatar else avatar_registry.for_voice("")
     base_url = _get_speech_base_url(config)
 
     url = f"{base_url}/avatar/batchsyntheses/{job_id}?api-version=2024-08-01"
@@ -658,14 +660,7 @@ def submit_batch_synthesis(
     payload = {
         "inputKind": "SSML",
         "inputs": [{"content": ssml}],
-        "avatarConfig": {
-            "talkingAvatarCharacter": avatar_char,
-            "talkingAvatarStyle": style_for(avatar_char),
-            "videoFormat": "mp4",
-            "videoCodec": "h264",
-            "subtitleType": "soft_embedded",
-            "backgroundColor": "#FFFFFFFF",
-        },
+        "avatarConfig": avatar_registry.avatar_config_payload(entry),
     }
 
     headers = {**_get_speech_auth_header(config), "Content-Type": "application/json"}

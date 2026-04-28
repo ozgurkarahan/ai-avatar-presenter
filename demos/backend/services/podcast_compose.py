@@ -146,6 +146,7 @@ def compose_podcast(
             roles=roles,
             out=seg_out,
             lead_in=0.0,
+            chroma_key=getattr(clip, "chroma_key", False),
         )
         segment_paths.append(seg_out)
 
@@ -200,6 +201,7 @@ def _render_segment(
     roles: RenderRoles,
     out: Path,
     lead_in: float = 0.0,
+    chroma_key: bool = False,
 ) -> None:
     """Render a single dialogue segment to MP4.
 
@@ -236,18 +238,29 @@ def _render_segment(
         inputs += ["-f", "lavfi", "-t", f"{total_dur:.3f}", "-i", "color=c=black@0.0:s=960x270:r=25"]
         idle_input = "[2:v]"
 
+    # Photo avatars come in as mp4 with a #00FF00 background — strip the
+    # green before any other filter so the rest of the chain (scale + alpha
+    # blend for the idle frame) sees a clean transparent layer.
+    chroma_pre = (
+        "chromakey=0x00ff00:0.22:0.12,"
+        "despill=type=green:mix=0.6:expand=0.3:brightness=0,"
+        if chroma_key else ""
+    )
+
     # Prepend a blank frame to the active avatar video if lead_in > 0 so its
     # lip-sync stays aligned with the (delayed) audio.
     if lead_in > 0:
         active_v = (
             f"[1:v]tpad=start_duration={lead_in:.3f}:start_mode=clone,"
+            f"{chroma_pre}"
             f"scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
             f"setsar=1,fps={FPS}[av_a];"
         )
         active_a = f"[1:a]adelay={int(lead_in * 1000)}|{int(lead_in * 1000)}[aout]"
     else:
         active_v = (
-            f"[1:v]scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
+            f"[1:v]{chroma_pre}"
+            f"scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
             f"setsar=1,fps={FPS}[av_a];"
         )
         active_a = "[1:a]anull[aout]"
@@ -256,7 +269,8 @@ def _render_segment(
     fc = (
         f"[0:v]scale={VIDEO_W}:{SLIDE_H},setsar=1,fps={FPS}[slide];"
         + active_v
-        + f"{idle_input}scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
+        + f"{idle_input}{chroma_pre}"
+          f"scale={HALF_W}:{AVATAR_BAND_H}:force_original_aspect_ratio=decrease,"
           f"setsar=1,fps={FPS},format=yuva420p,colorchannelmixer=aa=0.55[av_i];"
         + f"color=c=#0B1220:s={VIDEO_W}x{AVATAR_BAND_H}:r={FPS}:d={total_dur:.3f}[band];"
     )

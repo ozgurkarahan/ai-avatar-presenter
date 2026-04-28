@@ -154,6 +154,7 @@ def compose_static(
             slide_path=slide_paths[i],
             duration=dur,
             out=seg_out,
+            chroma_key=getattr(clip, "chroma_key", False),
         )
         segment_paths.append(seg_out)
 
@@ -195,6 +196,7 @@ def _render_segment(
     slide_path: Path,
     duration: float,
     out: Path,
+    chroma_key: bool = False,
 ) -> None:
     """One 1920x1080 MP4 segment: anchor layout (slide left, avatar right panel).
 
@@ -202,6 +204,11 @@ def _render_segment(
     background, avatar is rendered at 560x560 with a circular soft mask
     centered in a 576-wide dark slate right column. The two columns are
     stacked horizontally. Keeps audio from the avatar clip.
+
+    When ``chroma_key=True`` the avatar input is an MP4 with a #00FF00
+    background (photo avatars don't expose alpha) — we strip the green
+    pixels with chromakey + despill before the existing circular mask
+    pipeline runs unchanged.
     """
     # Inputs:
     #   0 = slide image (looped)
@@ -213,6 +220,25 @@ def _render_segment(
 
     half = AVATAR_SIZE // 2
     edge = half - 4  # solid inside this radius; feather over the last 4px
+
+    # Photo avatars are 512×512 head-only with no alpha. Skip the head
+    # crop (which assumed Lisa's 1080p framing) and instead pull the raw
+    # frame, key out the green background, despill, then scale-up to the
+    # circular slot. The geq mask runs after just like the legacy path.
+    if chroma_key:
+        avatar_pre = (
+            f"[1:v]chromakey=0x00ff00:0.22:0.12,"
+            f"despill=type=green:mix=0.6:expand=0.3:brightness=0,"
+            f"scale={AVATAR_SIZE}:{AVATAR_SIZE}:force_original_aspect_ratio=decrease,"
+            f"pad={AVATAR_SIZE}:{AVATAR_SIZE}:(ow-iw)/2:(oh-ih)/2:color=#00000000,"
+            f"format=yuva420p,"
+        )
+    else:
+        avatar_pre = (
+            f"[1:v]crop={HEAD_CROP_W}:{HEAD_CROP_H}:{HEAD_CROP_X}:{HEAD_CROP_Y},"
+            f"scale={AVATAR_SIZE}:{AVATAR_SIZE},format=yuva420p,"
+        )
+
     fc = (
         # Left column: slide fit-and-pad into 1344x1080 with warm neutral bg.
         f"[0:v]scale={SLIDE_W}:{VIDEO_H}:force_original_aspect_ratio=decrease,"
@@ -220,12 +246,9 @@ def _render_segment(
         f"setsar=1,fps={FPS}[slide];"
         # Right column backdrop: solid studio colour.
         f"color=c={AVATAR_BG}:s={AVATAR_COL_W}x{VIDEO_H}:r={FPS},format=yuv420p[rpanel];"
-        # Avatar: HEAD-ZOOM crop on the source first, then scale to
-        # AVATAR_SIZE. Keeps the WebM's own alpha (character silhouette)
-        # combined with a soft circular mask — the character is fully
-        # opaque but carved into a circle over the studio panel.
-        f"[1:v]crop={HEAD_CROP_W}:{HEAD_CROP_H}:{HEAD_CROP_X}:{HEAD_CROP_Y},"
-        f"scale={AVATAR_SIZE}:{AVATAR_SIZE},format=yuva420p,"
+        # Avatar: prepared above (chroma-key OR head-crop), then carved
+        # into a soft circle.
+        f"{avatar_pre}"
         f"geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
         f"a='alpha(X,Y)*"
         f"if(lte(hypot(X-{half},Y-{half}),{edge}),1,"

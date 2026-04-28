@@ -125,7 +125,7 @@ class TranslateResponse(BaseModel):
 class BatchAvatarRequest(BaseModel):
     presentation_id: str
     target_language: str = "en-US"
-    avatar: str = "lisa"
+    avatar: str = "st_gobain_female"
 
 
 class BatchAvatarResponse(BaseModel):
@@ -707,8 +707,8 @@ async def voice_websocket(ws: WebSocket):
         first_msg = await ws.receive_text()
         msg = json.loads(first_msg)
 
-        avatar_character = "harry"
-        avatar_style = "youthful"
+        avatar_character = ""
+        avatar_style = ""
         language = "en-US"
         instructions = None
         voice_name = None

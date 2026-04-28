@@ -22,14 +22,13 @@ import requests
 from pydantic import BaseModel, Field
 
 from config import AzureConfig
+from services import avatar_registry
 from services.avatar import (
-    AVATAR_MAP,
     VOICE_MAP,
     _get_speech_auth_header,
     _get_speech_base_url,
     build_ssml,
     plan_gestures,
-    style_for,
 )
 from services.static_models import SlideNarration, StaticScript
 
@@ -37,45 +36,19 @@ log = logging.getLogger(__name__)
 
 
 # Default avatar for UC2 single-narrator picture-in-picture.
-# H1.5 2026-04-24: lisa/casual-sitting — most photo-realistic standard
-# avatar in Azure's catalog, with 14 presenter-friendly gestures.
-# Replaces max/business (too 3D-stylized, client feedback 2026-04-23).
-DEFAULT_AVATAR = "lisa"
-
-# Gender-based avatar matching. Used as a *fallback* when the caller
-# hasn't explicitly chosen an avatar.
-_MALE_VOICE_NAMES = {
-    "Andrew", "Remy", "Tristan", "Florian", "Alessio",
-    "Macerio", "Yunfan", "Masaru",
-}
-_FEMALE_VOICE_NAMES = {
-    "Ava", "Vivienne", "Ximena", "Seraphina", "Isabella",
-    "Thalita", "Xiaochen", "Nanami",
-}
-
-# H1.5: lisa (casual-sitting) = most natural female; harry (business) =
-# natural male counterpart with welcome/hello/thanks gestures. Both chosen
-# over max/meg to favor photo-realism over gesture variety.
-_MALE_DEFAULT = "harry"
-_FEMALE_DEFAULT = "lisa"
+# Resolved via the avatar registry; ST_Gobain photo avatars are the only
+# rendered options. Pre-existing callers passing legacy ids (lisa/harry/...)
+# are silently mapped via the registry's gender-aware fallback.
+DEFAULT_AVATAR = avatar_registry.DEFAULT_ID
 
 
 def avatar_for_voice(voice: str, fallback: str = DEFAULT_AVATAR) -> str:
-    """Return an avatar whose gender matches the voice.
+    """Return an avatar id whose gender matches the voice.
 
-    Used as the *default* resolver when the caller doesn't pass an
-    explicit avatar choice. Male voice -> harry, female voice -> lisa.
-    Unknown voice -> fallback (DEFAULT_AVATAR).
+    Thin wrapper over :func:`avatar_registry.for_voice` kept for
+    backward-compatibility with external callers.
     """
-    if not voice:
-        return fallback
-    for name in _MALE_VOICE_NAMES:
-        if name in voice:
-            return _MALE_DEFAULT
-    for name in _FEMALE_VOICE_NAMES:
-        if name in voice:
-            return _FEMALE_DEFAULT
-    return fallback
+    return avatar_registry.for_voice(voice, fallback=fallback).id
 
 
 class SlideClip(BaseModel):
@@ -83,12 +56,20 @@ class SlideClip(BaseModel):
     blob_url: str  # local path after download
     duration_sec: float = 0.0
     word_timings: list[dict] = Field(default_factory=list)
+    # When True the avatar clip needs chroma-key + despill before it can
+    # be composited (photo avatars). When False the clip already has an
+    # alpha channel (legacy webm/vp9 video avatars).
+    chroma_key: bool = True
+    avatar_id: str = avatar_registry.DEFAULT_ID
 
 
 @dataclass
 class _SlideJob:
     narration: SlideNarration
     job_id: str
+    avatar_id: str = avatar_registry.DEFAULT_ID
+    video_format: str = "mp4"
+    chroma_key: bool = True
     video_url: Optional[str] = None
     vtt_url: Optional[str] = None
     duration_sec: float = 0.0
@@ -141,38 +122,40 @@ def _submit_slide(cfg: AzureConfig, n: SlideNarration, language: str,
     url = f"{base}/avatar/batchsyntheses/{job_id}?api-version=2024-08-01"
 
     voice = n.voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
-    # If the caller didn't pick an avatar, fall back to gender-matched
-    # default (female voice -> lisa, male voice -> harry). If the caller
-    # *did* pass an explicit avatar, respect it verbatim.
-    resolved_avatar = avatar if avatar else avatar_for_voice(voice)
-    avatar_char = AVATAR_MAP.get(resolved_avatar, resolved_avatar)
+    # When no explicit avatar is supplied, fall back to a gender-matched
+    # ST_Gobain entry from the registry; an explicit choice is respected
+    # verbatim (and the registry will alias legacy ids if encountered).
+    entry = (
+        avatar_registry.get(avatar)
+        if avatar
+        else avatar_registry.for_voice(voice)
+    )
     gestures = plan_gestures(
-        avatar_char,
+        entry.id,
         n.narration,
         slide_index=n.slide_index,
         intro=intro,
         max_gestures=3,
-    )
+    ) if entry.supports_gestures else []
     ssml = build_ssml(n.narration, language, voice=voice,
                       gesture_names=gestures)
 
     payload = {
         "inputKind": "SSML",
         "inputs": [{"content": ssml}],
-        "avatarConfig": {
-            "talkingAvatarCharacter": avatar_char,
-            "talkingAvatarStyle": style_for(avatar_char),
-            "videoFormat": "webm",
-            "videoCodec": "vp9",
-            "subtitleType": "soft_embedded",
-            "backgroundColor": "#00000000",
-        },
+        "avatarConfig": avatar_registry.avatar_config_payload(entry),
     }
     headers = {**_get_speech_auth_header(cfg), "Content-Type": "application/json"}
     _request_with_429_retry("PUT", url, headers=headers, json_body=payload, timeout=30)
     log.info("uc2: submitted slide=%d job=%s avatar=%s gestures=%s",
-             n.slide_index, job_id, avatar_char, gestures)
-    return _SlideJob(narration=n, job_id=job_id)
+             n.slide_index, job_id, entry.foundry_name, gestures)
+    return _SlideJob(
+        narration=n,
+        job_id=job_id,
+        avatar_id=entry.id,
+        video_format=entry.video_format,
+        chroma_key=entry.chroma_key,
+    )
 
 
 def _poll_slide(cfg: AzureConfig, sj: _SlideJob, timeout: int, interval: int) -> _SlideJob:
@@ -310,7 +293,8 @@ def render_static(
         if sj.error or not sj.video_url:
             failed.append((sj.narration.slide_index, sj.error or "no video url"))
             continue
-        local = _download(sj.video_url, work_dir / f"slide_{sj.narration.slide_index:03d}.webm")
+        ext = sj.video_format or "webm"
+        local = _download(sj.video_url, work_dir / f"slide_{sj.narration.slide_index:03d}.{ext}")
         word_timings: list[dict] = []
         if sj.vtt_url:
             try:
@@ -323,6 +307,8 @@ def render_static(
             blob_url=str(local),
             duration_sec=sj.duration_sec,
             word_timings=word_timings,
+            chroma_key=sj.chroma_key,
+            avatar_id=sj.avatar_id,
         ))
 
     if failed:

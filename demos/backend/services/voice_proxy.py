@@ -13,14 +13,18 @@ import websockets
 from azure.identity import DefaultAzureCredential
 
 from config import AzureConfig
+from services import avatar_registry
 
 logger = logging.getLogger(__name__)
 
-VOICE_API_VERSION = "2025-05-01-preview"
+VOICE_API_VERSION = "2025-10-01"
 COGNITIVE_DOMAIN = "cognitiveservices.azure.com"
 
-DEFAULT_AVATAR_CHARACTER = "lisa"
-DEFAULT_AVATAR_STYLE = "casual-sitting"
+# Defaults are sourced from the avatar registry so UC1 always speaks with
+# a ST_Gobain custom photo avatar. Legacy ids passed by older clients
+# alias automatically through ``avatar_registry.get``.
+DEFAULT_AVATAR_CHARACTER = avatar_registry.DEFAULT_ID
+DEFAULT_AVATAR_STYLE = ""
 DEFAULT_VOICE_NAME = "en-US-Ava:DragonHDLatestNeural"
 DEFAULT_VOICE_TYPE = "azure-standard"
 
@@ -60,7 +64,7 @@ def _get_auth_headers(config: AzureConfig) -> Dict[str, str]:
     if config.use_managed_identity:
         credential = DefaultAzureCredential()
         # VoiceLive SDK uses https://ai.azure.com/.default scope
-        token = credential.get_token("https://cognitiveservices.azure.com/.default")
+        token = credential.get_token("https://ai.azure.com/.default")
         return {"Authorization": f"Bearer {token.token}"}
     if config.speech_key:
         return {"api-key": config.speech_key}
@@ -94,6 +98,13 @@ def build_session_config(
         f"Do not translate or add commentary unless asked."
     )
 
+    # Resolve to a registry entry (handles legacy ids via aliases). When
+    # the caller passes nothing, gender-match against the resolved voice.
+    if avatar_character:
+        entry = avatar_registry.get(avatar_character)
+    else:
+        entry = avatar_registry.for_voice(resolved_voice)
+
     session: Dict[str, Any] = {
         "modalities": ["text", "audio", "avatar"],
         "turn_detection": {"type": "azure_semantic_vad"},
@@ -103,17 +114,13 @@ def build_session_config(
             "name": resolved_voice,
             "type": DEFAULT_VOICE_TYPE,
         },
-        "avatar": {
-            "character": avatar_character,
-            "style": avatar_style if avatar_style else None,
-            "customized": False,
-        },
+        "avatar": avatar_registry.voice_live_session_avatar(entry),
         "instructions": instructions or default_instructions,
     }
 
     logger.info(
-        "Session config: lang=%s, voice=%s, avatar=%s/%s",
-        language, resolved_voice, avatar_character, avatar_style,
+        "Session config: lang=%s, voice=%s, avatar=%s",
+        language, resolved_voice, entry.foundry_name,
     )
     return session
 
@@ -194,10 +201,14 @@ async def _forward_client_to_azure(client_ws: Any, azure_ws: Any) -> None:
     try:
         while True:
             data = await client_ws.receive_text()
-            logger.debug("Client→Azure: %s", data[:100])
+            try:
+                preview = json.loads(data).get("type", "?")
+            except Exception:
+                preview = f"non-json[{len(data)}]"
+            logger.debug("Client→Azure: type=%s len=%s", preview, len(data))
             await azure_ws.send(data)
     except Exception as e:
-        logger.debug("Client→Azure forwarding ended: %s", e)
+        logger.info("Client→Azure forwarding ended: %s: %s", type(e).__name__, e)
 
 
 async def _forward_azure_to_client(azure_ws: Any, client_ws: Any) -> None:

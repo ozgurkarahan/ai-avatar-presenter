@@ -27,14 +27,12 @@ import requests
 from pydantic import BaseModel, Field
 
 from config import AzureConfig
+from services import avatar_registry
 from services.avatar import (
-    AVATAR_MAP,
-    DEFAULT_AVATAR_STYLE,
     VOICE_MAP,
     _get_speech_auth_header,
     _get_speech_base_url,
     build_ssml,
-    style_for,
 )
 from services.podcast_models import (
     DialogueTurn,
@@ -65,6 +63,8 @@ class ClipManifest(BaseModel):
     blob_url: str
     duration_sec: float = 0.0
     word_timings: list[dict] = Field(default_factory=list)
+    chroma_key: bool = True
+    avatar_id: str = avatar_registry.DEFAULT_ID
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +76,9 @@ class _TurnJob:
     turn: DialogueTurn
     role: RoleConfig
     job_id: str
+    avatar_id: str = avatar_registry.DEFAULT_ID
+    video_format: str = "mp4"
+    chroma_key: bool = True
     video_url: Optional[str] = None
     vtt_url: Optional[str] = None
     duration_sec: float = 0.0
@@ -131,26 +134,26 @@ def _submit_turn(cfg: AzureConfig, turn: DialogueTurn, role: RoleConfig, languag
     url = f"{base}/avatar/batchsyntheses/{job_id}?api-version=2024-08-01"
 
     voice = role.voice or VOICE_MAP.get(language, VOICE_MAP["en-US"])
-    avatar_char = AVATAR_MAP.get(role.avatar, role.avatar)
+    entry = avatar_registry.get(role.avatar) if role.avatar else avatar_registry.for_voice(voice)
     ssml = build_ssml(turn.text, language, voice=voice)
 
     payload = {
         "inputKind": "SSML",
         "inputs": [{"content": ssml}],
-        "avatarConfig": {
-            "talkingAvatarCharacter": avatar_char,
-            "talkingAvatarStyle": style_for(avatar_char),
-            "videoFormat": "webm",
-            "videoCodec": "vp9",
-            "subtitleType": "soft_embedded",
-            # Fully transparent — VP9 alpha channel preserved.
-            "backgroundColor": "#00000000",
-        },
+        "avatarConfig": avatar_registry.avatar_config_payload(entry),
     }
     headers = {**_get_speech_auth_header(cfg), "Content-Type": "application/json"}
     _request_with_429_retry("PUT", url, headers=headers, json_body=payload, timeout=30)
-    log.info("submitted batch turn=%d speaker=%s job=%s", turn.idx, turn.speaker, job_id)
-    return _TurnJob(turn=turn, role=role, job_id=job_id)
+    log.info("submitted batch turn=%d speaker=%s avatar=%s job=%s",
+             turn.idx, turn.speaker, entry.foundry_name, job_id)
+    return _TurnJob(
+        turn=turn,
+        role=role,
+        job_id=job_id,
+        avatar_id=entry.id,
+        video_format=entry.video_format,
+        chroma_key=entry.chroma_key,
+    )
 
 
 def _poll_turn(cfg: AzureConfig, tj: _TurnJob, timeout: int, interval: int) -> _TurnJob:
@@ -307,7 +310,8 @@ def render_podcast(
             log.error("turn %d failed: %s", tj.turn.idx, tj.error)
             failed.append((tj.turn.idx, tj.error or "no video url"))
             continue
-        local_video = _download(tj.video_url, work_dir / f"turn_{tj.turn.idx:03d}.webm")
+        ext = tj.video_format or "webm"
+        local_video = _download(tj.video_url, work_dir / f"turn_{tj.turn.idx:03d}.{ext}")
         word_timings: list[dict] = []
         if tj.vtt_url:
             try:
@@ -322,6 +326,8 @@ def render_podcast(
             blob_url=str(local_video),
             duration_sec=tj.duration_sec,
             word_timings=word_timings,
+            chroma_key=tj.chroma_key,
+            avatar_id=tj.avatar_id,
         ))
 
     if failed:

@@ -123,28 +123,24 @@ const FEMALE_VOICE_NAMES = ['Ava', 'Vivienne', 'Ximena', 'Seraphina', 'Isabella'
 
 /** Suggest an avatar matching the voice gender.
  *
- * DEPRECATED (H1 2026-04-24): the UC2 render backend no longer auto-
- * overrides the user-selected avatar based on voice gender, because
- * that silently ignored the UI choice. Kept here only for legacy
- * callers that still invoke it; new code should trust the user's
- * explicit avatar pick.
+ * Returns a ST_Gobain custom avatar id by voice gender. Legacy callers
+ * passing different fallbacks are honored if no gender match is found.
  */
-export function avatarForVoice(voice: string, fallback = 'lisa'): string {
+export function avatarForVoice(voice: string, fallback = 'st_gobain_female'): string {
   if (!voice) return fallback;
-  if (MALE_VOICE_NAMES.some((n) => voice.includes(n))) return 'harry';
-  if (FEMALE_VOICE_NAMES.some((n) => voice.includes(n))) return 'lisa';
+  if (MALE_VOICE_NAMES.some((n) => voice.includes(n))) return 'st_gobain_male';
+  if (FEMALE_VOICE_NAMES.some((n) => voice.includes(n))) return 'st_gobain_female';
   return fallback;
 }
 
 export const UC1_AVATARS: { id: string; label: string; style: string }[] = [
-  { id: 'lisa',  label: 'Lisa (casual-sitting)', style: 'casual-sitting' },
-  { id: 'harry', label: 'Harry (business)',      style: 'business' },
-  { id: 'max',   label: 'Max (business)',        style: 'business' },
-  { id: 'meg',   label: 'Meg (business)',        style: 'business' },
+  { id: 'st_gobain_female', label: 'ST-Gobain Female', style: '' },
+  { id: 'st_gobain_male',   label: 'ST-Gobain Male',   style: '' },
 ];
 
-export function styleForAvatar(avatarId: string): string {
-  return UC1_AVATARS.find((a) => a.id === avatarId)?.style ?? 'casual-sitting';
+export function styleForAvatar(_avatarId: string): string {
+  // Photo avatars do not use named styles.
+  return '';
 }
 
 

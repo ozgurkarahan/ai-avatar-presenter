@@ -3,7 +3,7 @@ metadata:
   template: ai-presenter@0.0.1
 services:
   backend:
-    project: ./demos/backend
+    project: .
     host: containerapp
     language: py
     docker:

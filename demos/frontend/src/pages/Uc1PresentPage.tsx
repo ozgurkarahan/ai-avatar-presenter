@@ -42,7 +42,7 @@ export default function Uc1PresentPage() {
   const [autoPlayVideo, setAutoPlayVideo] = useState(autoplay);
 
   const [selectedVoice, setSelectedVoice] = useState<string>(UC1_VOICES[1].id); // Ava
-  const [selectedAvatar, setSelectedAvatar] = useState<string>('lisa');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('st_gobain_female');
 
   useEffect(() => {
     let cancelled = false;

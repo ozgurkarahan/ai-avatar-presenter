@@ -10,6 +10,18 @@
     },
     "authClientId": {
       "value": "${AUTH_CLIENT_ID}"
+    },
+    "useExternalAiServices": {
+      "value": "${USE_EXTERNAL_AI_SERVICES=false}"
+    },
+    "externalAiServicesEndpoint": {
+      "value": "${EXTERNAL_AI_SERVICES_ENDPOINT=}"
+    },
+    "externalAiServicesRegion": {
+      "value": "${EXTERNAL_AI_SERVICES_REGION=}"
+    },
+    "externalAiServicesResourceId": {
+      "value": "${EXTERNAL_AI_SERVICES_RESOURCE_ID=}"
     }
   }
 }

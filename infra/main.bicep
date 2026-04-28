@@ -18,6 +18,18 @@ param embeddingModelName string = 'text-embedding-3-small'
 @description('Microsoft Entra ID App Registration client ID for Easy Auth (leave empty to disable)')
 param authClientId string = ''
 
+@description('Use an external (pre-existing) AI Services / Foundry resource instead of provisioning a new one')
+param useExternalAiServices bool = false
+
+@description('External AI Services endpoint (e.g. https://<name>.cognitiveservices.azure.com)')
+param externalAiServicesEndpoint string = ''
+
+@description('External AI Services region')
+param externalAiServicesRegion string = ''
+
+@description('External AI Services resource id (full ARM id)')
+param externalAiServicesResourceId string = ''
+
 var abbrs = {
   resourceGroup: 'rg-'
   containerEnv: 'cae-'
@@ -33,6 +45,8 @@ resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   tags: {
     'azd-env-name': environmentName
     project: 'ai-presenter'
+    SecurityControl: 'ignore'
+    CostControl: 'ignore'
   }
 }
 
@@ -48,8 +62,8 @@ module openai 'modules/openai.bicep' = {
   }
 }
 
-// Provision Azure AI Services (Speech/Avatar)
-module aiServices 'modules/ai-services.bicep' = {
+// Provision Azure AI Services (Speech/Avatar) — skipped when useExternalAiServices=true
+module aiServices 'modules/ai-services.bicep' = if (!useExternalAiServices) {
   name: 'aiServices'
   scope: rg
   params: {
@@ -57,6 +71,11 @@ module aiServices 'modules/ai-services.bicep' = {
     resourceToken: resourceToken
   }
 }
+
+var speechEndpoint = useExternalAiServices ? externalAiServicesEndpoint : aiServices!.outputs.endpoint
+var speechRegion = useExternalAiServices ? externalAiServicesRegion : location
+var speechResourceId = useExternalAiServices ? externalAiServicesResourceId : aiServices!.outputs.resourceId
+var aiServicesAccountName = useExternalAiServices ? '' : aiServices!.outputs.name
 
 // Provision Cosmos DB (presentation persistence)
 module cosmos 'modules/cosmos.bicep' = {
@@ -87,9 +106,9 @@ module containerapp 'modules/containerapp.bicep' = {
     acrName: '${abbrs.containerRegistry}${resourceToken}'
     location: location
     containerImage: 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-    speechEndpoint: aiServices.outputs.endpoint
-    speechRegion: location
-    speechResourceId: aiServices.outputs.resourceId
+    speechEndpoint: speechEndpoint
+    speechRegion: speechRegion
+    speechResourceId: speechResourceId
     openAiEndpoint: openai.outputs.endpoint
     openAiChatDeployment: chatModelName
     openAiEmbeddingDeployment: embeddingModelName
@@ -106,7 +125,7 @@ module roleAssignments 'modules/roles.bicep' = {
   params: {
     principalId: containerapp.outputs.principalId
     openAiAccountName: openai.outputs.name
-    aiServicesAccountName: aiServices.outputs.name
+    aiServicesAccountName: aiServicesAccountName
     cosmosAccountName: cosmos.outputs.name
     storageAccountName: storage.outputs.name
   }
@@ -114,9 +133,9 @@ module roleAssignments 'modules/roles.bicep' = {
 
 output AZURE_RESOURCE_GROUP string = rg.name
 output AZURE_LOCATION string = location
-output AZURE_SPEECH_ENDPOINT string = aiServices.outputs.endpoint
-output AZURE_SPEECH_REGION string = location
-output AZURE_SPEECH_RESOURCE_ID string = aiServices.outputs.resourceId
+output AZURE_SPEECH_ENDPOINT string = speechEndpoint
+output AZURE_SPEECH_REGION string = speechRegion
+output AZURE_SPEECH_RESOURCE_ID string = speechResourceId
 output AZURE_OPENAI_ENDPOINT string = openai.outputs.endpoint
 output AZURE_OPENAI_CHAT_DEPLOYMENT string = chatModelName
 output AZURE_OPENAI_EMBEDDING_DEPLOYMENT string = embeddingModelName
