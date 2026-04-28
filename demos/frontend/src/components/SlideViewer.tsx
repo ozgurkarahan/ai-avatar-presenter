@@ -16,6 +16,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '16px',
+    minHeight: '36px',
   },
   title: {
     fontSize: '16px',

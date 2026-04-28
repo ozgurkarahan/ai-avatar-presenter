@@ -155,7 +155,7 @@ export default function Uc1PresentPage() {
               <LanguageSelector value={language} onChange={setLanguage} variant="light" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.724fr) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
               <div>
                 <div style={{ background: theme.card, borderRadius: 12, padding: 16, boxShadow: theme.shadow, border: `1px solid ${theme.border}` }}>
                   <SlideViewer
@@ -182,6 +182,7 @@ export default function Uc1PresentPage() {
                     onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
                     selectedAvatar={selectedAvatar}
                     selectedVoice={selectedVoice}
+                    mode="portrait"
                   />
                 </div>
               </div>

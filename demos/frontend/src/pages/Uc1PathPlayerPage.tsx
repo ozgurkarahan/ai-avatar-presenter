@@ -338,7 +338,7 @@ export default function Uc1PathPlayerPage() {
           <div style={{ color: theme.muted, textAlign: 'center', padding: 60 }}>Loading deck…</div>
         )}
         {started && presentation && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.724fr) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
             <div>
               <div style={{ background: theme.card, borderRadius: 12, padding: 16, boxShadow: theme.shadow, border: `1px solid ${theme.border}` }}>
                 <SlideViewer
@@ -393,6 +393,7 @@ export default function Uc1PathPlayerPage() {
                   selectedAvatar={selectedAvatar}
                   selectedVoice={selectedVoice}
                   autoStart={true}
+                  mode="portrait"
                 />
               </div>
             </div>

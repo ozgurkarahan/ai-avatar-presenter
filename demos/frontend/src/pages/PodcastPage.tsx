@@ -558,7 +558,7 @@ function ResultView({ job, turns, interviewer, expert, onNew }: {
   onNew: () => void;
 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 24 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 24, maxWidth: 1100, margin: '0 auto' }}>
       <Card title="🎧 Your podcast">
         {job.outputs.mp4_url ? (
           <video controls autoPlay src={job.outputs.mp4_url}
@@ -566,7 +566,7 @@ function ResultView({ job, turns, interviewer, expert, onNew }: {
         ) : (
           <div style={{ color: theme.muted }}>Video unavailable.</div>
         )}
-        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
           {job.outputs.mp3_url && (
             <a href={job.outputs.mp3_url} download style={primaryBtn as any}>⬇ Audio (MP3)</a>
           )}

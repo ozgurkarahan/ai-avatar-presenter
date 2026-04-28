@@ -11,6 +11,14 @@ interface Props {
   selectedAvatar?: string;
   selectedVoice?: string;
   autoStart?: boolean;
+  /**
+   * Visual mode for the avatar tile.
+   * - 'wide' (default, legacy): 16:9 framing matching older prebuilt avatars.
+   * - 'portrait': 3:4 close-up framing tuned for ST-Gobain photo avatars.
+   *   Mirrors the server-side `crop=560:560:660:20` head-zoom used by
+   *   static_compose.py so the live stream matches the rendered MP4 framing.
+   */
+  mode?: 'wide' | 'portrait';
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -18,10 +26,11 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: '14px',
     fontWeight: 600,
-    marginBottom: '12px',
+    marginBottom: '16px',
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    minHeight: '36px',
   },
   videoContainer: {
     width: '100%',
@@ -34,10 +43,27 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
   },
+  videoContainerPortrait: {
+    width: '100%',
+    aspectRatio: '1 / 1',
+    background: '#1a1a2e',
+    borderRadius: '14px',
+    overflow: 'hidden',
+    position: 'relative' as const,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 8px 28px rgba(0, 51, 102, 0.18)',
+  },
   video: {
     width: '100%',
     height: '100%',
     objectFit: 'cover' as const,
+  },
+  videoPortrait: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain' as const,
   },
   placeholder: {
     color: '#888',
@@ -84,7 +110,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice, autoStart = false }: Props) {
+export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice, autoStart = false, mode = 'wide' }: Props) {
   const [connected, setConnected] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -611,8 +637,13 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   return (
     <div style={styles.container}>
       <div style={styles.title}>🤖 AI Avatar</div>
-      <div style={styles.videoContainer}>
-        <video ref={videoRef} style={styles.video} autoPlay playsInline />
+      <div style={mode === 'portrait' ? styles.videoContainerPortrait : styles.videoContainer}>
+        <video
+          ref={videoRef}
+          style={mode === 'portrait' ? styles.videoPortrait : styles.video}
+          autoPlay
+          playsInline
+        />
         {!connected && <div style={{ ...styles.placeholder, position: 'absolute' as const }}>
           Connect to start the avatar
         </div>}
