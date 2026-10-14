@@ -200,12 +200,21 @@ def build_demo_session_config(language: str, avatar_id: Optional[str] = None) ->
 
 
 def slide_narration(slide: Dict[str, Any]) -> str:
-    """Text the avatar reads for a stored slide (notes → body → title), capped."""
-    for key in ("notes", "body", "title"):
+    """Text the avatar reads for a stored slide: speaker notes, else
+    "title. body" (so title slides without notes still sound natural), capped."""
+    def _s(key: str) -> str:
         val = slide.get(key)
-        if isinstance(val, str) and val.strip():
-            return val.strip()[:DEMO_MAX_NARRATION_CHARS]
-    return ""
+        return val.strip() if isinstance(val, str) else ""
+
+    notes = _s("notes")
+    if notes:
+        return notes[:DEMO_MAX_NARRATION_CHARS]
+    title, body = _s("title"), _s("body")
+    if title and body and not body.startswith(title):
+        text = f"{title.rstrip('.')}. {body}"
+    else:
+        text = body or title
+    return text[:DEMO_MAX_NARRATION_CHARS]
 
 
 def speak_messages(text: str) -> list[str]:

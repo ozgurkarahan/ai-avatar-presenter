@@ -135,3 +135,12 @@ def test_ws_maps_store_failure_to_busy(reason, client, monkeypatch):
         with pytest.raises(WebSocketDisconnect) as exc:
             ws.receive_text()
     assert exc.value.code == 1013
+
+
+def test_slide_narration_fallbacks():
+    from services.voice_proxy import slide_narration
+
+    assert slide_narration({"title": "Climate Action", "body": "DeckFM - Demo", "notes": "Welcome."}) == "Welcome."
+    assert slide_narration({"title": "Climate Action", "body": "DeckFM - Demo"}) == "Climate Action. DeckFM - Demo"
+    assert slide_narration({"title": "Only title"}) == "Only title"
+    assert slide_narration({}) == ""
