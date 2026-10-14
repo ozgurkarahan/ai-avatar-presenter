@@ -1,0 +1,78 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "backendImageName": {
+      "value": "${SERVICE_BACKEND_IMAGE_NAME=}"
+    },
+    "authClientId": {
+      "value": "${AUTH_CLIENT_ID=}"
+    },
+    "authTenantId": {
+      "value": "${AUTH_TENANT_ID=}"
+    },
+    "authClientSecret": {
+      "value": "${AUTH_CLIENT_SECRET=}"
+    },
+    "authExtraClientApps": {
+      "value": "${AUTH_EXTRA_CLIENT_APPS=}"
+    },
+    "allowedObjectIds": {
+      "value": "${ALLOWED_OBJECT_IDS=}"
+    },
+    "allowedOrigins": {
+      "value": "${ALLOWED_ORIGINS=}"
+    },
+    "customAvatarsJson": {
+      "value": "${CUSTOM_AVATARS_JSON=}"
+    },
+    "enableUrlIngest": {
+      "value": "${ENABLE_URL_INGEST=false}"
+    },
+    "maxVoiceSessions": {
+      "value": "${MAX_VOICE_SESSIONS=2}"
+    },
+    "maxVoiceSessionSeconds": {
+      "value": "${MAX_VOICE_SESSION_SECONDS=900}"
+    },
+    "dailyGenerationQuota": {
+      "value": "${DAILY_GENERATION_QUOTA=50}"
+    },
+    "maxPendingRenders": {
+      "value": "${MAX_PENDING_RENDERS=3}"
+    },
+    "useExternalAiServices": {
+      "value": "${USE_EXTERNAL_AI_SERVICES=false}"
+    },
+    "externalAiServicesEndpoint": {
+      "value": "${EXTERNAL_AI_SERVICES_ENDPOINT=}"
+    },
+    "externalAiServicesRegion": {
+      "value": "${EXTERNAL_AI_SERVICES_REGION=}"
+    },
+    "externalAiServicesResourceId": {
+      "value": "${EXTERNAL_AI_SERVICES_RESOURCE_ID=}"
+    },
+    "assignExternalAiServicesRoles": {
+      "value": "${ASSIGN_EXTERNAL_AI_SERVICES_ROLES=true}"
+    },
+    "extraTagsJson": {
+      "value": "${EXTRA_TAGS_JSON=}"
+    },
+    "budgetAmount": {
+      "value": "${BUDGET_AMOUNT=50}"
+    },
+    "budgetContactEmails": {
+      "value": "${BUDGET_CONTACT_EMAILS=}"
+    },
+    "budgetStartDate": {
+      "value": "${BUDGET_START_DATE=}"
+    }
+  }
+}

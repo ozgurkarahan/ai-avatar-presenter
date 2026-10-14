@@ -1,0 +1,250 @@
+@description('Name of the Container App Environment')
+param envName string
+
+@description('Name of the Container App')
+param appName string
+
+@description('Location for the resource')
+param location string
+
+@description('Container image to deploy')
+param containerImage string
+
+@description('Login server of the Container Registry (pulled with the user-assigned identity)')
+param acrLoginServer string
+
+@description('Resource ID of the user-assigned managed identity used for registry pull and data-plane access')
+param identityId string
+
+@description('Client ID of the user-assigned managed identity (exposed as AZURE_CLIENT_ID for DefaultAzureCredential)')
+param identityClientId string
+
+@description('Azure Speech endpoint')
+param speechEndpoint string
+
+@description('Azure Speech region')
+param speechRegion string
+
+@description('Azure Speech resource ID (for AAD token exchange)')
+param speechResourceId string
+
+@description('Azure OpenAI endpoint')
+param openAiEndpoint string
+
+@description('Azure OpenAI chat deployment name')
+param openAiChatDeployment string
+
+@description('Azure OpenAI embedding deployment name')
+param openAiEmbeddingDeployment string
+
+@description('Azure Cosmos DB endpoint')
+param cosmosEndpoint string
+
+@description('Azure Storage Account name')
+param storageAccountName string
+
+@description('Azure Blob container name')
+param blobContainerName string = 'slide-images'
+
+@description('vCPU per replica (ffmpeg compositing for UC2/UC3 benefits from 2)')
+param containerCpu string = '2'
+
+@description('Memory per replica (must match the CPU ratio, e.g. 2 vCPU => 4Gi)')
+param containerMemory string = '4Gi'
+
+@description('Microsoft Entra ID app registration client ID for Easy Auth (empty disables Easy Auth; nobody is admin)')
+param authClientId string = ''
+
+@description('Comma-separated extra client application IDs allowed to call the app with bearer tokens (e.g. Azure CLI for scripted tests). Empty = only the app itself.')
+param authExtraClientApps string = ''
+
+@description('Microsoft Entra ID tenant ID used for the Easy Auth issuer and the AUTH_TENANT_ID check')
+param authTenantId string = tenant().tenantId
+
+@secure()
+@description('Client secret of the Easy Auth app registration (stored as a Container App secret)')
+param authClientSecret string = ''
+
+@description('Comma-separated Entra object IDs allowed as admin')
+param allowedObjectIds string = ''
+
+@description('Comma-separated extra origins for CORS / WebSocket Origin check (empty = same-origin only)')
+param allowedOrigins string = ''
+
+@description('JSON array describing custom photo avatars (empty = stock avatars only)')
+param customAvatarsJson string = ''
+
+@description('Allow URL ingestion for podcasts')
+param enableUrlIngest string = 'false'
+
+@description('Global concurrent /ws/voice sessions')
+param maxVoiceSessions string = '2'
+
+@description('Hard cap in seconds per voice session')
+param maxVoiceSessionSeconds string = '900'
+
+@description('Per-principal renders + uploads + chats per UTC day')
+param dailyGenerationQuota string = '50'
+
+@description('Global queued/running render jobs')
+param maxPendingRenders string = '3'
+
+@description('Tags to apply to every resource')
+param tags object = {}
+
+var authEnabled = !empty(authClientId)
+var authSecretName = 'microsoft-provider-authentication-secret'
+var hasAuthSecret = authEnabled && !empty(authClientSecret)
+
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: '${envName}-logs'
+  location: location
+  tags: tags
+  properties: {
+    sku: { name: 'PerGB2018' }
+    retentionInDays: 30
+  }
+}
+
+resource containerEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
+  name: envName
+  location: location
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalytics.properties.customerId
+        // Key is resolved inside this module only; it is never emitted as an output.
+        sharedKey: logAnalytics.listKeys().primarySharedKey
+      }
+    }
+  }
+  tags: tags
+}
+
+resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
+  name: appName
+  location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${identityId}': {}
+    }
+  }
+  properties: {
+    managedEnvironmentId: containerEnv.id
+    configuration: {
+      ingress: {
+        external: true
+        targetPort: 8000
+        transport: 'auto'
+        allowInsecure: false
+      }
+      secrets: hasAuthSecret ? [
+        { name: authSecretName, value: authClientSecret }
+      ] : []
+      registries: [
+        {
+          server: acrLoginServer
+          identity: identityId
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'backend'
+          image: containerImage
+          resources: {
+            cpu: json(containerCpu)
+            memory: containerMemory
+          }
+          env: [
+            { name: 'AZURE_CLIENT_ID', value: identityClientId }
+            { name: 'AZURE_SPEECH_ENDPOINT', value: speechEndpoint }
+            { name: 'AZURE_SPEECH_REGION', value: speechRegion }
+            { name: 'AZURE_SPEECH_RESOURCE_ID', value: speechResourceId }
+            { name: 'AZURE_OPENAI_ENDPOINT', value: openAiEndpoint }
+            { name: 'AZURE_OPENAI_CHAT_DEPLOYMENT', value: openAiChatDeployment }
+            { name: 'AZURE_OPENAI_EMBEDDING_DEPLOYMENT', value: openAiEmbeddingDeployment }
+            { name: 'AZURE_USE_MANAGED_IDENTITY', value: 'true' }
+            { name: 'USE_LOCAL_SEARCH', value: 'true' }
+            { name: 'AZURE_COSMOS_ENDPOINT', value: cosmosEndpoint }
+            { name: 'AZURE_BLOB_ACCOUNT_NAME', value: storageAccountName }
+            { name: 'AZURE_BLOB_CONTAINER', value: blobContainerName }
+            // Always trust only Easy Auth headers. Without Easy Auth configured the
+            // allowlist is forced empty so spoofed principal headers can never grant admin.
+            { name: 'AUTH_MODE', value: 'easyauth' }
+            { name: 'AUTH_TENANT_ID', value: authTenantId }
+            { name: 'ALLOWED_OBJECT_IDS', value: authEnabled ? allowedObjectIds : '' }
+            { name: 'ALLOWED_ORIGINS', value: allowedOrigins }
+            { name: 'CUSTOM_AVATARS_JSON', value: customAvatarsJson }
+            { name: 'ENABLE_URL_INGEST', value: enableUrlIngest }
+            { name: 'MAX_VOICE_SESSIONS', value: maxVoiceSessions }
+            { name: 'MAX_VOICE_SESSION_SECONDS', value: maxVoiceSessionSeconds }
+            { name: 'DAILY_GENERATION_QUOTA', value: dailyGenerationQuota }
+            { name: 'MAX_PENDING_RENDERS', value: maxPendingRenders }
+          ]
+        }
+      ]
+      scale: {
+        minReplicas: 0
+        maxReplicas: 1
+        rules: [
+          {
+            name: 'http-rule'
+            http: {
+              metadata: {
+                concurrentRequests: '50'
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+  tags: union(tags, { 'azd-service-name': 'backend' })
+}
+
+// Easy Auth – Microsoft Entra ID (enabled when authClientId is provided).
+// Hybrid exposure: anonymous requests reach the app, which enforces per-route authorization
+// from the X-MS-CLIENT-PRINCIPAL headers injected (and sanitised) by the platform.
+resource authConfig 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (authEnabled) {
+  parent: containerApp
+  name: 'current'
+  properties: {
+    platform: {
+      enabled: true
+    }
+    globalValidation: {
+      unauthenticatedClientAction: 'AllowAnonymous'
+    }
+    httpSettings: {
+      requireHttps: true
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: union(
+          {
+            clientId: authClientId
+            openIdIssuer: '${environment().authentication.loginEndpoint}${authTenantId}/v2.0'
+          },
+          hasAuthSecret ? { clientSecretSettingName: authSecretName } : {}
+        )
+        validation: {
+          allowedAudiences: [
+            'api://${authClientId}'
+            authClientId
+          ]
+          defaultAuthorizationPolicy: {
+            allowedApplications: concat([authClientId], filter(map(split(authExtraClientApps, ','), a => trim(a)), a => !empty(a)))
+          }
+        }
+      }
+    }
+  }
+}
+
+output url string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output name string = containerApp.name

@@ -1,0 +1,30 @@
+name: ai-presenter
+metadata:
+  template: ai-presenter@0.0.1
+services:
+  backend:
+    project: .
+    host: containerapp
+    language: py
+    docker:
+      path: ./Dockerfile
+      context: .
+      # Build in Azure Container Registry so no local Docker daemon is required.
+      remoteBuild: true
+infra:
+  provider: bicep
+  path: ./infra
+hooks:
+  # Fail closed: refuse to provision unless Easy Auth (AUTH_CLIENT_ID, AUTH_CLIENT_SECRET,
+  # ALLOWED_OBJECT_IDS) is configured, or ALLOW_INSECURE_NO_AUTH=true is explicitly set.
+  preprovision:
+    windows:
+      shell: pwsh
+      run: ./hooks/preprovision.ps1
+      continueOnError: false
+      interactive: false
+    posix:
+      shell: sh
+      run: ./hooks/preprovision.sh
+      continueOnError: false
+      interactive: false

@@ -1,0 +1,54 @@
+# Git / worktrees / bundles
+.git
+.gitignore
+.github/
+.worktree*/
+**/*.bundle
+
+# Agent tooling
+.claude/
+.copilot*
+.playwright-mcp/
+
+# Azure / azd environment (may contain secrets)
+.azure/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.venv/
+**/venv/
+
+# Node
+**/node_modules/
+dist/
+demos/frontend/dist/
+
+# Environment files (secrets)
+**/.env
+**/.env.*
+!**/.env.example
+.uc1_search_key.tmp
+**/*.tmp
+
+# Data (local uploads, generated media, test output)
+demos/backend/data/
+demos/backend/slides_cache/
+output/
+test-results/
+playwright-report/
+blob-report/
+
+# Tests, docs, scripts (not needed in the image)
+tests/
+demos/backend/tests/
+demos/backend/test_upload.pptx
+docs/
+scripts/
+
+# Infra / deployment tooling
+infra/
+hooks/
+
+# NOTE: demos/backend/static/avatars/ (custom avatar thumbnails) MUST stay in the build context.

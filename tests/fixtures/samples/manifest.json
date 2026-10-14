@@ -1,0 +1,110 @@
+[
+  {
+    "group": "A_safety_fr",
+    "file": "securite-bases.pptx",
+    "title": "Sécurité sur chantier : les fondamentaux",
+    "language": "fr-FR",
+    "tags": [
+      "safety",
+      "construction",
+      "fr"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "A_safety_fr",
+    "file": "risques-chantier.pptx",
+    "title": "Identifier et prévenir les risques de chantier",
+    "language": "fr-FR",
+    "tags": [
+      "safety",
+      "risk",
+      "fr"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "A_safety_fr",
+    "file": "intervention-urgence.pptx",
+    "title": "Intervention en cas d'urgence",
+    "language": "fr-FR",
+    "tags": [
+      "safety",
+      "emergency",
+      "fr"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "B_sustainability_en",
+    "file": "decarbonization-intro.pptx",
+    "title": "Decarbonization: Introduction for industry",
+    "language": "en-US",
+    "tags": [
+      "sustainability",
+      "climate",
+      "en"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "B_sustainability_en",
+    "file": "low-carbon-materials.pptx",
+    "title": "Low-carbon materials in construction",
+    "language": "en-US",
+    "tags": [
+      "sustainability",
+      "materials",
+      "en"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "B_sustainability_en",
+    "file": "circular-economy.pptx",
+    "title": "Circular economy in practice",
+    "language": "en-US",
+    "tags": [
+      "sustainability",
+      "circular",
+      "en"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "C_ai_es",
+    "file": "ia-industrial-intro.pptx",
+    "title": "Introducción a la IA en la industria",
+    "language": "es-ES",
+    "tags": [
+      "ai",
+      "industry",
+      "es"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "C_ai_es",
+    "file": "ia-en-produccion.pptx",
+    "title": "IA aplicada a producción",
+    "language": "es-ES",
+    "tags": [
+      "ai",
+      "production",
+      "es"
+    ],
+    "slide_count": 5
+  },
+  {
+    "group": "C_ai_es",
+    "file": "etica-ia-empresa.pptx",
+    "title": "Ética de la IA en la empresa",
+    "language": "es-ES",
+    "tags": [
+      "ai",
+      "ethics",
+      "es"
+    ],
+    "slide_count": 5
+  }
+]

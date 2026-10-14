@@ -1,0 +1,86 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git Worktrees
+.worktree/
+
+# Claude Code
+.claude/
+
+# Copilot CLI
+.copilot-instructions.md
+
+# Local tool artifacts
+.playwright-mcp/
+uc1-present-*.png
+
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Data (uploads + rendered slides)
+data/
+
+# Tasks (internal session tracking)
+tasks/
+
+# Node.js
+node_modules/
+dist/
+
+# Backend static (built frontend artifacts)
+demos/backend/static/
+
+# Test files
+demos/backend/test_upload.pptx
+
+# Azure
+.azure/
+
+# Teams build artifact
+teams-app-package.zip
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+scripts/.env
+output/
+infra/main.json
+
+# UC1 Azure AI Search admin key (local only)
+.uc1_search_key.tmp
+
+# Public-release hygiene: local agent/tooling files and secrets-adjacent artifacts
+.github/copilot-instructions.md
+AGENTS.local.md
+*.bundle
+hooks/*.local.*
+
+# Custom avatar photos are never committed (configure via CUSTOM_AVATARS_JSON)
+demos/backend/static/avatars/
+
+# Tool logs / local agent config
+azd-*.log
+.copilot/
+

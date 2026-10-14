@@ -1,0 +1,113 @@
+<mxfile host="app.diagrams.net" modified="2026-04-06T22:03:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="uc1-bronze" name="UC1 Bronze — VoiceRAG">
+    <mxGraphModel dx="1200" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="UC1 Bronze — VoiceLive Avatar with Q and A" style="text;html=1;align=center;fontSize=16;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="200" y="10" width="450" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- PARTICIPANTS -->
+        <mxCell id="p-l" value="Learner" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="30" y="60" width="100" height="1280" as="geometry" />
+        </mxCell>
+        <mxCell id="p-wa" value="Web App&#xa;(FastAPI)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#C8E6C9;strokeColor=#43A047;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="200" y="60" width="100" height="1280" as="geometry" />
+        </mxCell>
+        <mxCell id="p-vl" value="VoiceLive&#xa;API" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#C5CAE9;strokeColor=#3F51B5;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="370" y="60" width="100" height="1280" as="geometry" />
+        </mxCell>
+        <mxCell id="p-llm" value="Azure OpenAI&#xa;(GPT-4.1)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F8BBD0;strokeColor=#E91E63;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="540" y="60" width="100" height="1280" as="geometry" />
+        </mxCell>
+        <mxCell id="p-avt" value="TTS Avatar&#xa;(DragonHD)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#E8EAF6;strokeColor=#5C6BC0;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="710" y="60" width="100" height="1280" as="geometry" />
+        </mxCell>
+
+        <!-- CONNECTION PHASE -->
+        <mxCell id="n1" value="CONNECTION PHASE" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E3F2FD;strokeColor=#90CAF9;fontColor=#1565C0;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="30" y="130" width="780" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="1. Open app + Connect Avatar" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="80" y="180" as="sourcePoint" /><mxPoint x="250" y="180" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m2" value="2. WebSocket — session.update {language, DragonHD voice, avatar}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="220" as="sourcePoint" /><mxPoint x="420" y="220" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m3" value="3. session.update {modalities, voice, avatar, semantic VAD}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="260" as="sourcePoint" /><mxPoint x="760" y="260" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m4" value="4. session.updated {ICE servers}" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="760" y="300" as="sourcePoint" /><mxPoint x="420" y="300" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m5" value="5. Forward ICE servers" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="340" as="sourcePoint" /><mxPoint x="250" y="340" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m6" value="6. WebRTC handshake (SDP offer/answer)" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="380" as="sourcePoint" /><mxPoint x="760" y="380" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="n-rtc" value="WebRTC connected" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E8EAF6;strokeColor=#C5CAE9;fontColor=#3F51B5;fontStyle=2;fontSize=9;align=center;" vertex="1" parent="1">
+          <mxGeometry x="250" y="400" width="510" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- AVATAR PRESENTS SLIDE -->
+        <mxCell id="n2" value="AVATAR PRESENTS SLIDE" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E8F5E9;strokeColor=#A5D6A7;fontColor=#2E7D32;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="30" y="450" width="780" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m7" value="7. Navigate to slide N" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="80" y="500" as="sourcePoint" /><mxPoint x="250" y="500" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m8" value="8. Translate speaker notes (if needed)" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="540" as="sourcePoint" /><mxPoint x="590" y="540" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m9" value="9. Translated text" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="590" y="580" as="sourcePoint" /><mxPoint x="250" y="580" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m10" value="10. conversation.item.create {text}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="620" as="sourcePoint" /><mxPoint x="420" y="620" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m11" value="11. response.create" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="660" as="sourcePoint" /><mxPoint x="420" y="660" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m12" value="12. TTS + Avatar render (DragonHD)" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="420" y="700" as="sourcePoint" /><mxPoint x="760" y="700" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m13" value="13. Video + audio stream (WebRTC)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="760" y="740" as="sourcePoint" /><mxPoint x="80" y="740" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+        <!-- Q&A MODE -->
+        <mxCell id="n3" value="Q and A MODE" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#FCE4EC;strokeColor=#F8BBD0;fontColor=#C62828;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="30" y="790" width="780" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m14" value="14. Ask question about slide" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="80" y="840" as="sourcePoint" /><mxPoint x="250" y="840" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m15" value="15. generate_embedding(question)" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="880" as="sourcePoint" /><mxPoint x="590" y="880" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m16" value="16. numpy cosine similarity (top 3)" style="html=1;verticalAlign=bottom;endArrow=block;curved=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="920" as="sourcePoint" /><mxPoint x="260" y="940" as="targetPoint" />
+            <Array as="points"><mxPoint x="300" y="930" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="m17" value="17. RAG: generate answer with context" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="960" as="sourcePoint" /><mxPoint x="590" y="960" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m18" value="18. Grounded answer" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="590" y="1000" as="sourcePoint" /><mxPoint x="250" y="1000" as="targetPoint" /></mxGeometry>
+        </mxCell>
+        <mxCell id="m19" value="19. Display answer + source slides" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry"><mxPoint x="250" y="1040" as="sourcePoint" /><mxPoint x="80" y="1040" as="targetPoint" /></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

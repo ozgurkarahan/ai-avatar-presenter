@@ -1,0 +1,204 @@
+<mxfile host="app.diagrams.net" modified="2026-04-06T22:03:00.000Z" agent="draw.io" version="24.0.0" type="device">
+  <diagram id="uc1-ingestion" name="UC1 Silver — Ingestion">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="UC1 Silver — Upload and Ingestion Sequence" style="text;html=1;align=center;fontSize=16;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="300" y="10" width="450" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ===== PARTICIPANTS ===== -->
+        <mxCell id="p-user" value="Content Creator" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="p-wa" value="Web Application&#xa;(FastAPI)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#C8E6C9;strokeColor=#43A047;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="220" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="p-lo" value="LibreOffice&#xa;(headless)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#FFE0B2;strokeColor=#EF6C00;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="400" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="p-emb" value="Azure OpenAI&#xa;(Embeddings)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F8BBD0;strokeColor=#E91E63;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="580" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="p-llm" value="Azure OpenAI&#xa;(GPT-4.1)" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#F8BBD0;strokeColor=#E91E63;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="p-vs" value="In-Memory&#xa;Vector Store" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#FFE0B2;strokeColor=#EF6C00;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="940" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="p-bs" value="Azure Blob&#xa;Storage" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#FFF3E0;strokeColor=#E65100;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+        <mxCell id="p-cdb" value="Azure&#xa;Cosmos DB" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=0;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;fillColor=#E0F7FA;strokeColor=#00838F;fontColor=#1a1a1a;fontStyle=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="60" width="120" height="1380" as="geometry" />
+        </mxCell>
+
+        <!-- ===== PHASE: UPLOAD and PARSE ===== -->
+        <mxCell id="note1" value="UPLOAD and PARSE PHASE" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E3F2FD;strokeColor=#90CAF9;fontColor=#1565C0;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="130" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- 1. Upload -->
+        <mxCell id="m1" value="1. Upload PowerPoint (.pptx)" style="html=1;verticalAlign=bottom;endArrow=block;entryX=0;entryY=0;exitX=1;exitY=0;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry x="-0.5" relative="1" as="geometry">
+            <mxPoint x="100" y="180" as="sourcePoint" />
+            <mxPoint x="280" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2. Validate -->
+        <mxCell id="m2" value="2. Validate file (ZIP header, Content_Types.xml)" style="html=1;verticalAlign=bottom;endArrow=block;curved=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="220" as="sourcePoint" />
+            <mxPoint x="290" y="240" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="330" y="230" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3. Extract -->
+        <mxCell id="m3" value="3. python-pptx: extract title, body, notes, videos" style="html=1;verticalAlign=bottom;endArrow=block;curved=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="260" as="sourcePoint" />
+            <mxPoint x="290" y="280" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="330" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. LibreOffice -->
+        <mxCell id="m4" value="4. soffice --headless --convert-to pdf" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="310" as="sourcePoint" />
+            <mxPoint x="460" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5. PNGs back -->
+        <mxCell id="m5" value="5. PDF to pdf2image to PNGs" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="460" y="350" as="sourcePoint" />
+            <mxPoint x="280" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== PHASE: PERSIST ===== -->
+        <mxCell id="note2" value="PERSIST TO AZURE" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#E8F5E9;strokeColor=#A5D6A7;fontColor=#2E7D32;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="220" y="390" width="1200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- 6. Upload PNGs -->
+        <mxCell id="m6" value="6. Upload slide PNGs to slide-images/{id}/{idx}.png" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="440" as="sourcePoint" />
+            <mxPoint x="1180" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 7. Upload PPTX -->
+        <mxCell id="m7" value="7. Upload original PPTX to slide-images/{id}/{file}.pptx" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="480" as="sourcePoint" />
+            <mxPoint x="1180" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8. Save metadata -->
+        <mxCell id="m8" value="8. Save presentation metadata (id, filename, slides[], pptx_url)" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="520" as="sourcePoint" />
+            <mxPoint x="1360" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== PHASE: INDEX ===== -->
+        <mxCell id="note3" value="INDEX FOR Q and A" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#FFF3E0;strokeColor=#FFE0B2;fontColor=#E65100;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="220" y="560" width="840" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Loop box -->
+        <mxCell id="loop1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#90CAF9;dashed=1;dashPattern=5 3;" vertex="1" parent="1">
+          <mxGeometry x="240" y="600" width="820" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="loop1-label" value="loop [For each slide]" style="text;html=1;fontSize=9;fontColor=#1565C0;fontStyle=3;align=left;" vertex="1" parent="1">
+          <mxGeometry x="245" y="603" width="120" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- 9. Embed -->
+        <mxCell id="m9" value="9. embeddings.create(title + body + notes)" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="640" as="sourcePoint" />
+            <mxPoint x="640" y="640" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 10. Vector back -->
+        <mxCell id="m10" value="10. Embedding vector" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="640" y="680" as="sourcePoint" />
+            <mxPoint x="280" y="680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 11. Store -->
+        <mxCell id="m11" value="11. Store {embedding, slide metadata}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="720" as="sourcePoint" />
+            <mxPoint x="1000" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== PHASE: BACKGROUND TRANSLATION ===== -->
+        <mxCell id="note4" value="BACKGROUND TRANSLATION (async)" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#FCE4EC;strokeColor=#F8BBD0;fontColor=#C62828;fontStyle=1;fontSize=10;align=center;" vertex="1" parent="1">
+          <mxGeometry x="220" y="790" width="1200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- 12. Return -->
+        <mxCell id="m12" value="12. Presentation ready (SAS-signed image URLs)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="840" as="sourcePoint" />
+            <mxPoint x="100" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Loop box 2 -->
+        <mxCell id="loop2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#F8BBD0;dashed=1;dashPattern=5 3;" vertex="1" parent="1">
+          <mxGeometry x="240" y="870" width="1180" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="loop2-label" value="loop [For each of 9 target languages — async background]" style="text;html=1;fontSize=9;fontColor=#C62828;fontStyle=3;align=left;" vertex="1" parent="1">
+          <mxGeometry x="245" y="873" width="320" height="16" as="geometry" />
+        </mxCell>
+
+        <!-- 13. Translate -->
+        <mxCell id="m13" value="13. Translate all slide notes" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="920" as="sourcePoint" />
+            <mxPoint x="820" y="920" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 14. Translated -->
+        <mxCell id="m14" value="14. Translated text" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="820" y="960" as="sourcePoint" />
+            <mxPoint x="280" y="960" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 15. Cache -->
+        <mxCell id="m15" value="15. Cache in slides[].translated_notes.{lang}" style="html=1;verticalAlign=bottom;endArrow=block;fontColor=#1a1a1a;fontSize=9;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="1000" as="sourcePoint" />
+            <mxPoint x="1360" y="1000" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
