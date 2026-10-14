@@ -65,12 +65,13 @@ same.
 | Same-origin `Origin` check (`ALLOWED_ORIGINS` additive) | before `accept()` → 4403 | same-origin |
 | Global concurrency `DEMO_MAX_CONCURRENT` (separate from `MAX_VOICE_SESSIONS`, so the owner can still use the admin avatar) | after `accept()` → 1013 | `1` |
 | Daily sessions, global `DEMO_DAILY_SESSIONS` | after `accept()` → 4429 | `20` / UTC day |
-| Daily sessions per client IP `DEMO_DAILY_SESSIONS_PER_IP` | after `accept()` → 4429 | `3` / UTC day |
+| Daily sessions per client IP `DEMO_DAILY_SESSIONS_PER_IP` | after `accept()` → 4429 | `3` / UTC day (IPs stored only as salted hashes) |
+| Daily streaming minutes `DEMO_DAILY_MINUTES` | after `accept()` → 4429 | `60` min / UTC day (seconds recorded at session end) |
 | Hard session timeout `DEMO_SESSION_SECONDS` | server timer → 4408 | `180` s |
 | Narrations per session `DEMO_MAX_SPEAKS` | message filter | 2 × slides, max 40 |
 | `demo.speak` rate limit | message filter | ≥ 1 s apart |
 | Narration length | server truncation | 2,000 chars |
-| Session config 100 % server-side | `build_demo_session_config` | deck language, registry default avatar, allowlisted voice, fixed "read verbatim" instructions, `turn_detection: none`, no input audio, `max_response_output_tokens: 4096` |
+| Session config 100 % server-side | `build_demo_session_config` | deck language, registry default avatar (or `?avatar=` restricted to the public avatar catalog), allowlisted voice, fixed "read verbatim" instructions, `turn_detection: none`, no input audio, `max_response_output_tokens: 4096` |
 | Strict client→server allowlist | `DemoMessageFilter` | SDP offer, `demo.speak`, `response.cancel` only |
 | Azure socket torn down when either side leaves | `handle_demo_proxy` | — |
 | Custom avatar character names redacted from server events | `redact_server_message` | — |
@@ -83,9 +84,10 @@ in browsers and is shown with the same message).
 
 ### Implementation notes
 
-- Counters are **in-process**. The Container App is capped at one replica
-  (`maxReplicas: 1`), so they are global for the deployment. A restart resets
-  the daily counters; the worst case is still bounded per process lifetime.
+- Daily counters are **durable**: one Cosmos DB document per UTC day (`demo-quota-<day>`,
+updated with etag optimistic concurrency), so restarts, redeploys and scale-to-zero
+cannot reset the budget. If Cosmos is unavailable the demo **fails closed** (1013).
+Only the concurrency slot is in-process (the app is capped at one replica).
 - **Client IP** for the per-IP quota is the **rightmost** `X-Forwarded-For`
   entry (else the socket peer). Azure Container Apps ingress *appends* the real
   peer to any client-supplied value and documents that only the rightmost IP is
@@ -119,6 +121,7 @@ in browsers and is shown with the same message).
 | `DEMO_SESSION_SECONDS` | `180` | Hard cap per session. |
 | `DEMO_DAILY_SESSIONS` | `20` | Sessions per UTC day, global. `0` blocks all sessions. |
 | `DEMO_DAILY_SESSIONS_PER_IP` | `3` | Sessions per UTC day per client IP. |
+| `DEMO_DAILY_MINUTES` | `60` | Hard cap on total demo streaming minutes per UTC day (all visitors). |
 | `DEMO_MAX_SPEAKS` | `0` | Narrations per session; `0`/unset = 2 × slide count; never above 40. |
 
 All are read per call, so a config change (new revision) takes effect
@@ -129,7 +132,8 @@ immediately; flipping `PUBLIC_DEMO_ENABLED=false` blocks new sessions at once.
 Worst-case avatar minutes per day:
 
 ```
-DEMO_DAILY_SESSIONS × DEMO_SESSION_SECONDS / 60     (defaults: 20 × 180 / 60 = 60 min/day)
+min(DEMO_DAILY_MINUTES, DEMO_DAILY_SESSIONS × DEMO_SESSION_SECONDS / 60) + one in-flight session
+(defaults: min(60, 20 × 180 / 60) = 60 min/day, ≤ 63 min worst case)
 ```
 
 Multiply by your region's real-time avatar + Voice Live (model + TTS) per-minute

@@ -112,9 +112,9 @@ The deployed app uses a **hybrid exposure** model, enforced by the backend (defa
 - **Public live demo (off by default):** with `PUBLIC_DEMO_ENABLED=true`, anonymous visitors can watch the
   live avatar *narrate* decks an admin has published and marked **Live demo** (`/ws/voice/demo`). No free
   text, microphone, pickers or uploads: the client sends only a slide index and the server reads stored notes.
-- Guardrails: 1 concurrent session (separate from admin), 180 s hard cap, 20 sessions/day globally and 3 per IP,
+- Guardrails: 1 concurrent session (separate from admin), 180 s hard cap, 20 sessions/day globally and 3 per IP, 60 streaming minutes/day,
   ≤ 2× slides narrations (max 40), 1 s rate limit, same-origin check, settings fixed server-side.
-- Worst case = `DEMO_DAILY_SESSIONS × DEMO_SESSION_SECONDS / 60` avatar-minutes/day (60 with defaults).
+- Daily budget is durable (Cosmos, survives restarts/scale-to-zero, fails closed); worst case ≈ `DEMO_DAILY_MINUTES` (60) avatar-minutes/day.
   Details: [docs/live-demo.md](docs/live-demo.md).
 
 > ⚠️ **Cost warning** — live avatar streaming and batch avatar synthesis are billed by Azure AI Speech **per minute of video**, and GPT-4.1 / embeddings are billed per token. Keep the allowlist small, keep the session limits low, and set `BUDGET_CONTACT_EMAILS` so the Bicep templates provision a **budget alert** (see [Azure Deployment](#-azure-deployment)). Scale-to-zero (`minReplicas: 0`) keeps idle cost near zero.
@@ -253,6 +253,7 @@ Create a `.env` file in `demos/backend/` (see `.env.example`):
 | `DEMO_SESSION_SECONDS` | `180` | Hard cap per demo session |
 | `DEMO_DAILY_SESSIONS` | `20` | Demo sessions per UTC day, global (`0` blocks all) |
 | `DEMO_DAILY_SESSIONS_PER_IP` | `3` | Demo sessions per UTC day per client IP |
+| `DEMO_DAILY_MINUTES` | `60` | Hard cap on total demo streaming minutes per UTC day |
 | `DEMO_MAX_SPEAKS` | `0` | Narrations per demo session; `0` = 2 × slide count (never above 40) |
 
 ### Custom photo avatars (optional)

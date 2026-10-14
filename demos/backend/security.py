@@ -277,6 +277,11 @@ def demo_daily_sessions_per_ip() -> int:
     return _env_int("DEMO_DAILY_SESSIONS_PER_IP", 3)
 
 
+def demo_daily_minutes() -> int:
+    """Hard daily cap on total demo streaming minutes (all visitors)."""
+    return _env_int("DEMO_DAILY_MINUTES", 60)
+
+
 def demo_max_speaks(slide_count: int) -> int:
     """Narrations allowed per demo session: ``DEMO_MAX_SPEAKS`` (unset / 0 ⇒
     2 × slide count), never above :data:`DEMO_MAX_SPEAKS_HARD_CAP`."""
@@ -291,45 +296,120 @@ def demo_max_speaks(slide_count: int) -> int:
 
 
 class DemoQuota:
-    """Global + per-client-IP daily session counters (UTC day)."""
+    """Daily demo budget (UTC day): global sessions, per-client-IP sessions and
+    total streamed seconds.
+
+    With a durable ``store`` (Cosmos doc ``demo-quota-<day>``, optimistic
+    concurrency via etag) the counters survive restarts and scale-to-zero, so
+    idling the app cannot reset the budget. Client IPs are stored only as
+    salted hashes. If the store fails, the demo fails CLOSED. Without a store
+    (local dev / tests) counters live in memory.
+    """
+
+    _RETRIES = 5
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._day = ""
-        self._total = 0
-        self._per_ip: dict[str, int] = {}
+        self._store = None
+        self._mem: dict = {}
 
-    def _roll(self) -> None:
-        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        if day != self._day:
-            self._day = day
-            self._total = 0
-            self._per_ip.clear()
+    def set_store(self, store) -> None:
+        self._store = store
+
+    @staticmethod
+    def _day() -> str:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    @staticmethod
+    def _ip_key(ip: str, day: str) -> str:
+        import hashlib
+        return hashlib.sha256(f"deckfm-demo|{day}|{ip}".encode()).hexdigest()[:20]
+
+    @staticmethod
+    def _blank(day: str) -> dict:
+        return {"id": f"demo-quota-{day}", "source": "demo-quota", "day": day,
+                "total": 0, "seconds": 0, "per_ip": {}}
+
+    @staticmethod
+    def _check(doc: dict, ip_key: str) -> Optional[str]:
+        if doc.get("total", 0) >= demo_daily_sessions():
+            return "global"
+        if doc.get("seconds", 0) >= demo_daily_minutes() * 60:
+            return "minutes"
+        if (doc.get("per_ip") or {}).get(ip_key, 0) >= demo_daily_sessions_per_ip():
+            return "ip"
+        return None
+
+    def _update(self, mutate) -> Optional[str]:
+        """Read-check-mutate-write with retries. ``mutate(doc)`` returns an
+        exhaustion reason (no write) or ``None`` after mutating ``doc``."""
+        day = self._day()
+        if self._store is None:
+            with self._lock:
+                if self._mem.get("day") != day:
+                    self._mem = self._blank(day)
+                return mutate(self._mem)
+        try:
+            for _ in range(self._RETRIES):
+                doc, etag = self._store.read_doc(f"demo-quota-{day}")
+                if doc is None:
+                    doc = self._blank(day)
+                doc = {k: v for k, v in doc.items() if not k.startswith("_")}
+                reason = mutate(doc)
+                if reason:
+                    return reason
+                if self._store.write_doc(doc, etag):
+                    return None
+            return "busy"
+        except Exception:  # fail closed: never stream without a working budget
+            return "unavailable"
 
     def try_consume(self, ip: str) -> Optional[str]:
-        """Consume one session. Returns ``None`` on success, otherwise
-        ``"global"`` or ``"ip"`` naming the exhausted quota."""
-        with self._lock:
-            self._roll()
-            if self._total >= demo_daily_sessions():
-                return "global"
-            if self._per_ip.get(ip, 0) >= demo_daily_sessions_per_ip():
-                return "ip"
-            self._total += 1
-            # Bounded: at most DEMO_DAILY_SESSIONS entries per day.
-            self._per_ip[ip] = self._per_ip.get(ip, 0) + 1
+        """Consume one session. ``None`` on success, else the reason
+        (``global`` | ``ip`` | ``minutes`` | ``busy`` | ``unavailable``)."""
+        day = self._day()
+        key = self._ip_key(ip, day)
+
+        def mutate(doc: dict) -> Optional[str]:
+            reason = self._check(doc, key)
+            if reason:
+                return reason
+            doc["total"] = doc.get("total", 0) + 1
+            per_ip = doc.setdefault("per_ip", {})
+            per_ip[key] = per_ip.get(key, 0) + 1
             return None
 
+        return self._update(mutate)
+
+    def add_seconds(self, seconds: float) -> None:
+        """Record streamed seconds at session end (best effort)."""
+        secs = max(0, int(round(seconds)))
+        if not secs:
+            return
+
+        def mutate(doc: dict) -> Optional[str]:
+            doc["seconds"] = doc.get("seconds", 0) + secs
+            return None
+
+        self._update(mutate)
+
     def remaining_today(self) -> int:
-        with self._lock:
-            self._roll()
-            return max(0, demo_daily_sessions() - self._total)
+        day = self._day()
+        try:
+            if self._store is None:
+                with self._lock:
+                    used = self._mem.get("total", 0) if self._mem.get("day") == day else 0
+            else:
+                doc, _ = self._store.read_doc(f"demo-quota-{day}")
+                used = (doc or {}).get("total", 0)
+            return max(0, demo_daily_sessions() - used)
+        except Exception:
+            return 0
 
     def reset(self) -> None:
         with self._lock:
-            self._day = ""
-            self._total = 0
-            self._per_ip.clear()
+            self._mem = {}
+            self._store = None
 
 
 DEMO_QUOTA = DemoQuota()

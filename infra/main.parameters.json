@@ -62,6 +62,9 @@
     "demoDailySessionsPerIp": {
       "value": "${DEMO_DAILY_SESSIONS_PER_IP=3}"
     },
+    "demoDailyMinutes": {
+      "value": "${DEMO_DAILY_MINUTES=60}"
+    },
     "demoMaxSpeaks": {
       "value": "${DEMO_MAX_SPEAKS=0}"
     },

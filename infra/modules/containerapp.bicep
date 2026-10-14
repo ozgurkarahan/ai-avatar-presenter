@@ -104,6 +104,9 @@ param demoDailySessions string = '20'
 @description('Anonymous demo sessions per client IP per UTC day')
 param demoDailySessionsPerIp string = '3'
 
+@description('Hard daily cap on total public demo streaming minutes')
+param demoDailyMinutes string = '60'
+
 @description('Narrations per demo session; 0 = 2 x slide count (hard max 40)')
 param demoMaxSpeaks string = '0'
 
@@ -207,6 +210,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'DEMO_SESSION_SECONDS', value: demoSessionSeconds }
             { name: 'DEMO_DAILY_SESSIONS', value: demoDailySessions }
             { name: 'DEMO_DAILY_SESSIONS_PER_IP', value: demoDailySessionsPerIp }
+            { name: 'DEMO_DAILY_MINUTES', value: demoDailyMinutes }
             { name: 'DEMO_MAX_SPEAKS', value: demoMaxSpeaks }
           ]
         }

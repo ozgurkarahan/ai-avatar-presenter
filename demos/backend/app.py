@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import json
 import logging
 import os
@@ -77,6 +78,7 @@ async def lifespan(app: FastAPI):
     global config, store
     config = load_config()
     store = PresentationStore(config)
+    DEMO_QUOTA.set_store(store)  # durable demo budget (survives restarts / scale-to-zero)
     auth.log_startup_warnings()
     logger.info("DeckFM backend started. Region: %s", config.speech_region)
     if store.available:
@@ -930,7 +932,7 @@ async def demo_config():
     enabled = public_demo_enabled()
     out: dict = {"enabled": enabled, "session_seconds": demo_session_seconds()}
     if enabled:
-        out["remaining_today"] = DEMO_QUOTA.remaining_today()
+        out["remaining_today"] = await asyncio.to_thread(DEMO_QUOTA.remaining_today)
     return out
 
 
@@ -982,11 +984,14 @@ async def demo_voice_websocket(ws: WebSocket):
 
     try:
         ip = client_ip(ws.headers, ws.client.host if ws.client else None)
-        exhausted = DEMO_QUOTA.try_consume(ip)
+        exhausted = await asyncio.to_thread(DEMO_QUOTA.try_consume, ip)
         if exhausted:
-            logger.info("Demo session refused: %s daily quota reached", exhausted)
+            logger.info("Demo session refused: %s", exhausted)
             await ws.accept()
-            await ws.close(code=4429, reason="Daily demo limit reached, come back tomorrow")
+            if exhausted in ("busy", "unavailable"):
+                await ws.close(code=1013, reason="The demo avatar is busy, try again in a minute")
+            else:
+                await ws.close(code=4429, reason="Daily demo limit reached, come back tomorrow")
             return
 
         slides = [s for s in (deck.get("slides") or []) if isinstance(s, dict)]
@@ -994,6 +999,7 @@ async def demo_voice_websocket(ws: WebSocket):
         avatar_q = ws.query_params.get("avatar")
         await ws.accept()
         logger.info("Demo voice session started (deck=%s)", deck_id)
+        started = time.monotonic()
         try:
             async with asyncio.timeout(demo_session_seconds()):
                 await handle_demo_proxy(
@@ -1022,6 +1028,8 @@ async def demo_voice_websocket(ws: WebSocket):
                 await ws.close(code=1011, reason="Demo session error")
             except Exception:
                 pass
+        finally:
+            await asyncio.to_thread(DEMO_QUOTA.add_seconds, time.monotonic() - started)
     finally:
         DEMO_SESSIONS.release()
 

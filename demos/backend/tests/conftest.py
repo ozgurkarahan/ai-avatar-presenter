@@ -43,6 +43,7 @@ _OFFLINE_ENV = {
     "DEMO_SESSION_SECONDS": "180",
     "DEMO_DAILY_SESSIONS": "20",
     "DEMO_DAILY_SESSIONS_PER_IP": "3",
+    "DEMO_DAILY_MINUTES": "60",
     "DEMO_MAX_SPEAKS": "",
 }
 os.environ.update(_OFFLINE_ENV)

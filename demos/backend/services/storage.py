@@ -291,6 +291,36 @@ class PresentationStore:
             logger.error("Failed to save presentation: %s", e)
             return False
 
+    # --- Generic optimistic-concurrency doc access (used for durable demo quotas) ---
+
+    def read_doc(self, doc_id: str) -> tuple[dict | None, str | None]:
+        """Return ``(doc, etag)``; ``(None, None)`` when absent. Raises if Cosmos is unavailable."""
+        self._ensure_init()
+        if not self._cosmos_container:
+            raise RuntimeError("Cosmos DB unavailable")
+        try:
+            doc = self._cosmos_container.read_item(item=doc_id, partition_key=doc_id)
+            return doc, doc.get("_etag")
+        except cosmos_exceptions.CosmosResourceNotFoundError:
+            return None, None
+
+    def write_doc(self, doc: dict, etag: str | None) -> bool:
+        """Create (``etag=None``) or replace-if-unchanged. ``False`` on a concurrency conflict."""
+        from azure.core import MatchConditions
+
+        if not self._cosmos_container:
+            raise RuntimeError("Cosmos DB unavailable")
+        try:
+            if etag is None:
+                self._cosmos_container.create_item(body=doc)
+            else:
+                self._cosmos_container.replace_item(
+                    item=doc["id"], body=doc, etag=etag, match_condition=MatchConditions.IfNotModified
+                )
+            return True
+        except (cosmos_exceptions.CosmosResourceExistsError, cosmos_exceptions.CosmosAccessConditionFailedError):
+            return False
+
     def get_presentation(self, presentation_id: str) -> dict | None:
         """Get presentation metadata by id."""
         self._ensure_init()

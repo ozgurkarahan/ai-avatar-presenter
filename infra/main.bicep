@@ -74,6 +74,9 @@ param demoDailySessions string = '20'
 @description('Anonymous demo sessions per client IP per UTC day')
 param demoDailySessionsPerIp string = '3'
 
+@description('Hard daily cap on total public demo streaming minutes (durable, all visitors)')
+param demoDailyMinutes string = '60'
+
 @description('Narrations per demo session; 0 = 2 x slide count (hard max 40)')
 param demoMaxSpeaks string = '0'
 
@@ -285,6 +288,7 @@ module containerapp 'modules/containerapp.bicep' = {
     demoSessionSeconds: demoSessionSeconds
     demoDailySessions: demoDailySessions
     demoDailySessionsPerIp: demoDailySessionsPerIp
+    demoDailyMinutes: demoDailyMinutes
     demoMaxSpeaks: demoMaxSpeaks
     tags: tags
   }
