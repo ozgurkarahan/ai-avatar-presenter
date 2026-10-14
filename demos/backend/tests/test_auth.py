@@ -210,3 +210,9 @@ def test_user_id_comes_from_principal(monkeypatch):
     assert principal_from_headers(hdrs).user_id == ADMIN_OID
     monkeypatch.setenv("AUTH_MODE", "disabled")
     assert principal_from_headers({}).user_id == "local-dev"
+
+
+def test_admin_client_ip_diagnostic_is_admin_only(client, easyauth):
+    assert client.get("/api/admin/client-ip").status_code == 401
+    r = client.get("/api/admin/client-ip", headers={**easyauth(), "x-forwarded-for": "1.2.3.4, 203.0.113.9"})
+    assert r.status_code == 200 and r.json()["client_ip"] == "203.0.113.9"

@@ -926,6 +926,19 @@ async def _run_voice_session(ws: WebSocket) -> None:
 # --- Public live-avatar demo (anonymous, narration-only) ---
 
 
+@admin_router.get("/api/admin/client-ip")
+async def admin_client_ip(request: Request):
+    """Admin diagnostic: the client IP used for per-IP demo quotas and the raw
+    forwarding headers (to validate the proxy chain, e.g. after adding a CDN)."""
+    return {
+        "client_ip": client_ip(request.headers, request.client.host if request.client else None),
+        "x_forwarded_for": request.headers.get("x-forwarded-for"),
+        "x_real_ip": request.headers.get("x-real-ip"),
+        "x_original_forwarded_for": request.headers.get("x-original-forwarded-for"),
+        "peer": request.client.host if request.client else None,
+    }
+
+
 @app.get("/api/demo/config")
 async def demo_config():
     """Anonymous: whether the narration-only live avatar demo is available."""
