@@ -1,4 +1,4 @@
-"""Pydantic models shared by UC3 podcast endpoints and services."""
+"""Pydantic models shared by podcast endpoints and services."""
 from __future__ import annotations
 
 from enum import Enum

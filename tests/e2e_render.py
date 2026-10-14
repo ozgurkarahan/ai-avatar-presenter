@@ -1,8 +1,8 @@
-"""End-to-end render tests for UC2 (static video) and UC3 (podcast).
+"""End-to-end render tests for the narrated video and the podcast.
 
 Full happy-path: ingest -> script (streaming) -> render -> poll until done
--> download media file. Expensive: each UC + language costs TTS tokens +
-~5-8 min for UC2 and ~3-5 min for UC3.
+-> download media file. Expensive: each feature + language costs TTS tokens +
+~5-8 min for the video and ~3-5 min for the podcast.
 
 Runs per language using the matching sample fixture (tests/fixtures/samples):
   fr-FR -> securite-bases.pptx           (Group A - Safety)
@@ -19,7 +19,7 @@ Usage:
     # Multi-language pass (expensive ~30-60 min)
     python tests/e2e_render.py --languages fr-FR,en-US,es-ES
 
-    # Pick one UC
+    # Pick one feature
     python tests/e2e_render.py --base-url http://localhost:8000 --skip-podcast --languages en-US
 """
 from __future__ import annotations
@@ -83,7 +83,7 @@ PLANS: dict[str, LangPlan] = {
 # ---------------------------------------------------------------------------
 @dataclass
 class RunResult:
-    uc: str               # "UC2" or "UC3"
+    kind: str             # "video" or "podcast"
     language: str
     fixture: str
     state: str = "pending"   # "pending" | "pass" | "fail"
@@ -120,11 +120,11 @@ class Log:
         print(f"RESULTS: {self.passes} passed  {self.fails} failed")
         if self.runs:
             print(f"\nPer-run matrix:")
-            print(f"{'UC':<5}{'LANGUAGE':<10}{'FIXTURE':<32}{'STATE':<8}{'BYTES':>12}{'SEC':>8}")
+            print(f"{'KIND':<8}{'LANGUAGE':<10}{'FIXTURE':<32}{'STATE':<8}{'BYTES':>12}{'SEC':>8}")
             print("-" * 75)
             for r in self.runs:
                 print(
-                    f"{r.uc:<5}{r.language:<10}{r.fixture:<32}"
+                    f"{r.kind:<8}{r.language:<10}{r.fixture:<32}"
                     f"{r.state:<8}{r.output_bytes:>12,}{r.duration_sec:>8.1f}"
                 )
         print(f"{'=' * 70}")
@@ -132,11 +132,11 @@ class Log:
 
 
 # ---------------------------------------------------------------------------
-# UC2 - Static video (1 language)
+# Video (1 language)
 # ---------------------------------------------------------------------------
-def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None:
-    log.header(f"UC2  STATIC VIDEO  {plan.language}  {plan.fixture}")
-    result = RunResult(uc="UC2", language=plan.language, fixture=plan.fixture)
+def run_video_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None:
+    log.header(f"VIDEO  {plan.language}  {plan.fixture}")
+    result = RunResult(kind="video", language=plan.language, fixture=plan.fixture)
     log.record(result)
 
     fixture_path = FIXTURE_DIR / plan.fixture
@@ -149,11 +149,11 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
     t_start = time.time()
 
     # 1. Ingest
-    log.step("POST /api/static-video/ingest")
+    log.step("POST /api/video/ingest")
     try:
         with fixture_path.open("rb") as f:
             r = client.post(
-                "/api/static-video/ingest",
+                "/api/video/ingest",
                 files={"file": (
                     fixture_path.name, f,
                     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
@@ -175,14 +175,14 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
     log.ok(f"ingested doc_id={doc_id} ({n_slides} slides)")
 
     # 2. Script (NDJSON)
-    log.step(f"POST /api/static-video/script/{{doc_id}} lang={plan.language}")
+    log.step(f"POST /api/video/script/{{doc_id}} lang={plan.language}")
     payload = {"language": plan.language, "style": "explainer", "voice": plan.voice_female}
     narrations = 0
     script_ok = False
     t0 = time.time()
     try:
         with client.stream(
-            "POST", f"/api/static-video/script/{doc_id}",
+            "POST", f"/api/video/script/{doc_id}",
             json=payload, timeout=180,
         ) as r:
             if r.status_code != 200:
@@ -219,8 +219,8 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
     log.ok(f"script generated ({narrations} narrations in {time.time()-t0:.1f}s)")
 
     # 3. Render
-    log.step("POST /api/static-video/render/{doc_id}")
-    r = client.post(f"/api/static-video/render/{doc_id}", timeout=30)
+    log.step("POST /api/video/render/{doc_id}")
+    r = client.post(f"/api/video/render/{doc_id}", timeout=30)
     if r.status_code != 200:
         msg = f"render -> {r.status_code}: {r.text[:200]}"
         log.fail(msg)
@@ -230,13 +230,13 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
     log.ok(f"render job queued job_id={job_id}")
 
     # 4. Poll
-    log.step("poll /api/static-video/jobs/{job_id}")
+    log.step("poll /api/video/jobs/{job_id}")
     t0 = time.time()
     final_state = None
     last_stage = ""
     while time.time() - t0 < POLL_TIMEOUT_SEC:
         try:
-            r = client.get(f"/api/static-video/jobs/{job_id}", timeout=30)
+            r = client.get(f"/api/video/jobs/{job_id}", timeout=30)
             if r.status_code != 200:
                 time.sleep(POLL_INTERVAL_SEC)
                 continue
@@ -268,9 +268,9 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
     log.ok(f"render completed in {time.time()-t0:.1f}s")
 
     # 5. Download mp4
-    log.step("GET /api/static-video/jobs/{job_id}/file/mp4")
+    log.step("GET /api/video/jobs/{job_id}/file/mp4")
     try:
-        r = client.get(f"/api/static-video/jobs/{job_id}/file/mp4", timeout=180)
+        r = client.get(f"/api/video/jobs/{job_id}/file/mp4", timeout=180)
         if r.status_code == 200 and len(r.content) > 10_000:
             log.ok(f"mp4 downloaded ({len(r.content):,} bytes)")
             result.output_bytes = len(r.content)
@@ -285,9 +285,9 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
         result.state, result.detail = "fail", str(e)
 
     # 6. SCORM package validation
-    log.step("GET /api/static-video/jobs/{job_id}/file/scorm")
+    log.step("GET /api/video/jobs/{job_id}/file/scorm")
     try:
-        r = client.get(f"/api/static-video/jobs/{job_id}/file/scorm", timeout=180)
+        r = client.get(f"/api/video/jobs/{job_id}/file/scorm", timeout=180)
         if r.status_code != 200:
             log.fail(f"scorm download status={r.status_code}")
         else:
@@ -350,11 +350,11 @@ def run_uc2_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None
 
 
 # ---------------------------------------------------------------------------
-# UC3 - Podcast (1 language)
+# Podcast (1 language)
 # ---------------------------------------------------------------------------
-def run_uc3_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None:
-    log.header(f"UC3  PODCAST  {plan.language}  {plan.fixture}")
-    result = RunResult(uc="UC3", language=plan.language, fixture=plan.fixture)
+def run_podcast_for_language(client: httpx.Client, plan: LangPlan, log: Log) -> None:
+    log.header(f"PODCAST  {plan.language}  {plan.fixture}")
+    result = RunResult(kind="podcast", language=plan.language, fixture=plan.fixture)
     log.record(result)
 
     fixture_path = FIXTURE_DIR / plan.fixture
@@ -610,8 +610,8 @@ def main() -> int:
         help="Comma-separated list of locales to test, e.g. 'fr-FR,en-US,es-ES'. "
              "Default: en-US only.",
     )
-    parser.add_argument("--skip-video", action="store_true", help="Skip UC2")
-    parser.add_argument("--skip-podcast", action="store_true", help="Skip UC3")
+    parser.add_argument("--skip-video", action="store_true", help="Skip the video")
+    parser.add_argument("--skip-podcast", action="store_true", help="Skip the podcast")
     args = parser.parse_args()
 
     requested = [lang.strip() for lang in args.languages.split(",") if lang.strip()]
@@ -622,17 +622,17 @@ def main() -> int:
 
     print(f"Target: {args.base_url}")
     print(f"Languages: {requested}")
-    print(f"UCs: {'UC2 ' if not args.skip_video else ''}"
-          f"{'UC3' if not args.skip_podcast else ''}".strip())
+    print(f"Features: {'video ' if not args.skip_video else ''}"
+          f"{'podcast' if not args.skip_podcast else ''}".strip())
 
     log = Log()
     with httpx.Client(base_url=args.base_url, timeout=60) as client:
         for lang in requested:
             plan = PLANS[lang]
             if not args.skip_video:
-                run_uc2_for_language(client, plan, log)
+                run_video_for_language(client, plan, log)
             if not args.skip_podcast:
-                run_uc3_for_language(client, plan, log)
+                run_podcast_for_language(client, plan, log)
     return log.summary()
 
 

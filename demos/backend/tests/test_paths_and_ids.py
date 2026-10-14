@@ -53,7 +53,7 @@ def test_spa_absolute_path_returns_404(client, spa):
 
 def test_spa_serves_real_files_and_client_routes(client, spa):
     assert client.get("/robots.txt").text == "User-agent: *"
-    r = client.get("/learn/paths")
+    r = client.get("/playlists/pl_0123456789ab")
     assert r.status_code == 200 and "SPA" in r.text
     assert "no-store" in r.headers["cache-control"]
     assert client.get("/").status_code == 200
@@ -121,7 +121,7 @@ def test_slide_route_anonymous_needs_published_deck(client, slides, easyauth, ap
             self.published = published
 
         def get_presentation(self, pid):
-            return {"id": pid, "source": "uc1", "published": self.published}
+            return {"id": pid, "source": "deck", "published": self.published}
 
     monkeypatch.setattr(app_module, "store", Store(False))
     assert client.get(f"/api/slides/{UUID}/0.png").status_code == 401
@@ -134,16 +134,16 @@ def test_slide_route_anonymous_needs_published_deck(client, slides, easyauth, ap
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("method,path", [
     ("delete", "/api/presentations/not-a-uuid"),
-    ("delete", "/api/presentations/static-videos"),
-    ("delete", "/api/static-video/library/static-videos"),
-    ("delete", "/api/static-video/library/sv-XYZ"),
+    ("delete", "/api/presentations/videos"),
+    ("delete", "/api/video/library/videos"),
+    ("delete", "/api/video/library/sv-XYZ"),
     ("delete", "/api/podcast/library/podcast-library"),
     ("delete", "/api/podcast/library/job-1234"),
-    ("delete", "/api/uc1/decks/%2E%2E"),
-    ("delete", "/api/uc1/decks/abc"),
-    ("delete", "/api/uc1/paths/bad-id"),
-    ("get", "/api/uc1/paths/path_XYZ"),
-    ("get", "/api/static-video/jobs/../x"),
+    ("delete", "/api/decks/%2E%2E"),
+    ("delete", "/api/decks/abc"),
+    ("delete", "/api/playlists/bad-id"),
+    ("get", "/api/playlists/pl_XYZ"),
+    ("get", "/api/video/jobs/../x"),
     ("get", "/api/podcast/jobs/job-zzzzzzzz"),
     ("get", "/api/avatar/batch/not-a-uuid"),
     ("get", "/api/slides/not-a-uuid"),
@@ -156,22 +156,23 @@ def test_invalid_ids_404(client, method, path):
 def test_id_patterns_match_generated_formats():
     import uuid
 
-    from security import PATH_ID_RE, PODCAST_JOB_RE, STATIC_JOB_RE, UUID_RE, is_valid
+    from security import PLAYLIST_ID_RE, PODCAST_JOB_RE, VIDEO_JOB_RE, UUID_RE, is_valid
 
     assert is_valid(str(uuid.uuid4()), UUID_RE)
-    assert is_valid(f"sv-{uuid.uuid4().hex[:8]}", STATIC_JOB_RE)
+    assert is_valid(f"sv-{uuid.uuid4().hex[:8]}", VIDEO_JOB_RE)
     assert is_valid(f"job-{uuid.uuid4().hex[:8]}", PODCAST_JOB_RE)
-    assert is_valid(f"path_{uuid.uuid4().hex[:12]}", PATH_ID_RE)
-    assert not is_valid("sv-12345678/", STATIC_JOB_RE)
+    assert is_valid(f"pl_{uuid.uuid4().hex[:12]}", PLAYLIST_ID_RE)
+    assert not is_valid("sv-12345678/", VIDEO_JOB_RE)
+    assert not is_valid("path_0123456789ab", PLAYLIST_ID_RE)
     assert not is_valid("", UUID_RE)
 
 
 def test_library_delete_never_uses_root_prefix():
     from config import load_config
     from services.podcast_library import PodcastLibrary
-    from services.static_library import StaticVideoLibrary
+    from services.video_library import VideoLibrary
 
-    for lib_cls, bad in ((StaticVideoLibrary, ["", "/", "..", "sv-", "x/../"]),
+    for lib_cls, bad in ((VideoLibrary, ["", "/", "..", "sv-", "x/../"]),
                          (PodcastLibrary, ["", "/", "..", "job-", "x/../"])):
         lib = lib_cls(load_config())
 
@@ -185,7 +186,7 @@ def test_library_delete_never_uses_root_prefix():
 
 def test_library_delete_uses_exact_job_prefix():
     from config import load_config
-    from services.static_library import StaticVideoLibrary
+    from services.video_library import VideoLibrary
 
     deleted, prefixes = [], []
 
@@ -201,12 +202,12 @@ def test_library_delete_uses_exact_job_prefix():
         def get_container_client(self, _):
             return Container()
 
-    lib = StaticVideoLibrary(load_config())
+    lib = VideoLibrary(load_config())
     lib._initialised = True
     lib._blob = Blob()
     assert lib.delete("sv-0123abcd") is True
-    assert prefixes == ["static-videos/sv-0123abcd/"]
-    assert deleted == ["static-videos/sv-0123abcd/video.mp4"]
+    assert prefixes == ["videos/sv-0123abcd/"]
+    assert deleted == ["videos/sv-0123abcd/video.mp4"]
 
 
 def test_storage_delete_slide_images_rejects_bad_ids():
@@ -219,7 +220,7 @@ def test_storage_delete_slide_images_rejects_bad_ids():
         raise AssertionError("blob access attempted for invalid id")
 
     store._ensure_init = boom  # type: ignore[assignment]
-    for bad in ["", "static-videos", "podcast-library", "../x", "*"]:
+    for bad in ["", "videos", "podcast-library", "../x", "*"]:
         assert store.delete_slide_images(bad) is False
 
 
@@ -227,14 +228,14 @@ def test_storage_delete_slide_images_rejects_bad_ids():
 # OData escaping (AI Search)
 # ---------------------------------------------------------------------------
 def test_odata_literal_doubles_quotes():
-    from services.uc1_search import odata_literal
+    from services.deck_search import odata_literal
 
     assert odata_literal("abc") == "'abc'"
     assert odata_literal("x' or deck_id ne '") == "'x'' or deck_id ne '''"
 
 
 def test_search_filters_are_escaped():
-    from services.uc1_search import Uc1SearchService
+    from services.deck_search import DeckSearchService
 
     calls = []
 
@@ -246,7 +247,7 @@ def test_search_filters_are_escaped():
         def delete_documents(self, ids):
             return []
 
-    svc = object.__new__(Uc1SearchService)
+    svc = object.__new__(DeckSearchService)
     svc._search_client = FakeSearch()
     svc._openai = None
     svc._embed = lambda text: None  # type: ignore[assignment]
@@ -258,7 +259,7 @@ def test_search_filters_are_escaped():
 
 
 def test_search_uses_aad_when_no_key(monkeypatch):
-    import services.uc1_search as mod
+    import services.deck_search as mod
 
     seen = {}
 
@@ -278,7 +279,7 @@ def test_search_uses_aad_when_no_key(monkeypatch):
     import azure.identity
 
     monkeypatch.setattr(azure.identity, "DefaultAzureCredential", FakeCred)
-    mod.Uc1SearchService("https://s.example", "", "idx", None, "emb")
+    mod.DeckSearchService("https://s.example", "", "idx", None, "emb")
     assert isinstance(seen["cred"], FakeCred)
-    mod.Uc1SearchService("https://s.example", "k", "idx", None, "emb")
+    mod.DeckSearchService("https://s.example", "k", "idx", None, "emb")
     assert isinstance(seen["cred"], mod.AzureKeyCredential)

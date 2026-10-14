@@ -1,4 +1,4 @@
-"""Expose existing AI Presenter services as callable tools for the agent."""
+"""Expose existing DeckFM services as callable tools for the agent."""
 
 from __future__ import annotations
 

@@ -1,10 +1,10 @@
-# AI Presenter — Architecture Document
+# DeckFM — Architecture Document
 
-> **Context**: This PoC is an AI-powered avatar presentation assistant. It addresses **Use Case 1 (Silver level)** — interactive learning with avatars over PowerPoint slides — plus **Use Case 2** (automated batch video generation) and **Use Case 3** (podcast-style dual-avatar video).
+> **Context**: DeckFM — AI avatars that present, narrate and podcast your decks. A live avatar presents PowerPoint slides with Q&A, a batch pipeline renders narrated videos, and a two-avatar generator turns documents into podcast-style videos.
 
 ## System Overview
 
-The AI Presenter is a web-based application that allows users to upload PowerPoint presentations and have a photorealistic AI avatar present them with multilingual text-to-speech. The system supports:
+DeckFM is a web-based application that allows users to upload PowerPoint presentations and have a photorealistic AI avatar present them with multilingual text-to-speech. The system supports:
 
 - **Real-time presentation** — avatar speaks as user navigates slides via WebRTC (VoiceLive API)
 - **Batch video generation** — pre-render full presentation video (Batch Avatar Synthesis API)
@@ -109,17 +109,18 @@ The AI Presenter is a web-based application that allows users to upload PowerPoi
 
 ---
 
-## Use Case Mapping
+## Feature Map
 
-| Requirement | Implementation | Status |
+| Feature | Implementation | Status |
 |-----------------|---------------|--------|
-| **UC1 Basic** — Voice conversation with avatar from knowledge base | Agent chat (`/api/agent/chat`) + VoiceLive WebRTC | ✅ Implemented |
-| **UC1 Silver** — Avatar overlaid on PPT slides with Q&A | SlideViewer + AvatarPanel + Q&A RAG pipeline (legacy `/`) | ✅ Implemented |
-| **UC1 Gold** — Multi-deck corpus + AI deck/path selection | Learning Hub (`/uc1`) — Azure AI Search hybrid, Learning Paths (Cosmos), AI path recommendation (GPT-4.1 JSON mode) | ✅ Implemented |
-| **UC2** — Automated batch video generation | Slide-first pipeline (`/video`) — Batch Avatar per slide + ffmpeg compose | ✅ Implemented |
-| **UC3** — Podcast-style video generation | Dual-avatar podcast (`/podcast`) — GPT-4.1 dialogue + parallel TTS + ffmpeg compose | ✅ Implemented |
-| **Multilingual** (37+ languages) | 10 languages (6 native DragonHD + 4 multilingual fallback) | ✅ Partial |
-| **LMS/SCORM integration** | UC2/UC3 render jobs generate SCORM ZIPs and persist them with library assets in Blob Storage | ✅ Implemented |
+| **Voice conversation** with the avatar | Agent chat (`/api/agent/chat`) + VoiceLive WebRTC | ✅ Implemented |
+| **Live** — avatar over PPT slides with Q&A | SlideViewer + AvatarPanel + Q&A RAG pipeline (`/live`) | ✅ Implemented |
+| **Decks, Search & Playlists** — multi-deck catalog + AI deck selection | `/decks`, `/search`, `/playlists` — Azure AI Search hybrid, playlists (Cosmos), AI playlist recommendation (GPT-4.1 JSON mode) | ✅ Implemented |
+| **Public live demo** — anonymous, narration-only | `/ws/voice/demo` with server-side guardrails (see [live-demo.md](live-demo.md)) | ✅ Implemented (off by default) |
+| **Video** — narrated batch video | Slide-first pipeline (`/video`) — Batch Avatar per slide + ffmpeg compose | ✅ Implemented |
+| **Podcast** — two-avatar video | Two-avatar podcast (`/podcast`) — GPT-4.1 dialogue + parallel TTS + ffmpeg compose | ✅ Implemented |
+| **Multilingual** | 10 languages (6 native DragonHD + 4 multilingual fallback) | ✅ Implemented |
+| **LMS/SCORM export** | Video and podcast render jobs generate SCORM ZIPs and persist them with library assets in Blob Storage | ✅ Implemented |
 | **M365 Copilot / Teams integration** | Agent Framework + Teams Static Tab | ✅ Partial |
 | **GDPR compliance** | Managed Identity, no keys in client, Azure-hosted | ✅ PoC level |
 
@@ -374,7 +375,7 @@ See [SECURITY.md](../SECURITY.md) for the operator checklist.
 ## Directory Structure
 
 ```
-ai-presenter/
+deckfm/
 ├── AGENT.md                           ← Project overview & deliverables
 ├── Dockerfile                         ← Multi-stage Docker build
 ├── azure.yaml                         ← Azure Developer CLI (azd) config
@@ -383,14 +384,13 @@ ai-presenter/
 │   ├── architecture.md                ← This document
 │   ├── deep-dive-azure.md             ← Full Azure deployment walkthrough
 │   ├── deploy-copilot.md              ← Parallel deployment guide
-│   ├── feasibility.md                 ← Feasibility assessment
 │   ├── teams-integration.md           ← Teams embedding analysis
 │   └── diagrams/
 │       ├── azure-architecture.drawio           ← Azure resource topology
-│       ├── uc1-silver-ingestion-sequence.drawio ← Upload + persist flow
-│       ├── uc1-silver-runtime-sequence.drawio   ← Runtime presentation flow
-│       ├── uc1-bronze-voicerag-sequence.drawio  ← VoiceLive + Q&A flow
-│       ├── uc2-batch-video-sequence.drawio      ← Batch video generation
+│       ├── deck-ingestion-sequence.drawio      ← Upload + persist flow
+│       ├── deck-present-sequence.drawio        ← Runtime presentation flow
+│       ├── live-qa-sequence.drawio             ← VoiceLive + Q&A flow
+│       ├── video-batch-sequence.drawio         ← Batch video generation
 │       └── agent-chat-sequence.drawio           ← Agent function-calling flow
 ├── demos/
 │   ├── backend/

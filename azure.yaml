@@ -1,6 +1,6 @@
-name: ai-presenter
+name: deckfm
 metadata:
-  template: ai-presenter@0.0.1
+  template: deckfm@0.0.1
 services:
   backend:
     project: .

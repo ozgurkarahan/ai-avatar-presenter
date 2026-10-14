@@ -29,7 +29,7 @@ demos/frontend/dist/
 **/.env
 **/.env.*
 !**/.env.example
-.uc1_search_key.tmp
+.search_key.tmp
 **/*.tmp
 
 # Data (local uploads, generated media, test output)

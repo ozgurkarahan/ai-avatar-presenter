@@ -1,4 +1,4 @@
-"""ffmpeg composition for the UC3 podcast.
+"""ffmpeg composition for the podcast.
 
 Builds a single 1920x1080 25 fps video with:
   * top 75%: current slide image (crossfade across slide changes)
@@ -154,7 +154,7 @@ def compose_podcast(
     extras: list[Path] = []
     if intro:
         intro_card = out_dir / "intro.mp4"
-        _render_card(intro_card, "AI Avatar Presenter", INTRO_SEC)
+        _render_card(intro_card, "DeckFM", INTRO_SEC)
         extras.append(intro_card)
 
     body_concat = out_dir / "body.mp4"

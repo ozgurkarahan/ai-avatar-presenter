@@ -161,7 +161,7 @@ def fetch_url(url: str, *, resolver: Optional[Resolver] = None, client=None) -> 
         client = httpx.Client(
             follow_redirects=False,
             timeout=httpx.Timeout(TIMEOUT_SECONDS, connect=5.0),
-            headers={"User-Agent": "Mozilla/5.0 (compatible; ai-presenter/1.0)"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; deckfm/1.0)"},
             trust_env=False,
         )
     try:

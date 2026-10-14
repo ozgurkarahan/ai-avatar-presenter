@@ -1,4 +1,4 @@
-"""UC3 Podcast Library — persists rendered podcasts to Azure Blob Storage.
+"""Podcast Library — persists rendered podcasts to Azure Blob Storage.
 
 Blob layout (all inside the existing blob container, prefix `podcast-library/`):
 

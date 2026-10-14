@@ -1,17 +1,18 @@
-# AI Presenter — Documentation Index
+# DeckFM — Documentation Index
 
 A quick, opinionated map of what's in `docs/`. Start with whichever bucket matches what you're trying to do.
 
 ---
 
-## 🧭 By use case
+## 🧭 By feature
 
-| # | Use case | Where |
+| Feature | What it does | Where |
 |---|---|---|
-| **UC1 legacy** | Live avatar presenter over a single PowerPoint (WebRTC, real-time Q&A) | [architecture.md](architecture.md), [diagrams/images/uc1-silver-runtime-sequence.png](diagrams/images/uc1-silver-runtime-sequence.png) |
-| **UC1 Learning Hub** | Multi-deck corpus with hybrid search + Learning Paths + AI recommendation | [**uc1-learning-hub.md**](uc1-learning-hub.md) ← new |
-| **UC2** | Automated static video generation from a PowerPoint (batch, multilingual) | [**uc2-static-video.md**](uc2-static-video.md) |
-| **UC3** | Podcast-style dual-avatar video from any document | [uc3-podcast-design.md](uc3-podcast-design.md) |
+| **Live** | Live avatar presenter over a single PowerPoint (WebRTC, real-time Q&A grounded in the slides) | [architecture.md](architecture.md), [diagrams/images/deck-present-sequence.png](diagrams/images/deck-present-sequence.png) |
+| **Decks, Search & Playlists** | Multi-deck catalog with hybrid search, playlists with progress tracking and AI playlist recommendation | [decks-search-playlists.md](decks-search-playlists.md) |
+| **Public live demo** | Anonymous, narration-only live avatar on decks an admin marked *Live demo*, with hard cost guardrails | [live-demo.md](live-demo.md) |
+| **Video** | Narrated avatar video generated from a PowerPoint (batch, multilingual; MP4 / SRT / SCORM) | [video.md](video.md) |
+| **Podcast** | Two-avatar podcast-style video generated from any document | [podcast.md](podcast.md) |
 
 ---
 
@@ -23,7 +24,7 @@ A quick, opinionated map of what's in `docs/`. Start with whichever bucket match
 | Azure infra deep dive (Bicep, RBAC, security, CI/CD) | [deep-dive-azure.md](deep-dive-azure.md) |
 | Parallel "copilot" deployment | [deploy-copilot.md](deploy-copilot.md) |
 | Microsoft Teams Static Tab embedding | [teams-integration.md](teams-integration.md) |
-| Feasibility assessment (original study) | [feasibility.md](feasibility.md) |
+| Public live demo — guardrails, threat model, cost ceiling | [live-demo.md](live-demo.md) |
 | Security model, vulnerability reporting, operator checklist | [../SECURITY.md](../SECURITY.md) · [README › Security model](../README.md#-security-model) |
 
 ---
@@ -35,31 +36,34 @@ PNGs are rendered from draw.io sources in [`diagrams/`](diagrams/).
 | Diagram | PNG | Source |
 |---|---|---|
 | Azure architecture (end-to-end) | [azure-architecture.png](diagrams/images/azure-architecture.png) | [azure-architecture.drawio](diagrams/azure-architecture.drawio) |
-| UC1 Bronze · VoiceRAG sequence | [uc1-bronze-voicerag-sequence.png](diagrams/images/uc1-bronze-voicerag-sequence.png) | drawio |
-| UC1 Silver · ingestion sequence | [uc1-silver-ingestion-sequence.png](diagrams/images/uc1-silver-ingestion-sequence.png) | drawio |
-| UC1 Silver · runtime sequence | [uc1-silver-runtime-sequence.png](diagrams/images/uc1-silver-runtime-sequence.png) | drawio |
-| UC2 · batch video sequence (v1) | [uc2-batch-video-sequence.png](diagrams/images/uc2-batch-video-sequence.png) | drawio (superseded by Mermaid in `uc2-static-video.md`) |
-| Agent-chat sequence | [agent-chat-sequence.png](diagrams/images/agent-chat-sequence.png) | drawio |
+| Live presenter · slide Q&A sequence | [live-qa-sequence.png](diagrams/images/live-qa-sequence.png) | [live-qa-sequence.drawio](diagrams/live-qa-sequence.drawio) |
+| Deck ingestion sequence | [deck-ingestion-sequence.png](diagrams/images/deck-ingestion-sequence.png) | [deck-ingestion-sequence.drawio](diagrams/deck-ingestion-sequence.drawio) |
+| Deck presentation sequence | [deck-present-sequence.png](diagrams/images/deck-present-sequence.png) | [deck-present-sequence.drawio](diagrams/deck-present-sequence.drawio) |
+| Video · batch sequence (v1) | [video-batch-sequence.png](diagrams/images/video-batch-sequence.png) | [video-batch-sequence.drawio](diagrams/video-batch-sequence.drawio) (superseded by Mermaid in `video.md`) |
+| Agent-chat sequence | [agent-chat-sequence.png](diagrams/images/agent-chat-sequence.png) | [agent-chat-sequence.drawio](diagrams/agent-chat-sequence.drawio) |
 
-> **Note:** UC2 was migrated to a **slide-first pipeline** (one batch-avatar job *per slide* + ffmpeg compose). The new flow is documented with Mermaid diagrams directly inside [uc2-static-video.md](uc2-static-video.md). The older draw.io sequence remains for historical context.
+> **Note:** the video generator uses a **slide-first pipeline** (one batch-avatar job *per slide* + ffmpeg compose). The current flow is documented with Mermaid diagrams directly inside [video.md](video.md). The older draw.io sequence remains for historical context.
 
 ---
 
 ## 🚢 Deployment quick links
 
-- UC1/UC2/UC3 combined deploy: single Container App provisioned with `azd up` (see [README › Azure Deployment](../README.md#️-azure-deployment))
+- All features ship in a single Container App provisioned with `azd up` (see [README › Azure Deployment](../README.md#️-azure-deployment))
 - Build & roll: `azd deploy`, or manually `az acr build -r <acr-name> -t ai-presenter:<tag> .` + `az containerapp update -n ca-<token> -g <resource-group> --image ...`
 - Auth: `azd up` requires `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET` and `ALLOWED_OBJECT_IDS` (Microsoft Entra ID Easy Auth + allowlist); keep `AUTH_MODE=easyauth` in Azure.
-- Common pitfall: policy-managed enterprise subscriptions may ship storage with `publicNetworkAccess=Disabled`. See [uc2-static-video.md §8](uc2-static-video.md#8-deployment-topology).
+- Public live demo: off by default; enable with `azd env set PUBLIC_DEMO_ENABLED true` (see [live-demo.md](live-demo.md#enable-it)).
+- Common pitfall: policy-managed enterprise subscriptions may ship storage with `publicNetworkAccess=Disabled`. See [video.md §8](video.md#8-deployment-topology).
 
 ---
 
 ## 🔍 Looking for…
 
-- **Where is the UC1 Learning Hub code?** → `demos/backend/routers/uc1.py` + `routers/uc1_paths.py` + `services/uc1_search.py` + `demos/frontend/src/pages/Uc1*.tsx`
-- **Where is the UC2 code?** → `demos/backend/routers/static_video.py` + `services/static_*.py` + `demos/frontend/src/pages/StaticVideo*.tsx`
-- **Where is the UC3 code?** → `demos/backend/routers/podcast.py` + `services/podcast_*.py` + `demos/frontend/src/pages/PodcastPage.tsx`
-- **Where are the E2E test scripts?** → `tests/e2e_full.py` (UC1 + smoke, 30 checks) and `tests/e2e_render.py` (UC2 + UC3 full render, 10 checks) — run against local dev (`run-local.ps1`, `AUTH_MODE=disabled`), target set with `AI_PRESENTER_BASE_URL`
-- **Where are the fixture decks?** → `tests/fixtures/samples/` — 9 decks, 3 thematic groups (Safety FR, Sustainability EN, AI ES); regenerate with `python tests/fixtures/samples/_generate.py`. `tests/fixtures/uc1/` — 6 single-topic decks; regenerate with `python scripts/make_multideck_test.py`
-- **How do I add a new language?** → extend `LANGS` in `scripts/uc2_multilang_run.py` and `VOICES`/`LANGUAGES` in `demos/backend/routers/static_video.py`
-- **Where are the voice → avatar rules?** → `demos/backend/services/static_render.py` → `avatar_for_voice()`
+- **Where is the decks / search / playlists code?** → `demos/backend/routers/decks.py` + `routers/playlists.py` + `services/deck_search.py` + `demos/frontend/src/pages/{HomePage,DecksPage,DeckPresentPage,SearchPage,PlaylistsPage,PlaylistPlayerPage}.tsx`
+- **Where is the Live page?** → `demos/frontend/src/pages/LivePage.tsx` + the `/api/upload`, `/api/presentations`, `/ws/voice` endpoints in `demos/backend/app.py`
+- **Where is the video code?** → `demos/backend/routers/video.py` + `services/video_*.py` + `demos/frontend/src/pages/Video*.tsx`
+- **Where is the podcast code?** → `demos/backend/routers/podcast.py` + `services/podcast_*.py` + `demos/frontend/src/pages/Podcast*.tsx`
+- **Where is the public live demo code?** → `/ws/voice/demo` + `/api/demo/config` in `demos/backend/app.py`, `handle_demo_proxy` in `services/voice_proxy.py`, `demos/frontend/src/services/demo.ts`
+- **Where are the E2E test scripts?** → `tests/e2e_full.py` (decks / search / playlists + smoke, 30 checks) and `tests/e2e_render.py` (video + podcast full render, 10 checks) — run against local dev (`run-local.ps1`, `AUTH_MODE=disabled`), target set with `AI_PRESENTER_BASE_URL`
+- **Where are the fixture decks?** → `tests/fixtures/samples/` — 9 decks, 3 thematic groups (Safety FR, Sustainability EN, AI ES); regenerate with `python tests/fixtures/samples/_generate.py`. `tests/fixtures/decks/` — 6 single-topic decks; regenerate with `python scripts/make_multideck_test.py`
+- **How do I add a new language?** → extend `LANGS` in `scripts/video_multilang_run.py` and `VOICES`/`LANGUAGES` in `demos/backend/routers/video.py`
+- **Where are the voice → avatar rules?** → `demos/backend/services/video_render.py` → `avatar_for_voice()`

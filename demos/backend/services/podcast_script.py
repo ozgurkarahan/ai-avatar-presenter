@@ -1,4 +1,4 @@
-"""GPT-4.1 script generation for UC3 podcasts.
+"""GPT-4.1 script generation for podcasts.
 
 Generates a two-host conversation (interviewer + expert) from an ingested
 Document, streaming each DialogueTurn as soon as GPT produces it.

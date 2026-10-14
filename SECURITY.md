@@ -30,8 +30,8 @@ The app uses a **hybrid exposure** model, enforced by the FastAPI backend with
 details):
 
 - **Anonymous** callers may load the SPA, call `GET /api/health`, `GET /api/me`,
-  `GET /api/avatars`, list and play **published** UC2 videos / UC3 podcasts and
-  view **published** UC1 decks (slide images + titles only — no speaker notes,
+  `GET /api/avatars`, list and play **published** videos / podcasts and
+  view **published** decks (slide images + titles only — no speaker notes,
   body text or PPTX download).
 - **Admins** — callers signed in with **Microsoft Entra ID** through Azure
   Container Apps built-in authentication (**Easy Auth**) whose object ID is in

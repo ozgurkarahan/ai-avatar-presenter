@@ -1,4 +1,4 @@
-"""Tests for UC2 avatar gesture selection."""
+"""Tests for video avatar gesture selection."""
 
 from __future__ import annotations
 

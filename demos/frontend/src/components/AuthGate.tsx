@@ -159,3 +159,52 @@ export function PublishToggle({ published, busy, onToggle }: {
     </button>
   );
 }
+
+/** "Live demo" pill: anonymous visitors can try the narration-only live avatar on this deck. */
+export function LiveDemoBadge({ liveDemo }: { liveDemo: boolean | undefined }) {
+  if (!liveDemo) return null;
+  return (
+    <span
+      data-testid="live-demo-badge"
+      title="Visitors can try the live avatar narrating this deck"
+      style={{
+        fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
+        padding: '2px 8px', borderRadius: 999,
+        background: '#fff7ed', color: '#9a3412', border: '1px solid #fdba74',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      🎙️ Live demo
+    </span>
+  );
+}
+
+/** Admin toggle for the anonymous live avatar demo (only on published items). */
+export function LiveDemoToggle({ liveDemo, published, busy, onToggle }: {
+  liveDemo: boolean | undefined; published: boolean | undefined; busy?: boolean; onToggle: (next: boolean) => void;
+}) {
+  const on = !!liveDemo;
+  const blocked = !on && !published;
+  return (
+    <button
+      type="button"
+      data-testid="live-demo-toggle"
+      disabled={busy || blocked}
+      onClick={(e) => { e.stopPropagation(); onToggle(!on); }}
+      title={blocked
+        ? 'Publish the deck first'
+        : on ? 'Stop anonymous visitors from running the live avatar on this deck'
+          : 'Let anonymous visitors try the narration-only live avatar on this deck'}
+      style={{
+        background: on ? '#fff7ed' : 'white',
+        color: on ? '#9a3412' : palette.brand,
+        border: `1px solid ${on ? '#fdba74' : palette.border}`,
+        borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600,
+        cursor: busy ? 'progress' : blocked ? 'not-allowed' : 'pointer',
+        opacity: busy || blocked ? 0.55 : 1, whiteSpace: 'nowrap',
+      }}
+    >
+      {busy ? '…' : on ? 'Live demo on' : 'Live demo off'}
+    </button>
+  );
+}

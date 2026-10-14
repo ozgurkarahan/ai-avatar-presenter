@@ -6,20 +6,20 @@ import pytest
 UUID_PUB = "0b5f2a7e-1c2d-4e5f-8a9b-0c1d2e3f4a5b"
 UUID_PRIV = "1c6f2a7e-1c2d-4e5f-8a9b-0c1d2e3f4a5b"
 
-STATIC_PUBLIC_KEYS = {
+VIDEO_PUBLIC_KEYS = {
     "job_id", "title", "created_at", "duration_sec", "language", "thumbnail_url", "video_url",
     "audio_url", "srt_url", "scorm_url", "script",
 }
-PODCAST_PUBLIC_KEYS = STATIC_PUBLIC_KEYS | {"mp4_url", "mp3_url"}
+PODCAST_PUBLIC_KEYS = VIDEO_PUBLIC_KEYS | {"mp4_url", "mp3_url"}
 
 
 class FakeLibrary:
-    """Mimics StaticVideoLibrary / PodcastLibrary without blob storage."""
+    """Mimics VideoLibrary / PodcastLibrary without blob storage."""
 
     def __init__(self, kind: str):
         self.kind = kind
         self.available = True
-        pfx = "sv-" if kind == "static" else "job-"
+        pfx = "sv-" if kind == "video" else "job-"
         self.items = {
             f"{pfx}0000aaaa": {"job_id": f"{pfx}0000aaaa", "title": "Public", "created_at": "2026-01-02",
                                "duration_sec": 12.5, "language": "en-US", "published": True,
@@ -46,7 +46,7 @@ class FakeLibrary:
         if public and not it["published"]:
             return None
         full = {**it, "thumbnail_url": "https://blob/thumb?sas"}
-        if self.kind == "static":
+        if self.kind == "video":
             full.update(video_url="https://blob/video?sas", audio_url=None if public else "https://blob/a",
                         srt_url=None if public else "https://blob/s", scorm_url=None if public else "https://blob/z")
         else:
@@ -66,10 +66,10 @@ class FakeLibrary:
 
 
 @pytest.fixture
-def static_lib(monkeypatch):
-    import routers.static_video as sv
+def video_lib(monkeypatch):
+    import routers.video as sv
 
-    lib = FakeLibrary("static")
+    lib = FakeLibrary("video")
     monkeypatch.setattr(sv, "_get_library", lambda cfg: lib)
     return lib
 
@@ -84,46 +84,46 @@ def podcast_lib(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# UC2 static video library
+# Video library
 # ---------------------------------------------------------------------------
-def test_static_anonymous_list_only_published(client, easyauth, static_lib):
-    r = client.get("/api/static-video/library")
+def test_video_anonymous_list_only_published(client, easyauth, video_lib):
+    r = client.get("/api/video/library")
     assert r.status_code == 200
     items = r.json()
     assert [i["job_id"] for i in items] == ["sv-0000aaaa"]
-    assert set(items[0]) == STATIC_PUBLIC_KEYS
+    assert set(items[0]) == VIDEO_PUBLIC_KEYS
     assert items[0]["audio_url"] is None and items[0]["srt_url"] is None and items[0]["scorm_url"] is None
     assert "document_title" not in items[0] and "voice" not in items[0]
 
 
-def test_static_anonymous_detail(client, easyauth, static_lib):
-    r = client.get("/api/static-video/library/sv-0000aaaa")
+def test_video_anonymous_detail(client, easyauth, video_lib):
+    r = client.get("/api/video/library/sv-0000aaaa")
     assert r.status_code == 200
     body = r.json()
-    assert set(body) == STATIC_PUBLIC_KEYS
+    assert set(body) == VIDEO_PUBLIC_KEYS
     assert body["video_url"] and body["audio_url"] is None and body["scorm_url"] is None
-    assert client.get("/api/static-video/library/sv-0000bbbb").status_code == 404
+    assert client.get("/api/video/library/sv-0000bbbb").status_code == 404
 
 
-def test_static_admin_sees_everything(client, easyauth, static_lib):
-    r = client.get("/api/static-video/library", headers=easyauth())
+def test_video_admin_sees_everything(client, easyauth, video_lib):
+    r = client.get("/api/video/library", headers=easyauth())
     assert {i["job_id"]: i["published"] for i in r.json()} == {"sv-0000aaaa": True, "sv-0000bbbb": False}
-    r = client.get("/api/static-video/library/sv-0000bbbb", headers=easyauth())
+    r = client.get("/api/video/library/sv-0000bbbb", headers=easyauth())
     assert r.status_code == 200 and r.json()["audio_url"] and r.json()["published"] is False
 
 
-def test_static_publish_flow(client, easyauth, static_lib):
-    assert client.post("/api/static-video/library/sv-0000bbbb/publish", json={"published": True}).status_code == 401
-    r = client.post("/api/static-video/library/sv-0000bbbb/publish", json={"published": True}, headers=easyauth())
+def test_video_publish_flow(client, easyauth, video_lib):
+    assert client.post("/api/video/library/sv-0000bbbb/publish", json={"published": True}).status_code == 401
+    r = client.post("/api/video/library/sv-0000bbbb/publish", json={"published": True}, headers=easyauth())
     assert r.status_code == 200 and r.json()["published"] is True
-    assert static_lib.published_calls == [("sv-0000bbbb", True)]
-    assert len(client.get("/api/static-video/library").json()) == 2
-    assert client.post("/api/static-video/library/sv-0000cccc/publish", json={"published": True},
+    assert video_lib.published_calls == [("sv-0000bbbb", True)]
+    assert len(client.get("/api/video/library").json()) == 2
+    assert client.post("/api/video/library/sv-0000cccc/publish", json={"published": True},
                        headers=easyauth()).status_code == 404
 
 
 # ---------------------------------------------------------------------------
-# UC3 podcast library
+# Podcast library
 # ---------------------------------------------------------------------------
 def test_podcast_anonymous_list_and_detail(client, easyauth, podcast_lib):
     items = client.get("/api/podcast/library").json()
@@ -149,12 +149,12 @@ def test_podcast_publish_admin_only(client, easyauth, podcast_lib):
 # ---------------------------------------------------------------------------
 # Library classes: unpublished hidden, 15-minute SAS, video/thumb only
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("kind", ["static", "podcast"])
+@pytest.mark.parametrize("kind", ["video", "podcast"])
 def test_library_public_get_uses_short_sas(kind):
     from config import load_config
 
-    if kind == "static":
-        from services.static_library import PUBLIC_SAS_MINUTES, StaticVideoLibrary as Lib
+    if kind == "video":
+        from services.video_library import PUBLIC_SAS_MINUTES, VideoLibrary as Lib
         job, video_key, extra = "sv-0123abcd", "video_url", ("audio_url", "srt_url", "scorm_url")
     else:
         from services.podcast_library import PUBLIC_SAS_MINUTES, PodcastLibrary as Lib
@@ -180,7 +180,7 @@ def test_library_public_get_uses_short_sas(kind):
 
 
 # ---------------------------------------------------------------------------
-# UC1 decks
+# Decks catalog
 # ---------------------------------------------------------------------------
 class FakeStore:
     cosmos_available = True
@@ -190,13 +190,13 @@ class FakeStore:
         slides = [{"index": 0, "title": "Intro", "body": "BODY-TEXT", "notes": "SECRET-NOTES",
                    "image_url": "https://blob/0.png?old-sas"}]
         self.docs = {
-            UUID_PUB: {"id": UUID_PUB, "source": "uc1", "filename": "Public.pptx", "slide_count": 1,
+            UUID_PUB: {"id": UUID_PUB, "source": "deck", "filename": "Public.pptx", "slide_count": 1,
                        "published": True, "pptx_url": "https://blob/x.pptx", "slides": slides},
-            UUID_PRIV: {"id": UUID_PRIV, "source": "uc1", "filename": "Private.pptx", "slide_count": 1,
+            UUID_PRIV: {"id": UUID_PRIV, "source": "deck", "filename": "Private.pptx", "slide_count": 1,
                         "slides": slides},
         }
 
-    def list_uc1_decks(self):
+    def list_decks(self):
         return [{k: v for k, v in d.items() if k != "slides"} for d in self.docs.values()]
 
     def get_presentation(self, pid):
@@ -211,39 +211,39 @@ class FakeStore:
 
 
 @pytest.fixture
-def uc1_store(monkeypatch):
-    import routers.uc1 as uc1
+def decks_store(monkeypatch):
+    import routers.decks as decks
 
     st = FakeStore()
-    monkeypatch.setattr(uc1, "_store", lambda cfg: st)
+    monkeypatch.setattr(decks, "_store", lambda cfg: st)
     return st
 
 
-def test_uc1_anonymous_list_only_published(client, easyauth, uc1_store):
-    decks = client.get("/api/uc1/decks").json()
+def test_decks_anonymous_list_only_published(client, easyauth, decks_store):
+    decks = client.get("/api/decks").json()
     assert [d["deck_id"] for d in decks] == [UUID_PUB]
-    admin = client.get("/api/uc1/decks", headers=easyauth()).json()
+    admin = client.get("/api/decks", headers=easyauth()).json()
     assert {d["deck_id"] for d in admin} == {UUID_PUB, UUID_PRIV}
 
 
-def test_uc1_anonymous_detail_has_no_notes_body_or_pptx(client, easyauth, uc1_store):
-    r = client.get(f"/api/uc1/decks/{UUID_PUB}")
+def test_decks_anonymous_detail_has_no_notes_body_or_pptx(client, easyauth, decks_store):
+    r = client.get(f"/api/decks/{UUID_PUB}")
     assert r.status_code == 200
     text = r.text
     assert "SECRET-NOTES" not in text and "BODY-TEXT" not in text
     assert "pptx_url" not in r.json() and "old-sas" not in text
     slide = r.json()["slides"][0]
     assert slide["title"] == "Intro" and slide["image_url"] == f"/api/slides/{UUID_PUB}/0.png"
-    assert client.get(f"/api/uc1/decks/{UUID_PRIV}").status_code == 404
-    admin = client.get(f"/api/uc1/decks/{UUID_PRIV}", headers=easyauth()).json()
+    assert client.get(f"/api/decks/{UUID_PRIV}").status_code == 404
+    admin = client.get(f"/api/decks/{UUID_PRIV}", headers=easyauth()).json()
     assert admin["slides"][0]["notes"] == "SECRET-NOTES"
 
 
-def test_uc1_publish(client, easyauth, uc1_store):
-    assert client.post(f"/api/uc1/decks/{UUID_PRIV}/publish", json={"published": True}).status_code == 401
-    r = client.post(f"/api/uc1/decks/{UUID_PRIV}/publish", json={"published": True}, headers=easyauth())
+def test_decks_publish(client, easyauth, decks_store):
+    assert client.post(f"/api/decks/{UUID_PRIV}/publish", json={"published": True}).status_code == 401
+    r = client.post(f"/api/decks/{UUID_PRIV}/publish", json={"published": True}, headers=easyauth())
     assert r.status_code == 200 and r.json()["published"] is True
-    assert len(client.get("/api/uc1/decks").json()) == 2
+    assert len(client.get("/api/decks").json()) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ def test_presentations_list_skips_malformed_items(client, app_module, monkeypatc
             return [
                 {"id": UUID_PUB, "slide_count": 3},                       # no filename
                 {"id": UUID_PRIV, "filename": "deck.pptx", "slide_count": None},
-                {"id": "path_0123456789ab", "title": "a path"},          # not a presentation
+                {"id": "pl_0123456789ab", "title": "a playlist"},         # not a presentation
                 {"filename": "orphan.pptx"},                              # no id
             ]
 

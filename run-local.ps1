@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Starts the full AI Presenter application locally (backend + frontend).
+    Starts the full DeckFM application locally (backend + frontend).
 
 .DESCRIPTION
     - Checks prerequisites (Python, Node.js, Azure CLI login)
@@ -138,7 +138,7 @@ try {
 
     Write-Host ""
     Write-Host "=============================================" -ForegroundColor Green
-    Write-Host "  AI Presenter is running locally!" -ForegroundColor Green
+    Write-Host "  DeckFM is running locally!" -ForegroundColor Green
     Write-Host "  Frontend : http://localhost:5173" -ForegroundColor Green
     Write-Host "  Backend  : http://127.0.0.1:8000" -ForegroundColor Green
     Write-Host "  Swagger  : http://127.0.0.1:8000/docs" -ForegroundColor Green

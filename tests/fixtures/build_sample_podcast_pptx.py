@@ -1,4 +1,4 @@
-"""Generate a sample PPT with speaker notes for UC3 podcast smoke test.
+"""Generate a sample PPT with speaker notes for the podcast smoke test.
 
 Run: python tests/fixtures/build_sample_podcast_pptx.py
 Output: tests/fixtures/innovation-sample.pptx
@@ -122,8 +122,8 @@ def build():
         notes_tf = slide.notes_slide.notes_text_frame
         notes_tf.text = s["notes"]
 
-    prs.core_properties.author = "AI Avatar Presenter"
-    prs.core_properties.last_modified_by = "AI Avatar Presenter"
+    prs.core_properties.author = "DeckFM"
+    prs.core_properties.last_modified_by = "DeckFM"
     prs.save(OUT)
     print(f"Wrote {OUT} ({OUT.stat().st_size} bytes, {len(SLIDES)} slides)")
 

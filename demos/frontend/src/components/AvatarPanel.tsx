@@ -3,6 +3,13 @@ import { type Presentation } from '../services/api';
 import { useAuth } from '../services/auth';
 import { pickDefaultAvatar, useAvatars } from '../services/avatars';
 import { GateNotice } from './AuthGate';
+import { demoCloseMessage, formatMinutes } from '../services/demo';
+
+function formatClock(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 interface Props {
   presentation: Presentation;
@@ -19,9 +26,18 @@ interface Props {
    * - 'wide' (default, legacy): 16:9 framing matching older prebuilt avatars.
    * - 'portrait': 1:1 close-up framing tuned for photo avatars.
    *   Mirrors the server-side `crop=560:560:660:20` head-zoom used by
-   *   static_compose.py so the live stream matches the rendered MP4 framing.
+   *   video_compose.py so the live stream matches the rendered MP4 framing.
    */
   mode?: 'wide' | 'portrait';
+  /**
+   * Who drives the session.
+   * - 'admin' (default): `/ws/voice`, full controls (signed-in allowlisted users).
+   * - 'demo': anonymous narration-only `/ws/voice/demo` — the server picks the
+   *   avatar/voice/language and reads the stored slide notes itself.
+   */
+  access?: 'admin' | 'demo';
+  /** Demo only: server-side session cap (from `GET /api/demo/config`). */
+  demoSessionSeconds?: number;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -113,7 +129,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice, autoStart = false, mode = 'wide' }: Props) {
+export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice, autoStart = false, mode = 'wide', access = 'admin', demoSessionSeconds = 180 }: Props) {
   const [connected, setConnected] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -139,9 +155,23 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   const handleMessageRef = useRef<(event: MessageEvent) => void>(() => {});
   const prevVideoPlayingRef = useRef(videoPlaying);
   const auth = useAuth();
-  const canUseAvatar = !auth.loading && auth.is_admin;
+  const isDemo = access === 'demo';
+  const isDemoRef = useRef(isDemo);
+  useEffect(() => { isDemoRef.current = isDemo; }, [isDemo]);
+  const canUseAvatar = !auth.loading && auth.is_admin && !isDemo;
   // 'signin' / 'forbidden' when /ws/voice was refused with close code 4401 / 4403.
   const [authBlock, setAuthBlock] = useState<null | 'signin' | 'forbidden'>(null);
+  // Demo-only UI state.
+  const [demoConnecting, setDemoConnecting] = useState(false);
+  const [demoEndsAt, setDemoEndsAt] = useState<number | null>(null);
+  const [demoNow, setDemoNow] = useState(() => Date.now());
+  const demoSecondsRef = useRef(demoSessionSeconds);
+  useEffect(() => { demoSecondsRef.current = demoSessionSeconds; }, [demoSessionSeconds]);
+  useEffect(() => {
+    if (!demoEndsAt) return;
+    const t = setInterval(() => setDemoNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [demoEndsAt]);
   const { avatars } = useAvatars();
   const defaultAvatarIdRef = useRef<string>('');
   useEffect(() => { defaultAvatarIdRef.current = pickDefaultAvatar(avatars)?.id ?? ''; }, [avatars]);
@@ -342,6 +372,43 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
       const msg = JSON.parse(event.data);
       console.log('[WS] Message:', msg.type || 'unknown');
 
+      // Demo-only acks / notices from the server-side message filter.
+      if (msg.type === 'demo.speaking') {
+        spokenTextLengthRef.current = typeof msg.chars === 'number' ? msg.chars : 0;
+        speechStartTimeRef.current = Date.now();
+        if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+        const safetyDuration = Math.min((spokenTextLengthRef.current / 13) + 30, 120);
+        safetyTimeoutRef.current = setTimeout(() => {
+          safetyTimeoutRef.current = null;
+          advanceAfterSpeech();
+        }, safetyDuration * 1000);
+        return;
+      }
+      if (msg.type === 'demo.notice') {
+        if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null; }
+        setSpeaking(false);
+        const slideNo = (typeof msg.slide === 'number' ? msg.slide : currentSlideRef.current) + 1;
+        if (msg.code === 'empty_slide') {
+          setStatus(`No narration for slide ${slideNo}`);
+          if (presentingRef.current) {
+            const nextSlide = currentSlideRef.current + 1;
+            if (nextSlide < presentation.slide_count) {
+              onSlideChange(nextSlide);
+              setTimeout(() => speakSlideRef.current(nextSlide), 1100);
+            } else {
+              setPresenting(false);
+              setStatus('Presentation complete!');
+            }
+          }
+        } else if (msg.code === 'rate_limited' && presentingRef.current) {
+          setTimeout(() => speakSlideRef.current(currentSlideRef.current), 1200);
+        } else {
+          if (msg.code === 'speak_limit') setPresenting(false);
+          setStatus(typeof msg.message === 'string' ? msg.message : 'Request ignored');
+        }
+        return;
+      }
+
       if (msg.type === 'proxy.connected') {
         setStatus('Connected to Azure Voice API');
       } else if (msg.type === 'session.updated' || msg.type === 'session.avatar.connecting') {
@@ -377,7 +444,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
       } else if (msg.type === 'error') {
         const errMsg = msg.error?.message || 'Unknown error';
         console.error('[WS] Error:', msg.error);
-        if (errMsg.toLowerCase().includes('capacity') && retryCountRef.current < 3) {
+        if (errMsg.toLowerCase().includes('capacity') && retryCountRef.current < 3 && !isDemoRef.current) {
           retryCountRef.current += 1;
           const delay = retryCountRef.current * 5;
           setStatus(`Avatar busy — retrying in ${delay}s (attempt ${retryCountRef.current}/3)...`);
@@ -422,7 +489,58 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
 
   const startSessionRef = useRef<() => void>(() => {});
 
+  // Demo: release media + timers after the server ends the session (time cap, quota...).
+  const teardownDemoMedia = useCallback(() => {
+    if (speechTimeoutRef.current) { clearTimeout(speechTimeoutRef.current); speechTimeoutRef.current = null; }
+    if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null; }
+    try {
+      peerConnectionRef.current?.close();
+      peerConnectionRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+      document.querySelectorAll('audio[autoplay]').forEach((el) => el.remove());
+    } catch {}
+    setConnected(false);
+    setSpeaking(false);
+    setPresenting(false);
+    setPaused(false);
+    setDemoConnecting(false);
+    setDemoEndsAt(null);
+  }, []);
+
+  const startDemoSession = useCallback(() => {
+    if (wsRef.current) return;
+    setStatus('Connecting to the demo avatar...');
+    setDemoConnecting(true);
+    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${location.host}/ws/voice/demo?deck_id=${encodeURIComponent(presentation.id)}`);
+    wsRef.current = ws;
+    let opened = false;
+    ws.onopen = () => {
+      opened = true;
+      // No session.update: the server owns the whole demo session config.
+      setStatus('Starting the avatar...');
+      setDemoEndsAt(Date.now() + demoSecondsRef.current * 1000);
+    };
+    ws.onmessage = (event) => handleMessageRef.current(event);
+    ws.onerror = (e) => { console.error('[WS] Demo error:', e); };
+    ws.onclose = (e) => {
+      console.log('[WS] Demo closed:', e.code, e.reason);
+      if (wsRef.current !== ws) return; // user pressed Stop
+      wsRef.current = null;
+      teardownDemoMedia();
+      const friendly = demoCloseMessage(e.code, opened);
+      setStatus((prev) => friendly
+        ?? (prev.startsWith('Error') ? prev : opened ? 'Demo ended' : 'Could not start the demo, try again later'));
+    };
+  }, [presentation.id, teardownDemoMedia]);
+
+  useEffect(() => { if (connected) setDemoConnecting(false); }, [connected]);
+
   const startSession = useCallback(async () => {
+    if (isDemoRef.current) {
+      startDemoSession();
+      return;
+    }
     try {
       setStatus('Connecting to avatar service...');
 
@@ -482,7 +600,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
       setStatus(`Connection failed: ${err.message || err}`);
       console.error('Avatar connection error:', err);
     }
-  }, [language, connected]);
+  }, [language, connected, startDemoSession]);
 
   useEffect(() => { startSessionRef.current = startSession; }, [startSession]);
 
@@ -490,6 +608,21 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   const speakSlide = useCallback(async (slideIndex: number) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     const slide = presentation.slides[slideIndex];
+    if (isDemoRef.current) {
+      // The server looks up and reads the stored narration for this slide;
+      // the visitor never sends text. Duration is refined on `demo.speaking`.
+      setSpeaking(true);
+      speechStartTimeRef.current = Date.now();
+      spokenTextLengthRef.current = 0;
+      setStatus(`Speaking slide ${slideIndex + 1} of ${presentation.slide_count}...`);
+      if (safetyTimeoutRef.current) clearTimeout(safetyTimeoutRef.current);
+      safetyTimeoutRef.current = setTimeout(() => {
+        safetyTimeoutRef.current = null;
+        advanceAfterSpeech();
+      }, 120 * 1000);
+      wsRef.current.send(JSON.stringify({ type: 'demo.speak', slide: slide?.index ?? slideIndex }));
+      return;
+    }
     // If the slide has an embedded video, trigger auto-play and wait for it to finish
     if (slide?.video_url) {
       if (presentingRef.current) {
@@ -625,6 +758,8 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     setSpeaking(false);
     setPresenting(false);
     setPaused(false);
+    setDemoConnecting(false);
+    setDemoEndsAt(null);
     setStatus('Disconnected');
   }, []);
 
@@ -634,7 +769,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     return () => { stopSession(); };
   }, []);
 
-  // Auto-start: connect on mount, and auto-present whenever the deck changes (path mode)
+  // Auto-start: connect on mount, and auto-present whenever the deck changes (playlist mode)
   const autoStartedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (!autoStart || !canUseAvatar || authBlock) return;
@@ -662,10 +797,61 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
           playsInline
         />
         {!connected && <div style={{ ...styles.placeholder, position: 'absolute' as const }}>
-          {canUseAvatar && !authBlock ? 'Connect to start the avatar' : 'Live avatar preview'}
+          {isDemo
+            ? (demoConnecting ? 'Starting the avatar…' : 'Live avatar demo')
+            : canUseAvatar && !authBlock ? 'Connect to start the avatar' : 'Live avatar preview'}
         </div>}
       </div>
-      {!auth.loading && (!canUseAvatar || authBlock) ? (
+      {isDemo ? (
+        <div data-testid="demo-avatar-controls">
+          <div style={styles.controls}>
+            {!connected ? (
+              <button
+                type="button"
+                data-testid="demo-start"
+                style={{ ...styles.btn, ...styles.btnPrimary, ...(demoConnecting ? styles.btnDisabled : {}) }}
+                disabled={demoConnecting}
+                onClick={startSession}
+              >
+                {demoConnecting ? '… Starting' : '▶ Try the live demo'}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  style={{ ...styles.btn, ...styles.btnPrimary, ...(speaking ? styles.btnDisabled : {}) }}
+                  disabled={speaking}
+                  onClick={speak}
+                >
+                  🎙️ Speak this slide
+                </button>
+                {!presenting && (
+                  <button
+                    type="button"
+                    style={{ ...styles.btn, ...styles.btnSuccess, ...(speaking ? styles.btnDisabled : {}) }}
+                    disabled={speaking}
+                    onClick={startPresenting}
+                  >
+                    ▶️ Present all
+                  </button>
+                )}
+              </>
+            )}
+            {(connected || demoConnecting) && (
+              <button type="button" style={{ ...styles.btn, ...styles.btnDanger }} onClick={stopSession}>
+                ⏹ Stop
+              </button>
+            )}
+          </div>
+          <div style={{ ...styles.status, color: '#475569' }}>
+            Narration-only demo · up to {formatMinutes(demoSessionSeconds)} · no uploads
+            {demoEndsAt && connected
+              ? ` · ⏱ ${formatClock(Math.max(0, Math.round((demoEndsAt - demoNow) / 1000)))} left`
+              : ''}
+          </div>
+          <div style={styles.status} role="status">{status === 'Not connected' ? '' : status}</div>
+        </div>
+      ) : !auth.loading && (!canUseAvatar || authBlock) ? (
         <div style={{ marginTop: 12 }}>
           <GateNotice action="try the live avatar" force={authBlock ?? undefined} />
           {authBlock && auth.is_admin && (

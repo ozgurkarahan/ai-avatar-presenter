@@ -115,7 +115,7 @@ export default function QaChat({ presentationId, slideIndex }: Props) {
 
   return (
     <div>
-      <div style={styles.title}>🤖 AI Presenter Agent</div>
+      <div style={styles.title}>🤖 DeckFM Agent</div>
 
       <div style={styles.messages}>
         {messages.length === 0 ? (

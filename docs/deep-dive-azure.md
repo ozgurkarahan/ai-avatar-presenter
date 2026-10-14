@@ -1,6 +1,6 @@
-# AI Presenter — Deep Dive: Azure Deployment & Architecture
+# DeckFM — Deep Dive: Azure Deployment & Architecture
 
-> **Document scope**: Full technical walkthrough of the cleanup, architecture decisions, Azure infrastructure, and deployment pipeline for the AI Presenter PoC.
+> **Document scope**: Full technical walkthrough of the cleanup, architecture decisions, Azure infrastructure, and deployment pipeline for the DeckFM PoC.
 >
 > **Audience**: Technical stakeholders, Azure architects, developers.
 >
@@ -27,7 +27,7 @@
 
 ## 1. Executive Summary
 
-The AI Presenter is a PoC built for the organization's training teams that allows users to upload PowerPoint presentations and have a lifelike AI avatar present them with multilingual text-to-speech. The solution was cleaned up from a local-development prototype into a production-ready Azure deployment.
+DeckFM is a PoC built for the organization's training teams that allows users to upload PowerPoint presentations and have a lifelike AI avatar present them with multilingual text-to-speech. The solution was cleaned up from a local-development prototype into a production-ready Azure deployment.
 
 ### What We Deployed
 
@@ -80,7 +80,7 @@ https://<your-container-app>.azurecontainerapps.io
 │          │        ├── /api/presentations             │  │     │
 │          │        ├── /api/slides/{id}/{img}         │  │     │
 │          │        ├── /api/translate                 │  │     │
-│          │        ├── /api/static-video/*  ──────────┼──┼──┐  │
+│          │        ├── /api/video/*  ─────────────────┼──┼──┐  │
 │          │        ├── /api/avatar/batch              │  │  │  │
 │          │        ├── /api/qa                        │  │  │  │
 │          │        ├── /ws/voice (WebSocket Proxy) ───┼──┼──┤  │
@@ -659,7 +659,7 @@ az containerapp update \
 ### File Structure (Final State)
 
 ```
-ai-presenter - Copilot/
+deckfm/
 ├── .azure/                         azd environment config (gitignored)
 ├── .claude/                        Claude Code config (gitignored)
 ├── .dockerignore                   Docker build exclusions
@@ -705,7 +705,7 @@ ai-presenter - Copilot/
 ├── docs/
 │   ├── architecture.md             Original architecture document
 │   ├── deep-dive-azure.md          THIS DOCUMENT
-│   ├── feasibility.md              Feasibility assessment
+│   ├── live-demo.md                Public live avatar demo
 │   └── teams-integration.md        V2 Teams integration analysis
 │
 └── infra/
@@ -735,7 +735,7 @@ ai-presenter - Copilot/
 | `WS` | `/ws/voice` | VoiceLive proxy | Admin (checked before `accept()`, plus `Origin` check) |
 | `GET` | `/*` | Serve React SPA | Anonymous |
 
-*Admin* = signed in with Microsoft Entra ID (Easy Auth) **and** listed in `ALLOWED_OBJECT_IDS`. Published UC1/UC2/UC3 library items are also readable anonymously — see [README › Security model](../README.md#-security-model).
+*Admin* = signed in with Microsoft Entra ID (Easy Auth) **and** listed in `ALLOWED_OBJECT_IDS`. Published decks, videos and podcasts are also readable anonymously — see [README › Security model](../README.md#-security-model).
 
 ### Environment Variables
 

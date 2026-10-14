@@ -1,7 +1,10 @@
-# 🎙️ AI Avatar Presenter
+# 🎙️ DeckFM
+
+> **AI avatars that present, narrate and podcast your decks**
 
 **Turn PowerPoint decks into AI-presented training** — a photorealistic avatar presents your slides live, renders narrated videos, or hosts a two-avatar podcast, in multiple languages. Built on Azure AI Speech (Voice Live + Batch Avatar), Azure OpenAI and Azure Container Apps.
 
+[![GitHub](https://img.shields.io/badge/GitHub-ozgurkarahan%2Fdeckfm-181717.svg?logo=github)](https://github.com/ozgurkarahan/deckfm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white)](https://react.dev/)
@@ -9,29 +12,34 @@
 
 ---
 
-## 🧭 Use cases
+## 🧭 What's inside
 
-The app bundles three complementary use cases, each exposed as its own section of the top nav:
+DeckFM bundles complementary features, each exposed as its own entry in the top nav
+(`DeckFM | Home · Live · Decks · Search · Playlists | Video: Create · Library | Podcast: Create · Library`):
 
-| # | Segment | Route | What it does |
-|---|---|---|---|
-| **UC1 (legacy)** | 🎙️ Live Avatar | `/` | Upload a single `.pptx`, a photorealistic avatar presents each slide in real time via WebRTC with multilingual TTS and slide-level Q&A |
-| **UC1 (Hub)** | 🎓 Learning Hub | `/uc1` | Multi-deck corpus with Azure AI Search (hybrid vector + keyword), **Learning Paths** (multi-deck sequences with per-step progress) and **AI-powered path recommendation** (GPT-4.1 picks a coherent deck sequence for any topic). [Design →](docs/uc1-learning-hub.md) |
-| **UC2** | 🎬 Static Video | `/video` + `/video/library` | Automated pre-rendered narrated MP4 from a `.pptx` (slide-first pipeline + Batch Avatar). Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/uc2-static-video.md) |
-| **UC3** | 🎧 Podcast | `/podcast` + `/podcast/library` | Turn any document into a two-host podcast conversation with distinct AI avatars. Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/uc3-podcast-design.md) |
+| Feature | Route | What it does |
+|---|---|---|
+| 🏠 **Home** | `/` | Landing page with entry points into every feature (and the public live demo when enabled) |
+| 🎙️ **Live** | `/live` | Upload a single `.pptx`; a photorealistic avatar presents each slide in real time via WebRTC with multilingual TTS and slide-level Q&A |
+| 📚 **Decks** | `/decks`, `/decks/:deckId/present` | Multi-deck catalog: upload, publish, mark as *Live demo*, and let the avatar present any deck. [Design →](docs/decks-search-playlists.md) |
+| 🔎 **Search** | `/search` | Hybrid vector + keyword search (Azure AI Search) across every deck; the avatar presents the matching slide |
+| 📻 **Playlists** | `/playlists`, `/playlists/:playlistId` | Ordered multi-deck sequences with per-user progress, plus **AI playlist recommendation** (GPT-4.1 picks a coherent deck sequence for any topic) |
+| 🎬 **Video** | `/video` + `/video/library` | Automated pre-rendered narrated MP4 from a `.pptx` (slide-first pipeline + Batch Avatar). Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/video.md) |
+| 🎧 **Podcast** | `/podcast` + `/podcast/library` | Turn any document into a two-host podcast conversation with distinct AI avatars. Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/podcast.md) |
 
-The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `UC2 · Static Video`, `UC3 · Podcast` with hover tooltips on every link.
+Every nav link has a hover tooltip; links that require sign-in show a 🔒 for anonymous visitors.
 
 ## ✨ Features
 
 - **📂 PowerPoint Upload** — Upload `.pptx` files; slides are automatically parsed and rendered as images
-- **🧑‍💼 Live AI Avatar (UC1 legacy)** — A photorealistic avatar narrates each slide using Azure AI Speech (VoiceLive / WebRTC)
-- **🎓 Learning Hub (UC1)** — Multi-deck catalog with Azure AI Search (hybrid vector + keyword), Learning Paths (Cosmos-persisted multi-deck sequences with resume + per-step progress), AI path recommendation using GPT-4.1 JSON mode, zero-click avatar auto-start between path steps
-- **🎬 Static Video Generation (UC2)** — Automated narrated MP4 per `.pptx`, slide-first pipeline (one batch-avatar job per slide + ffmpeg compose), multilingual, voice-aware avatar selection, published library
-- **🎧 Podcast Generator (UC3)** — Dual-avatar conversational video from any document
+- **🧑‍💼 Live AI Avatar** — A photorealistic avatar narrates each slide using Azure AI Speech (VoiceLive / WebRTC)
+- **📚 Decks, Search & Playlists** — Multi-deck catalog with Azure AI Search (hybrid vector + keyword), playlists (Cosmos-persisted multi-deck sequences with resume + per-user progress), AI playlist recommendation using GPT-4.1 JSON mode, zero-click avatar auto-start between playlist steps
+- **🎬 Narrated Video** — Automated narrated MP4 per `.pptx`, slide-first pipeline (one batch-avatar job per slide + ffmpeg compose), multilingual, voice-aware avatar selection, published library
+- **🎧 Two-Avatar Podcast** — Conversational podcast-style video from any document
+- **▶️ Live demo** — Optional, off by default: anonymous visitors can watch the live avatar *narrate* decks an admin published and marked **Live demo**, under hard server-side cost guardrails ([docs/live-demo.md](docs/live-demo.md))
 - **🌍 Multilingual TTS** — DragonHD voices across 10+ languages, Cosmos-cached translations via GPT-4.1
 - **❓ Slide Q&A** — RAG with in-memory vector search (numpy + embeddings)
-- **🎥 Real-Time Streaming** — WebRTC low-latency video/audio for UC1
+- **🎥 Real-Time Streaming** — WebRTC low-latency video/audio for the live avatar
 - **🖼️ Slide Rendering** — High-quality PNG generation from PPTX via LibreOffice headless + Poppler
 - **🚀 One-Click Deployment** — Deploy to Azure Container Apps with `azd up`
 - **📎 Teams Integration** — Embed as a Microsoft Teams Static Tab with theme support (dark/light/contrast)
@@ -41,13 +49,13 @@ The top nav is grouped into pills `UC1 · Live Avatar`, `UC1 · Learning Hub`, `
 
 ## 📸 Screenshots
 
-| Narrated slide video (UC2) | Two-avatar podcast (UC3) |
+| Narrated slide video | Two-avatar podcast |
 |---|---|
-| ![UC2 static video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/static-video-frame.png) | ![UC3 podcast frame: slide above two photo-avatar hosts with subtitles](docs/screenshots/podcast-frame.png) |
+| ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: slide above two photo-avatar hosts with subtitles](docs/screenshots/podcast-frame.png) |
 
-| Published video library | Training decks (read-only for visitors) | Slide viewer |
+| Published video library | Decks (read-only for visitors) | Slide viewer |
 |---|---|---|
-| ![Video library with three published videos](docs/screenshots/video-library.png) | ![Training decks catalog with a sign-in prompt](docs/screenshots/decks.png) | ![Slide viewer with the live avatar panel gated behind sign-in](docs/screenshots/slide-viewer.png) |
+| ![Video library with three published videos](docs/screenshots/video-library.png) | ![Decks catalog with a sign-in prompt](docs/screenshots/decks.png) | ![Slide viewer with the live avatar panel gated behind sign-in](docs/screenshots/slide-viewer.png) |
 
 The avatars shown are custom **photo avatars** (one portrait each, animated by Azure AI Speech). Out of the box the app uses the stock Azure avatars (Lisa, Harry, …); see [Custom photo avatars](#custom-photo-avatars-optional).
 
@@ -61,27 +69,27 @@ The avatars shown are custom **photo avatars** (one portrait each, animated by A
 │   React 19 SPA             │      │   (Python 3.12 · Uvicorn)    │      │                              │
 │                            │      │                              │      │  Azure AI Speech              │
 │  ┌──────────────────────┐  │      │  ┌────────────────────────┐  │      │   ├─ VoiceLive Avatar (WS)   │
-│  │ UC1 legacy (/)       │  │      │  │ routers/               │  │      │   ├─ DragonHD TTS            │
-│  │  SlideViewer,        │  │ HTTP │  │  app.py   (UC1 legacy) │─────────▶│   └─ Batch Avatar           │
-│  │  AvatarPanel, QA     │◀─┼─────▶│  │  uc1.py        (Hub)   │  │      │                              │
-│  │                      │  │  &   │  │  uc1_paths.py  (Paths) │  │      │  Azure OpenAI                │
-│  │ UC1 Hub (/uc1)       │  │ WSS  │  │  static_video.py (UC2) │─────────▶│   ├─ GPT-4.1                │
-│  │  Decks, Learn,       │  │      │  │  podcast.py     (UC3)  │  │      │   └─ text-embedding-3-small  │
-│  │  Paths, Player       │  │      │  └────────────────────────┘  │      │                              │
+│  │ Home (/)             │  │      │  │ routers/               │  │      │   ├─ DragonHD TTS            │
+│  │ Live (/live)         │  │ HTTP │  │  app.py  (Live, WS)    │─────────▶│   └─ Batch Avatar           │
+│  │  SlideViewer,        │◀─┼─────▶│  │  decks.py   (Decks)    │  │      │                              │
+│  │  AvatarPanel, QA     │  │  &   │  │  playlists.py          │  │      │  Azure OpenAI                │
+│  │                      │  │ WSS  │  │  video.py   (Video)    │─────────▶│   ├─ GPT-4.1                │
+│  │ Decks, Search,       │  │      │  │  podcast.py (Podcast)  │  │      │   └─ text-embedding-3-small  │
+│  │  Playlists, Player   │  │      │  └────────────────────────┘  │      │                              │
 │  │                      │  │      │  ┌────────────────────────┐  │      │  Azure AI Search             │
-│  │ UC2 (/video)         │  │      │  │ services/              │  │      │   └─ uc1-decks (hybrid)      │
-│  │  Static Video + Lib  │  │      │  │  pptx_parser, voice,   │─────────▶│                             │
+│  │ Video (/video)       │  │      │  │ services/              │  │      │   └─ decks (hybrid)          │
+│  │  Create + Library    │  │      │  │  pptx_parser, voice,   │─────────▶│                             │
 │  │                      │  │      │  │  qa, translation,      │  │      │  Azure Cosmos DB (Serverless)│
-│  │ UC3 (/podcast)       │  │      │  │  uc1_search,           │  │      │   ├─ presentations           │
-│  │  Podcast + Library   │  │      │  │  static_* (×6),        │  │      │   │  (decks + uc1-path docs) │
-│  └──────────────────────┘  │      │  │  podcast_* (×7),       │  │      │   └─ uc1_progress            │
+│  │ Podcast (/podcast)   │  │      │  │  deck_search,          │  │      │   ├─ presentations           │
+│  │  Create + Library    │  │      │  │  video_* (×6),         │  │      │   │  (decks + playlists)     │
+│  └──────────────────────┘  │      │  │  podcast_* (×7),       │  │      │   └─ playlist_progress       │
 │                            │      │  │  storage               │─────────▶│  Azure Blob Storage         │
 └───────────────────────────┘      │  └────────────────────────┘  │      │   └─ PPTX + slides + media   │
                                     │           │                  │      │                              │
                                     │  ┌────────▼─────────────┐   │      │  Azure Container Apps + ACR  │
                                     │  │ LibreOffice + Poppler │   │      │  Log Analytics               │
                                     │  │ PPTX → PDF → PNG      │   │      └──────────────────────────────┘
-                                    │  │ ffmpeg (UC2/UC3)      │   │
+                                    │  │ ffmpeg (video/podcast)│   │
                                     │  └──────────────────────┘   │
                                     └──────────────────────────────┘
 ```
@@ -94,13 +102,20 @@ The deployed app uses a **hybrid exposure** model, enforced by the backend (defa
 
 | Caller | Can do |
 |---|---|
-| **Anonymous** | Load the SPA, `GET /api/health`, `GET /api/me`, `GET /api/avatars`; list and play **published** UC2 videos and UC3 podcasts; view **published** UC1 decks (slide images + titles only — no speaker notes, body text or PPTX download) |
-| **Signed-in + allowlisted** (admin) | Everything else: uploads, live avatar (`/ws/voice`), batch avatar renders, script generation, translation, agent chat, path recommendation, paths/progress, publish/unpublish, deletes, unpublished items and full details |
+| **Anonymous** | Load the SPA, `GET /api/health`, `GET /api/me`, `GET /api/avatars`; list and play **published** videos and podcasts; view **published** decks (slide images + titles only — no speaker notes, body text or PPTX download); when enabled, watch the narration-only **live demo** on decks marked *Live demo* |
+| **Signed-in + allowlisted** (admin) | Everything else: uploads, live avatar (`/ws/voice`), batch avatar renders, script generation, translation, agent chat, playlist recommendation, playlists/progress, publish/unpublish, live-demo flag, deletes, unpublished items and full details |
 
 - **Sign-in** is handled by **Microsoft Entra ID** through Azure Container Apps built-in authentication (**Easy Auth**). The backend trusts the `X-MS-CLIENT-PRINCIPAL*` headers injected by the platform only when `AUTH_MODE=easyauth`, checks the tenant (`AUTH_TENANT_ID`) and requires the caller's Entra **object ID** to be in `ALLOWED_OBJECT_IDS`.
 - Gated endpoints return **401** when anonymous and **403** when signed-in but not allowlisted. The live-avatar WebSocket is authorized (and its `Origin` checked) before the connection is accepted.
 - Nothing is public by default: generated videos, podcasts and decks start **unpublished**; an admin publishes them explicitly. Anonymous media links are read-only, blob-scoped SAS URLs that expire after 15 minutes.
-- Abuse / cost guards: concurrent live-avatar sessions (`MAX_VOICE_SESSIONS`), per-session duration cap, per-user daily generation quota and a global render queue limit.
+- Abuse / cost guards: concurrent live-avatar sessions (`MAX_VOICE_SESSIONS`), per-session duration cap, per-user daily generation quota and a global render queue limit. The Azure Voice Live connection is closed as soon as the browser disconnects.
+- **Public live demo (off by default):** with `PUBLIC_DEMO_ENABLED=true`, anonymous visitors can watch the
+  live avatar *narrate* decks an admin has published and marked **Live demo** (`/ws/voice/demo`). No free
+  text, microphone, pickers or uploads: the client sends only a slide index and the server reads stored notes.
+- Guardrails: 1 concurrent session (separate from admin), 180 s hard cap, 20 sessions/day globally and 3 per IP,
+  ≤ 2× slides narrations (max 40), 1 s rate limit, same-origin check, settings fixed server-side.
+- Worst case = `DEMO_DAILY_SESSIONS × DEMO_SESSION_SECONDS / 60` avatar-minutes/day (60 with defaults).
+  Details: [docs/live-demo.md](docs/live-demo.md).
 
 > ⚠️ **Cost warning** — live avatar streaming and batch avatar synthesis are billed by Azure AI Speech **per minute of video**, and GPT-4.1 / embeddings are billed per token. Keep the allowlist small, keep the session limits low, and set `BUDGET_CONTACT_EMAILS` so the Bicep templates provision a **budget alert** (see [Azure Deployment](#-azure-deployment)). Scale-to-zero (`minReplicas: 0`) keeps idle cost near zero.
 
@@ -115,13 +130,13 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting and the operator chec
 | **Frontend**     | React 19, TypeScript, Vite 8                                |
 | **Backend**      | Python 3.12, FastAPI, Uvicorn, Gunicorn                     |
 | **AI / Speech**  | Azure AI Speech (VoiceLive Avatar API, DragonHD TTS, Batch Synthesis) |
-| **AI / LLM**     | Azure OpenAI — GPT-4.1 (chat, translation, scripts, path recommend JSON mode), text-embedding-3-small |
-| **AI / Search**  | Azure AI Search — hybrid vector + keyword for UC1 Learning Hub (`uc1-decks` index, Free SKU) |
+| **AI / LLM**     | Azure OpenAI — GPT-4.1 (chat, translation, scripts, playlist recommend JSON mode), text-embedding-3-small |
+| **AI / Search**  | Azure AI Search — hybrid vector + keyword for the deck catalog (`decks` index, Free SKU) |
 | **AI / Agent**   | Function-calling agent (translate, Q&A, SSML generation)    |
 | **Slide Render** | LibreOffice Impress (headless) → PDF → pdf2image (Poppler)  |
-| **Video/Audio**  | ffmpeg + ffprobe — UC2 slide compose, UC3 podcast compose, SRT generation |
-| **Vector Search**| Azure AI Search (UC1 Hub) + in-memory numpy cosine similarity (UC1 legacy Q&A) |
-| **Persistence**  | Azure Cosmos DB (Serverless) — `presentations` (`/id`) + `uc1_progress` (`/user_id`) — and Azure Blob Storage (SAS URLs) |
+| **Video/Audio**  | ffmpeg + ffprobe — video slide compose, podcast compose, SRT generation |
+| **Vector Search**| Azure AI Search (deck catalog) + in-memory numpy cosine similarity (Live page Q&A) |
+| **Persistence**  | Azure Cosmos DB (Serverless) — `presentations` (`/id`) + `playlist_progress` (`/user_id`) — and Azure Blob Storage (SAS URLs) |
 | **Auth**         | Users: Microsoft Entra ID via Container Apps Easy Auth + object-ID allowlist · Services: Managed Identity (`DefaultAzureCredential`) |
 | **Infra**        | Azure Container Apps, ACR, Bicep IaC, Azure Developer CLI (`azd`) |
 | **Teams**        | `@microsoft/teams-js` SDK, Static Tab manifest (v1.17)      |
@@ -151,8 +166,8 @@ The included PowerShell script starts both backend and frontend with a single co
 
 ```powershell
 # 1. Clone the repository
-git clone https://github.com/<your-org>/ai-presenter.git
-cd ai-presenter
+git clone https://github.com/ozgurkarahan/deckfm.git
+cd deckfm
 
 # 2. Copy and configure environment variables
 cp demos/backend/.env.example demos/backend/.env
@@ -233,6 +248,12 @@ Create a `.env` file in `demos/backend/` (see `.env.example`):
 | `DAILY_GENERATION_QUOTA` | `50` | Renders + uploads + chats per signed-in user per UTC day |
 | `MAX_PENDING_RENDERS` | `3` | Global queued/running render jobs |
 | `AZURE_SEARCH_KEY` | absent | Optional; when absent Azure AI Search uses `DefaultAzureCredential` (managed identity) |
+| `PUBLIC_DEMO_ENABLED` | `false` | Kill switch for the anonymous, narration-only live avatar demo (`/ws/voice/demo`) — see [docs/live-demo.md](docs/live-demo.md) |
+| `DEMO_MAX_CONCURRENT` | `1` | Concurrent anonymous demo sessions (global, separate from `MAX_VOICE_SESSIONS`) |
+| `DEMO_SESSION_SECONDS` | `180` | Hard cap per demo session |
+| `DEMO_DAILY_SESSIONS` | `20` | Demo sessions per UTC day, global (`0` blocks all) |
+| `DEMO_DAILY_SESSIONS_PER_IP` | `3` | Demo sessions per UTC day per client IP |
+| `DEMO_MAX_SPEAKS` | `0` | Narrations per demo session; `0` = 2 × slide count (never above 40) |
 
 ### Custom photo avatars (optional)
 
@@ -255,7 +276,7 @@ The project uses a multi-stage Dockerfile: Node.js builds the frontend, Python s
 
 ```bash
 # Build the image
-docker build -t ai-presenter .
+docker build -t deckfm .
 
 # Run the container locally (AUTH_MODE=disabled = local only, never expose it)
 docker run -p 127.0.0.1:8000:8000 \
@@ -268,7 +289,7 @@ docker run -p 127.0.0.1:8000:8000 \
   -e AZURE_OPENAI_KEY=<your-key> \
   -e AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4.1 \
   -e AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small \
-  ai-presenter
+  deckfm
 ```
 
 The container includes LibreOffice and Poppler for full slide rendering support. The app runs on port **8000** with Gunicorn (4 workers).
@@ -337,7 +358,7 @@ The app can be embedded in Microsoft Teams as a **Static Tab**:
 Then sideload `teams-app-package.zip` in Teams:
 1. Open **Teams → Apps → Manage your apps → Upload an app**
 2. Select **Upload a custom app** and choose the generated `.zip`
-3. The app appears as a personal tab — "AI Presenter"
+3. The app appears as a personal tab — "DeckFM"
 
 **Teams features:**
 - Automatic theme adaptation (light, dark, high-contrast)
@@ -358,11 +379,13 @@ Unless marked 🌐 (anonymous), endpoints require a signed-in, allowlisted calle
 | `GET`  | `/api/avatars` 🌐 | Available avatars (`id`, `display_name`, `gender`, `thumbnail_url`, `is_default`) |
 | `GET`  | `/.auth/login/aad?post_login_redirect_uri=<path>` | Sign in (Easy Auth) |
 | `GET`  | `/.auth/logout?post_logout_redirect_uri=/` | Sign out (Easy Auth) |
-| `POST` | `/api/static-video/library/{job_id}/publish` | Publish / unpublish a video — body `{"published": true\|false}` |
+| `POST` | `/api/video/library/{job_id}/publish` | Publish / unpublish a video — body `{"published": true\|false}` |
 | `POST` | `/api/podcast/library/{job_id}/publish` | Publish / unpublish a podcast |
-| `POST` | `/api/uc1/decks/{deck_id}/publish` | Publish / unpublish a UC1 deck |
+| `POST` | `/api/decks/{deck_id}/publish` | Publish / unpublish a deck |
+| `POST` | `/api/decks/{deck_id}/live-demo` | Allow / stop the anonymous live demo on a published deck — body `{"enabled": true\|false}` |
+| `GET`  | `/api/demo/config` 🌐 | `{"enabled", "session_seconds", "remaining_today"?}` |
 
-### UC1 (legacy) — Live Avatar
+### Live — single-deck presenter
 
 | Method | Endpoint                       | Description                              |
 | ------ | ------------------------------ | ---------------------------------------- |
@@ -376,33 +399,36 @@ Unless marked 🌐 (anonymous), endpoints require a signed-in, allowlisted calle
 | `POST` | `/api/avatar/batch`            | Start batch avatar video synthesis       |
 | `POST` | `/api/qa`                      | Ask a question about slide content (RAG) |
 | `WS`   | `/ws/voice`                    | WebSocket proxy for VoiceLive avatar     |
+| `WS`   | `/ws/voice/demo?deck_id=<uuid>` 🌐 | Narration-only public demo (only when `PUBLIC_DEMO_ENABLED=true`, live-demo decks only) |
 
-### UC1 Learning Hub — Corpus, Search & Paths
-
-| Method | Endpoint                                      | Description                                                                       |
-| ------ | --------------------------------------------- | --------------------------------------------------------------------------------- |
-| `POST` | `/api/uc1/upload`                             | Ingest a `.pptx` into the UC1 corpus (Azure AI Search indexing)                   |
-| `GET`  | `/api/uc1/decks` 🌐                           | List decks (returns `deck_id`, not `id`); anonymous callers see published decks only |
-| `DELETE`| `/api/uc1/decks/{deck_id}?force=true`         | Remove a deck from corpus + index                                                 |
-| `POST` | `/api/uc1/learn/search`                       | Hybrid vector + keyword search across all decks                                   |
-| `POST` | `/api/uc1/paths`                              | Create a Learning Path (multi-deck sequence with intro/language)                  |
-| `GET`  | `/api/uc1/paths`                              | List Learning Paths                                                               |
-| `GET`  | `/api/uc1/paths/{id}`                         | Get a Learning Path with hydrated deck info                                       |
-| `DELETE`| `/api/uc1/paths/{id}`                         | Delete a Learning Path                                                            |
-| `POST` | `/api/uc1/paths/{id}/progress`                | Update progress (resume slide, completed steps)                                   |
-| `POST` | `/api/uc1/paths/recommend`                    | **AI path recommendation** — GPT-4.1 JSON mode picks a coherent deck sequence for a topic+language (no persistence) |
-
-### UC2 Static Video & UC3 Podcast
+### Decks, Search & Playlists
 
 | Method | Endpoint                                      | Description                                                                       |
 | ------ | --------------------------------------------- | --------------------------------------------------------------------------------- |
-| `POST` | `/api/static-video/ingest`                    | Ingest PPTX / PDF / image → slide list                                            |
-| `POST` | `/api/static-video/script/{doc_id}`           | Streaming NDJSON script generation (GPT-4.1)                                      |
-| `POST` | `/api/static-video/render/{doc_id}`           | Start render job (batch avatar + ffmpeg compose)                                  |
-| `GET`  | `/api/static-video/jobs/{job_id}`             | Poll job state                                                                    |
-| `GET`  | `/api/static-video/jobs/{job_id}/file/{kind}` | Local fallback download `mp4` / `mp3` / `srt` / `thumb` / `scorm`                  |
-| `GET`  | `/api/static-video/library` 🌐                | Video library (anonymous: published only)                                         |
-| `GET`  | `/api/static-video/library/{job_id}` 🌐       | Video with fresh SAS URLs (anonymous: MP4 + thumbnail only)                       |
+| `POST` | `/api/decks/upload`                           | Ingest a `.pptx` into the catalog (Azure AI Search indexing)                      |
+| `GET`  | `/api/decks` 🌐                               | List decks (returns `deck_id`, not `id`); anonymous callers see published decks only |
+| `GET`  | `/api/decks/{deck_id}` 🌐                     | Deck with slides (anonymous: published only, slide images + titles)               |
+| `DELETE`| `/api/decks/{deck_id}?force=true`            | Remove a deck from catalog + index (`force` breaks referencing playlists)         |
+| `POST` | `/api/search`                                 | Hybrid vector + keyword search across all decks                                   |
+| `POST` | `/api/playlists`                              | Create a playlist (ordered multi-deck sequence)                                   |
+| `GET`  | `/api/playlists`                              | List playlists                                                                    |
+| `GET`  | `/api/playlists/{id}`                         | Get a playlist with hydrated deck info                                            |
+| `PUT`  | `/api/playlists/{id}`                         | Update a playlist                                                                 |
+| `DELETE`| `/api/playlists/{id}`                        | Delete a playlist                                                                 |
+| `GET` / `POST` | `/api/playlists/{id}/progress`        | Read / update the caller's progress (resume slide, completed slides)              |
+| `POST` | `/api/playlists/recommend`                    | **AI playlist recommendation** — GPT-4.1 JSON mode picks a coherent deck sequence for a topic+language (no persistence) |
+
+### Video & Podcast
+
+| Method | Endpoint                                      | Description                                                                       |
+| ------ | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `POST` | `/api/video/ingest`                           | Ingest PPTX / PDF / image → slide list                                            |
+| `POST` | `/api/video/script/{doc_id}`                  | Streaming NDJSON script generation (GPT-4.1)                                      |
+| `POST` | `/api/video/render/{doc_id}`                  | Start render job (batch avatar + ffmpeg compose)                                  |
+| `GET`  | `/api/video/jobs/{job_id}`                    | Poll job state                                                                    |
+| `GET`  | `/api/video/jobs/{job_id}/file/{kind}`        | Local fallback download `mp4` / `mp3` / `srt` / `thumb` / `scorm`                  |
+| `GET`  | `/api/video/library` 🌐                       | Video library (anonymous: published only)                                         |
+| `GET`  | `/api/video/library/{job_id}` 🌐              | Video with fresh SAS URLs (anonymous: MP4 + thumbnail only)                       |
 | `POST` | `/api/podcast/ingest`                         | Ingest a document into a podcast-ready Document                                   |
 | `POST` | `/api/podcast/script/stream`                  | SSE dialogue generation (2-speaker)                                               |
 | `POST` | `/api/podcast/render`                         | Start dual-avatar render job                                                      |
@@ -420,12 +446,12 @@ Unless marked 🌐 (anonymous), endpoints require a signed-in, allowlisted calle
 
 The repository ships two end-to-end runners that drive a real backend wired to Azure (Speech, OpenAI, Cosmos, ffmpeg compose). They are standalone scripts, not pytest, so the output is demo-friendly.
 
-All suites target **local dev** started with `./run-local.ps1` (`AUTH_MODE=disabled`, so uploads/renders/deletes work without sign-in). Set the target with `AI_PRESENTER_BASE_URL` (default `http://localhost:8000` for the Python suites, `http://localhost:5173` for Playwright). Against a deployed instance the gated endpoints return 401/403. ⚠️ `e2e_full.py` **deletes every deck, path and library item** on the target before it starts (use `--skip-reset` to keep them).
+All suites target **local dev** started with `./run-local.ps1` (`AUTH_MODE=disabled`, so uploads/renders/deletes work without sign-in). Set the target with `AI_PRESENTER_BASE_URL` (default `http://localhost:8000` for the Python suites, `http://localhost:5173` for Playwright). Against a deployed instance the gated endpoints return 401/403. ⚠️ `e2e_full.py` **deletes every deck, playlist and library item** on the target before it starts (use `--skip-reset` to keep them).
 
 | Script | Scope | Last validated |
 |---|---|---|
-| `tests/e2e_full.py` | Reset DB → upload 9 fixture decks → UC1 hub / search / paths / progress / AI recommend → UC2 & UC3 smoke | 30/30 passed |
-| `tests/e2e_render.py` | Full render pipeline for UC2 (PPTX → MP4) and UC3 (PPTX → MP3) including TTS + compose. Accepts `--languages fr-FR,en-US,es-ES` to sweep the three thematic groups. | 30/30 passed multi-language (fr-FR, en-US, es-ES × UC2+UC3 × ingest/script/render/download, ~30 min total) |
+| `tests/e2e_full.py` | Reset DB → upload 9 fixture decks → decks / search / playlists / progress / AI recommend → video & podcast smoke | 30/30 passed |
+| `tests/e2e_render.py` | Full render pipeline for the video (PPTX → MP4) and the podcast (PPTX → MP3) including TTS + compose. Accepts `--languages fr-FR,en-US,es-ES` to sweep the three thematic groups. | 30/30 passed multi-language (fr-FR, en-US, es-ES × video + podcast × ingest/script/render/download, ~30 min total) |
 
 ```powershell
 # Run the fixture+smoke suite (cheap, ~1 min)
@@ -441,21 +467,21 @@ python tests/e2e_render.py --base-url http://localhost:8000 --languages fr-FR,en
 python tests/fixtures/samples/_generate.py
 ```
 
-Fixtures live in `tests/fixtures/samples/` — 3 coherent thematic groups (Safety FR, Sustainability EN, AI ES), 3 decks each, 5 slides each with 2-sentence speaker notes. See `tests/fixtures/samples/README.md`. The 6 single-topic decks in `tests/fixtures/uc1/` are generated by `python scripts/make_multideck_test.py`.
+Fixtures live in `tests/fixtures/samples/` — 3 coherent thematic groups (Safety FR, Sustainability EN, AI ES), 3 decks each, 5 slides each with 2-sentence speaker notes. See `tests/fixtures/samples/README.md`. The 6 single-topic decks in `tests/fixtures/decks/` are generated by `python scripts/make_multideck_test.py`.
 
 ### Seeding a deployed showcase library
 
-`scripts/uc2_regen.py` and `scripts/uc3_regen.py` rebuild the UC2 / UC3 libraries from the sample decks. Against a deployed instance they authenticate as an allowlisted user with an Entra ID access token (the Azure CLI client must be listed in `AUTH_EXTRA_CLIENT_APPS` and pre-authorized on the app registration):
+`scripts/video_regen.py` and `scripts/podcast_regen.py` rebuild the video / podcast libraries from the sample decks. Against a deployed instance they authenticate as an allowlisted user with an Entra ID access token (the Azure CLI client must be listed in `AUTH_EXTRA_CLIENT_APPS` and pre-authorized on the app registration):
 
 ```powershell
 $env:AI_PRESENTER_BASE_URL = "https://<your-app>.<env>.<region>.azurecontainerapps.io"
 $env:AI_PRESENTER_TOKEN_COMMAND = "az account get-access-token --scope api://<app-client-id>/user_impersonation --query accessToken -o tsv"
 $env:AI_PRESENTER_BEARER_TOKEN = (Invoke-Expression $env:AI_PRESENTER_TOKEN_COMMAND)
-python scripts/uc2_regen.py --no-delete
-python scripts/uc3_regen.py --no-delete --avatar-female photo_female --avatar-male photo_male
+python scripts/video_regen.py --no-delete
+python scripts/podcast_regen.py --no-delete --avatar-female photo_female --avatar-male photo_male
 ```
 
-Renders are never auto-published — publish the items you want visitors to see from the library pages (or `POST /api/{static-video|podcast}/library/{job_id}/publish`).
+Renders are never auto-published — publish the items you want visitors to see from the library pages (or `POST /api/{video|podcast}/library/{job_id}/publish`).
 
 Unit + Playwright suites:
 
@@ -463,13 +489,13 @@ Unit + Playwright suites:
 # Backend unit tests (no Azure needed)
 cd demos/backend && pytest tests
 
-# Live API pytest against local dev (UC1 hub + paths incl. AI recommend)
+# Live API pytest against local dev (decks + playlists incl. AI recommend)
 $env:AI_PRESENTER_BASE_URL = "http://localhost:8000"
-pytest tests/test_uc1_api.py tests/test_uc1_paths_api.py
+pytest tests/test_decks_api.py tests/test_playlists_api.py
 
-# Frontend Playwright (UC1 Learning Hub + Paths UI) against the Vite dev server
+# Frontend Playwright (decks + playlists UI) against the Vite dev server
 $env:AI_PRESENTER_BASE_URL = "http://localhost:5173"
-npx playwright test tests/uc1-learning-paths.spec.ts --project=chromium
+npx playwright test tests/decks.spec.ts tests/playlists.spec.ts --project=chromium
 ```
 
 ---
@@ -477,10 +503,10 @@ npx playwright test tests/uc1-learning-paths.spec.ts --project=chromium
 ## 📁 Project Structure
 
 ```
-ai-presenter/
+deckfm/
 ├── demos/
 │   ├── backend/                  # FastAPI backend (Python 3.12)
-│   │   ├── app.py                # Legacy UC1 routes (/api/upload, /api/slides, /api/qa, /ws/voice) + agent chat
+│   │   ├── app.py                # Live routes (/api/upload, /api/slides, /api/qa, /ws/voice, /ws/voice/demo) + agent chat
 │   │   ├── config.py             # Configuration management
 │   │   ├── agent_app.py          # Azure AI Foundry agent entry point
 │   │   ├── agent_tools.py        # Agent tool definitions
@@ -488,48 +514,49 @@ ai-presenter/
 │   │   ├── .env.example          # Environment variable template
 │   │   ├── data/                 # Local dev: uploads/ + slides/
 │   │   ├── routers/              # Feature-scoped routers
-│   │   │   ├── uc1.py            # UC1 Learning Hub — decks + hybrid search
-│   │   │   ├── uc1_paths.py      # UC1 Learning Paths CRUD + progress + AI recommend
-│   │   │   ├── static_video.py   # UC2 Static Video — ingest, script, render, library
-│   │   │   └── podcast.py        # UC3 Podcast — ingest, script, render, library
+│   │   │   ├── decks.py          # Decks catalog — upload, publish, live demo, hybrid search
+│   │   │   ├── playlists.py      # Playlists CRUD + progress + AI recommend
+│   │   │   ├── video.py          # Video — ingest, script, render, library
+│   │   │   └── podcast.py        # Podcast — ingest, script, render, library
 │   │   └── services/
 │   │       ├── pptx_parser.py    # PPTX parsing & slide rendering
 │   │       ├── translation.py    # Azure OpenAI translation (cached in Cosmos)
 │   │       ├── avatar.py         # Azure Speech avatar service
-│   │       ├── voice_proxy.py    # WebSocket voice proxy (VoiceLive)
-│   │       ├── qa.py             # Legacy in-memory numpy RAG (UC1 legacy)
-│   │       ├── uc1_search.py     # Azure AI Search client (hybrid vector + keyword)
-│   │       ├── static_*.py       # UC2 pipeline — ingest, script, render, compose, library, models
-│   │       ├── podcast_*.py      # UC3 pipeline — ingest, script, render, compose, library, models
-│   │       └── storage.py        # Cosmos DB (presentations + paths) + Blob Storage
+│   │       ├── voice_proxy.py    # WebSocket voice proxy (VoiceLive; admin + narration-only demo)
+│   │       ├── qa.py             # In-memory numpy RAG (Live page Q&A)
+│   │       ├── deck_search.py    # Azure AI Search client (hybrid vector + keyword)
+│   │       ├── video_*.py        # Video pipeline — ingest, script, render, compose, library, models
+│   │       ├── podcast_*.py      # Podcast pipeline — ingest, script, render, compose, library, models
+│   │       └── storage.py        # Cosmos DB (presentations + playlists + progress) + Blob Storage
 │   └── frontend/                 # React 19 SPA (Vite 8 + TypeScript)
 │       ├── src/
-│       │   ├── main.tsx          # Router entry — /, /uc1*, /video*, /podcast*
-│       │   ├── App.tsx           # Root component (Teams theme support)
+│       │   ├── main.tsx          # Router entry — /, /live, /decks*, /search, /playlists*, /video*, /podcast*
 │       │   ├── components/
-│       │   │   ├── TopNav.tsx             # Grouped nav (UC1 legacy / UC1 Hub / UC2 / UC3)
-│       │   │   ├── AvatarPanel.tsx        # WebRTC avatar (autoStart for path player)
+│       │   │   ├── TopNav.tsx             # Grouped nav (Home · Live · Decks · Search · Playlists | Video | Podcast)
+│       │   │   ├── AvatarPanel.tsx        # WebRTC avatar (autoStart for playlist player)
 │       │   │   ├── SlideViewer.tsx        # Slide display & navigation
 │       │   │   ├── LanguageSelector.tsx   # Language picker (variant dark/light)
 │       │   │   ├── PptUpload.tsx          # File upload UI
 │       │   │   ├── PresentationList.tsx   # Saved presentations (CRUD)
 │       │   │   └── QaChat.tsx             # Q&A chat interface
 │       │   ├── pages/
-│       │   │   ├── Uc1HubPage.tsx         # UC1 Hub landing
-│       │   │   ├── Uc1DecksPage.tsx       # Deck catalog
-│       │   │   ├── Uc1LearnPage.tsx       # Hybrid search across corpus
-│       │   │   ├── Uc1PathsListPage.tsx   # Paths library + "Recommend with AI"
-│       │   │   ├── Uc1PathPlayerPage.tsx  # Multi-deck sequential player
-│       │   │   ├── Uc1PresentPage.tsx     # Single-deck player
-│       │   │   ├── StaticVideoPage.tsx    # UC2 generator
-│       │   │   ├── StaticVideoLibraryPage.tsx
-│       │   │   ├── PodcastPage.tsx        # UC3 generator
+│       │   │   ├── HomePage.tsx           # Landing page
+│       │   │   ├── LivePage.tsx           # Single-deck live presenter (Teams theme support)
+│       │   │   ├── DecksPage.tsx          # Deck catalog
+│       │   │   ├── DeckPresentPage.tsx    # Single-deck player (+ public live demo)
+│       │   │   ├── SearchPage.tsx         # Hybrid search across the catalog
+│       │   │   ├── PlaylistsPage.tsx      # Playlists library + "Recommend with AI"
+│       │   │   ├── PlaylistPlayerPage.tsx # Multi-deck sequential player
+│       │   │   ├── VideoPage.tsx          # Video generator
+│       │   │   ├── VideoLibraryPage.tsx
+│       │   │   ├── PodcastPage.tsx        # Podcast generator
 │       │   │   └── PodcastLibraryPage.tsx
 │       │   └── services/
-│       │       ├── api.ts                 # Legacy UC1 API client
-│       │       ├── uc1Api.ts              # UC1 Hub + Paths + Recommend
-│       │       ├── staticVideoApi.ts      # UC2 API client
-│       │       ├── podcast.ts             # UC3 API client
+│       │       ├── api.ts                 # Live page API client
+│       │       ├── decksApi.ts            # Decks + search + playlists + recommend
+│       │       ├── demo.ts                # Public live demo config
+│       │       ├── videoApi.ts            # Video API client
+│       │       ├── podcast.ts             # Podcast API client
 │       │       └── teams.ts               # Teams SDK helpers
 │       └── public/teams/                  # Teams app manifest & icons
 ├── infra/                        # Azure Bicep IaC
@@ -539,34 +566,34 @@ ai-presenter/
 ├── hooks/                        # azd hooks (preprovision checks for the auth settings)
 ├── scripts/                      # Ops + test-prep scripts
 │   ├── package-teams-app.ps1     # Teams app packaging
-│   ├── uc2_multilang_run.py      # UC2 multi-language rendering sweep
-│   ├── uc2_republish.py          # Re-publish UC2 items
-│   ├── uc2_regen.py / uc3_regen.py # Rebuild the UC2 / UC3 libraries from the sample decks
+│   ├── video_multilang_run.py    # Video multi-language rendering sweep
+│   ├── video_republish.py        # Re-publish video items
+│   ├── video_regen.py / podcast_regen.py # Rebuild the video / podcast libraries from the sample decks
 │   ├── convert_srt.py            # SRT → WebVTT converter + timestamp fixer
 │   ├── compare_subtitles.py      # Compare reference vs Video Translation subtitles
 │   ├── make_multideck_test.py    # Generate multi-deck test corpus
 │   └── (generators, smoke tests, utilities)
 ├── tests/
-│   ├── e2e_full.py               # End-to-end: reset DB + upload 9 fixtures + UC1/UC2/UC3 smoke (30 checks)
-│   ├── e2e_render.py             # Full render E2E for UC2 + UC3, with --languages multi-locale sweep
-│   ├── test_uc1_api.py           # pytest — UC1 Hub API
-│   ├── test_uc1_paths_api.py     # pytest — Paths + AI recommend (catalog validation)
-│   ├── uc1-learning-paths.spec.ts # Playwright — Paths UI regressions
-│   ├── uc1-learning.spec.ts      # Playwright — Learning Hub UI
+│   ├── e2e_full.py               # End-to-end: reset DB + upload 9 fixtures + decks/video/podcast smoke (30 checks)
+│   ├── e2e_render.py             # Full render E2E for video + podcast, with --languages multi-locale sweep
+│   ├── test_decks_api.py         # pytest — decks + search API
+│   ├── test_playlists_api.py     # pytest — playlists + AI recommend (catalog validation)
+│   ├── playlists.spec.ts         # Playwright — playlists UI regressions
+│   ├── decks.spec.ts             # Playwright — home / decks / search UI
 │   ├── conftest.py
 │   └── fixtures/
 │       ├── samples/              # 9 coherent decks in 3 thematic groups (Safety FR, Sustainability EN, AI ES)
-│       └── uc1/                  # 6 single-topic decks for UC1 multi-deck search tests
+│       └── decks/                # 6 single-topic decks for multi-deck search tests
 ├── docs/
 │   ├── index.md                  # Docs navigation map
 │   ├── architecture.md           # Component architecture, data flows, API contract
-│   ├── uc1-learning-hub.md       # UC1 Hub + Paths + AI recommend design
-│   ├── uc2-static-video.md       # UC2 slide-first pipeline design
-│   ├── uc3-podcast-design.md     # UC3 dual-avatar podcast design
+│   ├── decks-search-playlists.md # Decks + search + playlists + AI recommend design
+│   ├── live-demo.md              # Public live avatar demo — guardrails & cost
+│   ├── video.md                  # Video slide-first pipeline design
+│   ├── podcast.md                # Two-avatar podcast design
 │   ├── deep-dive-azure.md        # Full Azure deep-dive (Bicep, RBAC, security, CI/CD)
 │   ├── teams-integration.md      # Teams embedding feasibility & options
 │   ├── deploy-copilot.md         # Parallel "copilot" instance deployment
-│   ├── feasibility.md            # Original feasibility study
 │   └── diagrams/                 # Mermaid + draw.io diagrams
 ├── Dockerfile                    # Multi-stage build (Node frontend + Python backend + ffmpeg + LibreOffice)
 ├── azure.yaml                    # Azure Developer CLI config
@@ -589,9 +616,10 @@ Detailed technical documentation is available in the [`docs/`](docs/) directory 
 |----------|-------------|
 | [**Docs Index**](docs/index.md) | Full navigation map of all docs & diagrams |
 | [Architecture](docs/architecture.md) | Component architecture, data flows, API contract, deployment topology |
-| [UC1 · Learning Hub](docs/uc1-learning-hub.md) | Hub, hybrid search, Learning Paths, AI path recommendation, path player auto-start |
-| [UC2 · Static Video](docs/uc2-static-video.md) | Slide-first pipeline, voice→avatar matching, Blob-backed media/SCORM library, deployment, storage-network gotchas on policy-managed enterprise subscriptions |
-| [UC3 · Podcast Design](docs/uc3-podcast-design.md) | Dual-avatar podcast generator with Blob-backed media/SCORM library |
+| [Decks, Search & Playlists](docs/decks-search-playlists.md) | Deck catalog, hybrid search, playlists, AI playlist recommendation, playlist player auto-start |
+| [Public live demo](docs/live-demo.md) | Anonymous narration-only live avatar: guardrails, threat model, cost ceiling |
+| [Video](docs/video.md) | Slide-first pipeline, voice→avatar matching, Blob-backed media/SCORM library, deployment, storage-network gotchas on policy-managed enterprise subscriptions |
+| [Podcast](docs/podcast.md) | Two-avatar podcast generator with Blob-backed media/SCORM library |
 | [Deep Dive: Azure Deployment](docs/deep-dive-azure.md) | Full technical walkthrough — infrastructure, Bicep modules, security, CI/CD |
 | [Teams Integration](docs/teams-integration.md) | Feasibility analysis and architecture options for Teams embedding |
 | [Deploy Copilot Instance](docs/deploy-copilot.md) | Guide for deploying a parallel "copilot" instance to Azure |

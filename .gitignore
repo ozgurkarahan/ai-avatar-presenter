@@ -21,7 +21,7 @@ Desktop.ini
 
 # Local tool artifacts
 .playwright-mcp/
-uc1-present-*.png
+deck-present-*.png
 
 # Python
 __pycache__/
@@ -68,8 +68,8 @@ scripts/.env
 output/
 infra/main.json
 
-# UC1 Azure AI Search admin key (local only)
-.uc1_search_key.tmp
+# Azure AI Search admin key (local only)
+.search_key.tmp
 
 # Public-release hygiene: local agent/tooling files and secrets-adjacent artifacts
 .github/copilot-instructions.md

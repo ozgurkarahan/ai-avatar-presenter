@@ -46,7 +46,7 @@ param storageAccountName string
 @description('Azure Blob container name')
 param blobContainerName string = 'slide-images'
 
-@description('vCPU per replica (ffmpeg compositing for UC2/UC3 benefits from 2)')
+@description('vCPU per replica (ffmpeg compositing for video/podcast renders benefits from 2)')
 param containerCpu string = '2'
 
 @description('Memory per replica (must match the CPU ratio, e.g. 2 vCPU => 4Gi)')
@@ -88,6 +88,24 @@ param dailyGenerationQuota string = '50'
 
 @description('Global queued/running render jobs')
 param maxPendingRenders string = '3'
+
+@description('Kill switch for the anonymous narration-only live avatar demo (true/false)')
+param publicDemoEnabled string = 'false'
+
+@description('Global concurrent anonymous demo sessions (separate from maxVoiceSessions)')
+param demoMaxConcurrent string = '1'
+
+@description('Hard cap in seconds per anonymous demo session')
+param demoSessionSeconds string = '180'
+
+@description('Anonymous demo sessions per UTC day (global)')
+param demoDailySessions string = '20'
+
+@description('Anonymous demo sessions per client IP per UTC day')
+param demoDailySessionsPerIp string = '3'
+
+@description('Narrations per demo session; 0 = 2 x slide count (hard max 40)')
+param demoMaxSpeaks string = '0'
 
 @description('Tags to apply to every resource')
 param tags object = {}
@@ -184,6 +202,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'MAX_VOICE_SESSION_SECONDS', value: maxVoiceSessionSeconds }
             { name: 'DAILY_GENERATION_QUOTA', value: dailyGenerationQuota }
             { name: 'MAX_PENDING_RENDERS', value: maxPendingRenders }
+            { name: 'PUBLIC_DEMO_ENABLED', value: publicDemoEnabled }
+            { name: 'DEMO_MAX_CONCURRENT', value: demoMaxConcurrent }
+            { name: 'DEMO_SESSION_SECONDS', value: demoSessionSeconds }
+            { name: 'DEMO_DAILY_SESSIONS', value: demoDailySessions }
+            { name: 'DEMO_DAILY_SESSIONS_PER_IP', value: demoDailySessionsPerIp }
+            { name: 'DEMO_MAX_SPEAKS', value: demoMaxSpeaks }
           ]
         }
       ]

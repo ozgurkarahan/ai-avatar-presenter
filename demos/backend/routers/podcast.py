@@ -1,5 +1,5 @@
 """
-UC3 podcast router — FastAPI endpoints for the dual-avatar podcast generator.
+Podcast router — FastAPI endpoints for the dual-avatar podcast generator.
 
 This is a PoC/demo surface. Jobs are held in memory; replace with Cosmos in
 production. Long-running render work is kicked off with asyncio background

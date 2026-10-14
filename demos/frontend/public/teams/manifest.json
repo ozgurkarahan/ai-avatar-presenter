@@ -4,18 +4,18 @@
   "version": "1.0.0",
   "id": "169e6c8a-a4ec-4795-a945-4b1f3e0aa525",
   "developer": {
-    "name": "AI Avatar Presenter (sample)",
+    "name": "DeckFM (sample)",
     "websiteUrl": "https://{{TEAMS_APP_HOSTNAME}}",
     "privacyUrl": "https://{{TEAMS_APP_HOSTNAME}}",
     "termsOfUseUrl": "https://{{TEAMS_APP_HOSTNAME}}"
   },
   "name": {
-    "short": "AI Presenter",
-    "full": "AI Presenter - Avatar Presentation Assistant"
+    "short": "DeckFM",
+    "full": "DeckFM — AI avatars that present, narrate and podcast your decks"
   },
   "description": {
-    "short": "AI-powered avatar presentation assistant with multilingual TTS",
-    "full": "Upload PowerPoint presentations and deliver them through an AI avatar with multilingual text-to-speech narration, guided slide playback, and slide-specific Q&A for presenters and meeting participants."
+    "short": "AI avatars that present, narrate and podcast your decks",
+    "full": "DeckFM: AI avatars that present, narrate and podcast your decks. Upload PowerPoint presentations and deliver them through an AI avatar with multilingual text-to-speech narration, guided slide playback, and slide-specific Q&A for presenters and meeting participants."
   },
   "icons": {
     "color": "color.png",

@@ -1,28 +1,28 @@
 {
-  "name": "ai-presenter---copilot",
+  "name": "deckfm",
   "version": "1.0.0",
   "private": true,
-  "description": "AI-powered avatar presentation assistant: upload a PowerPoint and let an AI avatar present it with multilingual TTS and Q&A. Root package holds the Playwright UI tests.",
+  "description": "DeckFM — AI avatars that present, narrate and podcast your decks. Root package holds the Playwright UI tests.",
   "main": "index.js",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
     "test:ui": "playwright test --project=chromium",
-    "test:ui:paths": "playwright test tests/uc1-learning-paths.spec.ts --project=chromium"
+    "test:ui:playlists": "playwright test tests/playlists.spec.ts --project=chromium"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ozgurkarahan/ai-avatar-presenter.git"
+    "url": "git+https://github.com/ozgurkarahan/deckfm.git"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/ozgurkarahan/ai-avatar-presenter/issues"
+    "url": "https://github.com/ozgurkarahan/deckfm/issues"
   },
-  "homepage": "https://github.com/ozgurkarahan/ai-avatar-presenter#readme",
+  "homepage": "https://github.com/ozgurkarahan/deckfm#readme",
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.5.2"

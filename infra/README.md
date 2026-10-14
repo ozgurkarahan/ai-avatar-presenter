@@ -46,6 +46,10 @@ allowlist is forced empty, so nobody can act as admin.
 | `ENABLE_URL_INGEST` | `false` | Allow podcast URL ingestion. |
 | `MAX_VOICE_SESSIONS` / `MAX_VOICE_SESSION_SECONDS` | `2` / `900` | Live avatar limits. |
 | `DAILY_GENERATION_QUOTA` / `MAX_PENDING_RENDERS` | `50` / `3` | Cost guardrails. |
+| `PUBLIC_DEMO_ENABLED` | `false` | Kill switch for the anonymous, narration-only live avatar demo (`/ws/voice/demo`). Only decks an admin marked *Live demo* can be narrated. See [`docs/live-demo.md`](../docs/live-demo.md). |
+| `DEMO_MAX_CONCURRENT` / `DEMO_SESSION_SECONDS` | `1` / `180` | Concurrent anonymous demo sessions (separate from `MAX_VOICE_SESSIONS`) and hard cap per session. |
+| `DEMO_DAILY_SESSIONS` / `DEMO_DAILY_SESSIONS_PER_IP` | `20` / `3` | Demo sessions per UTC day, globally and per client IP. Worst case avatar minutes/day = `DEMO_DAILY_SESSIONS` × `DEMO_SESSION_SECONDS` / 60 (60 min with defaults). |
+| `DEMO_MAX_SPEAKS` | `0` | Narrations per demo session; `0` = 2 × slide count (hard max 40). |
 | `USE_EXTERNAL_AI_SERVICES` | `false` | Reuse an existing AI Services / Speech resource (e.g. one hosting custom photo avatars). |
 | `EXTERNAL_AI_SERVICES_ENDPOINT` / `_REGION` / `_RESOURCE_ID` | empty | Details of that resource (may be in another resource group of the same subscription). |
 | `ASSIGN_EXTERNAL_AI_SERVICES_ROLES` | `true` | Grant the app identity `Cognitive Services User`, `Cognitive Services Speech User` and `Foundry User` on the external resource. Requires Owner / User Access Administrator on its resource group; set `false` and assign them manually otherwise. |
@@ -59,6 +63,12 @@ Values are strings in the azd environment; JSON values must be valid JSON
 `azd env set EXTRA_TAGS_JSON '{\"CostCenter\":\"demo\"}'`.
 
 > **JSON values must be escaped.** azd substitutes env values verbatim into `main.parameters.json`, so every `"` inside `EXTRA_TAGS_JSON` / `CUSTOM_AVATARS_JSON` must be written as `\"` (backslash-quote), as in the examples, or provisioning fails with *invalid character after object key:value pair*.
+
+Demo counters are in-process; the Container App is capped at one replica, so
+they are global for the deployment (a restart resets the daily counters).
+Per-IP counting uses the rightmost `X-Forwarded-For` entry, which is the one
+the Container Apps ingress appends; put no other proxy in front without
+revisiting that assumption.
 
 ## Not provisioned
 

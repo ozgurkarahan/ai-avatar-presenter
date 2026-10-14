@@ -67,10 +67,10 @@ resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/container
 
 resource progressContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
   parent: database
-  name: 'uc1_progress'
+  name: 'playlist_progress'
   properties: {
     resource: {
-      id: 'uc1_progress'
+      id: 'playlist_progress'
       partitionKey: {
         paths: ['/user_id']
         kind: 'Hash'

@@ -1,4 +1,4 @@
-"""AI Presenter — FastAPI Backend Application."""
+"""DeckFM — FastAPI Backend Application."""
 
 from __future__ import annotations
 
@@ -29,12 +29,18 @@ from security import (
     SLIDE_FILE_RE,
     UUID_RE,
     AVATAR_FILE_RE,
+    DEMO_QUOTA,
+    DEMO_SESSIONS,
     VOICE_SESSIONS,
     allowed_origins,
+    client_ip,
     consume_quota,
+    demo_max_speaks,
+    demo_session_seconds,
     is_valid,
     max_voice_session_seconds,
     origin_allowed,
+    public_demo_enabled,
     read_upload_limited,
     require_id,
     safe_filename,
@@ -44,7 +50,7 @@ from services import avatar_registry
 from services.pptx_parser import parse_pptx, PresentationData
 from services.translation import get_openai_client, translate_text, detect_language
 from services.avatar import submit_batch_synthesis, get_batch_synthesis_status
-from services.voice_proxy import handle_voice_proxy
+from services.voice_proxy import handle_demo_proxy, handle_voice_proxy
 from services.qa import index_presentation, answer_question
 from services.storage import PresentationStore
 
@@ -72,7 +78,7 @@ async def lifespan(app: FastAPI):
     config = load_config()
     store = PresentationStore(config)
     auth.log_startup_warnings()
-    logger.info("AI Presenter backend started. Region: %s", config.speech_region)
+    logger.info("DeckFM backend started. Region: %s", config.speech_region)
     if store.available:
         logger.info("Persistence enabled (Cosmos DB + Blob Storage)")
     elif store.cosmos_available:
@@ -86,7 +92,7 @@ async def lifespan(app: FastAPI):
 _docs_enabled = auth.auth_mode() == "disabled"
 
 app = FastAPI(
-    title="AI Presenter",
+    title="DeckFM",
     description="AI-powered avatar presentation assistant with multilingual TTS",
     version="0.1.0",
     lifespan=lifespan,
@@ -98,23 +104,23 @@ app = FastAPI(
 # /api/me (anonymous)
 app.include_router(auth.router)
 
-# UC3 — Podcast dual-avatar router (admin) + published-library reads (anonymous)
+# Podcast — dual-avatar router (admin) + published-library reads (anonymous)
 from routers.podcast import public_router as podcast_public_router, router as podcast_router
 app.include_router(podcast_public_router)
 app.include_router(podcast_router)
 
-# UC2 — Static video (single-narrator slide-first)
-from routers.static_video import public_router as static_video_public_router, router as static_video_router
-app.include_router(static_video_public_router)
-app.include_router(static_video_router)
+# Video — narrated slide video (single narrator, slide-first)
+from routers.video import public_router as video_public_router, router as video_router
+app.include_router(video_public_router)
+app.include_router(video_router)
 
-# UC1 Learning Hub — multi-deck search + present
-from routers.uc1 import public_router as uc1_public_router, router as uc1_router
-app.include_router(uc1_public_router)
-app.include_router(uc1_router)
+# Decks catalog — multi-deck upload, search + present
+from routers.decks import public_router as decks_public_router, router as decks_router
+app.include_router(decks_public_router)
+app.include_router(decks_router)
 
-from routers.uc1_paths import router as uc1_paths_router
-app.include_router(uc1_paths_router)
+from routers.playlists import router as playlists_router
+app.include_router(playlists_router)
 
 # CORS: only for explicitly configured origins (empty => same-origin only).
 _cors_origins = allowed_origins()
@@ -261,7 +267,7 @@ class TranslateNotesResponse(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "ai-presenter"}
+    return {"status": "ok", "service": "deckfm"}
 
 
 @app.get("/api/avatars")
@@ -440,7 +446,7 @@ async def list_presentations():
         if cosmos_items:
             out: list[PresentationListItem] = []
             for item in cosmos_items:
-                # The container also holds UC1 paths etc.; skip malformed /
+                # The container also holds playlists etc.; skip malformed /
                 # non-presentation items instead of raising KeyError.
                 if not isinstance(item, dict) or not is_valid(item.get("id"), UUID_RE):
                     continue
@@ -544,7 +550,7 @@ def _is_published_deck(presentation_id: str) -> bool:
     if not (store and store.cosmos_available):
         return False
     doc = store.get_presentation(presentation_id)
-    return bool(doc and doc.get("source") == "uc1" and doc.get("published") is True)
+    return bool(doc and doc.get("source") == "deck" and doc.get("published") is True)
 
 
 @app.get("/api/slides/{presentation_id}/{filename}")
@@ -555,7 +561,7 @@ async def get_slide_image(
 ):
     """Serve rendered slide images and extracted video files.
 
-    Admin-only, except PNG slide images of *published* UC1 decks.
+    Admin-only, except PNG slide images of *published* catalog decks.
     """
     match = SLIDE_FILE_RE.fullmatch(filename or "")
     if not is_valid(presentation_id, UUID_RE) or not match:
@@ -915,6 +921,111 @@ async def _run_voice_session(ws: WebSocket) -> None:
     )
 
 
+# --- Public live-avatar demo (anonymous, narration-only) ---
+
+
+@app.get("/api/demo/config")
+async def demo_config():
+    """Anonymous: whether the narration-only live avatar demo is available."""
+    enabled = public_demo_enabled()
+    out: dict = {"enabled": enabled, "session_seconds": demo_session_seconds()}
+    if enabled:
+        out["remaining_today"] = DEMO_QUOTA.remaining_today()
+    return out
+
+
+def _live_demo_deck(deck_id: str) -> Optional[dict]:
+    """The stored catalog deck when it is published AND marked live demo."""
+    if not (store and store.cosmos_available):
+        return None
+    try:
+        doc = store.get_presentation(deck_id)
+    except Exception:
+        logger.exception("Demo deck lookup failed")
+        return None
+    if not isinstance(doc, dict) or doc.get("source") != "deck":
+        return None
+    if doc.get("published") is not True or doc.get("live_demo") is not True:
+        return None
+    return doc
+
+
+@app.websocket("/ws/voice/demo")
+async def demo_voice_websocket(ws: WebSocket):
+    """Anonymous narration-only avatar for decks marked "Live demo".
+
+    Pre-accept (4403): kill switch, deck id format, Origin, deck published +
+    live_demo. Post-accept (so browsers can read the code): 1013 at capacity,
+    4429 daily quota (global or per IP), 4408 at the session time cap.
+    """
+    deck_id = ws.query_params.get("deck_id") or ""
+    if not public_demo_enabled():
+        await ws.close(code=4403, reason="Demo not available")
+        return
+    if not is_valid(deck_id, UUID_RE):
+        await ws.close(code=4403, reason="Demo not available for this deck")
+        return
+    if not origin_allowed(ws.headers):
+        await ws.close(code=4403, reason="Origin not allowed")
+        return
+    deck = _live_demo_deck(deck_id)
+    if not deck:
+        await ws.close(code=4403, reason="Demo not available for this deck")
+        return
+    if not config:
+        await ws.close(code=1011, reason="Service not configured")
+        return
+    if not DEMO_SESSIONS.try_acquire():
+        await ws.accept()
+        await ws.close(code=1013, reason="The demo avatar is busy, try again in a minute")
+        return
+
+    try:
+        ip = client_ip(ws.headers, ws.client.host if ws.client else None)
+        exhausted = DEMO_QUOTA.try_consume(ip)
+        if exhausted:
+            logger.info("Demo session refused: %s daily quota reached", exhausted)
+            await ws.accept()
+            await ws.close(code=4429, reason="Daily demo limit reached, come back tomorrow")
+            return
+
+        slides = [s for s in (deck.get("slides") or []) if isinstance(s, dict)]
+        language = deck.get("language") if isinstance(deck.get("language"), str) else "en-US"
+        avatar_q = ws.query_params.get("avatar")
+        await ws.accept()
+        logger.info("Demo voice session started (deck=%s)", deck_id)
+        try:
+            async with asyncio.timeout(demo_session_seconds()):
+                await handle_demo_proxy(
+                    ws,
+                    config,
+                    language=language or "en-US",
+                    slides=slides,
+                    max_speaks=demo_max_speaks(len(slides)),
+                    avatar_id=avatar_q[:64] if avatar_q else None,
+                )
+            try:
+                await ws.close(code=1000)
+            except Exception:
+                pass
+        except TimeoutError:
+            logger.info("Demo voice session reached the time cap")
+            try:
+                await ws.close(code=4408, reason="Demo time limit reached")
+            except Exception:
+                pass
+        except WebSocketDisconnect:
+            logger.info("Demo voice client disconnected")
+        except Exception as e:
+            logger.error("Demo voice session error: %s", e)
+            try:
+                await ws.close(code=1011, reason="Demo session error")
+            except Exception:
+                pass
+    finally:
+        DEMO_SESSIONS.release()
+
+
 MAX_BATCH_TEXT_CHARS = 50_000
 
 
@@ -1071,7 +1182,7 @@ AGENT_TOOLS_SCHEMA = [
 ]
 
 AGENT_SYSTEM_PROMPT = """\
-You are the AI Presenter Assistant — an AI-powered avatar presentation helper.
+You are the DeckFM Assistant — an AI-powered avatar presentation helper.
 
 ## Your Capabilities (via tools)
 - **translate_slide_notes**: Translate text (e.g., speaker notes) to French, Spanish, or English.
@@ -1217,20 +1328,20 @@ async def teams_config():
     return HTMLResponse(content="""<!DOCTYPE html>
 <html>
 <head>
-    <title>AI Presenter — Tab Configuration</title>
+    <title>DeckFM — Tab Configuration</title>
     <script src="https://res.cdn.office.net/teams-js/2.7.1/js/MicrosoftTeams.min.js"></script>
 </head>
 <body style="font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;">
     <div style="text-align:center;">
-        <h2>AI Presenter</h2>
-        <p>Click Save to add AI Presenter to this meeting.</p>
+        <h2>DeckFM</h2>
+        <p>Click Save to add DeckFM to this meeting.</p>
     </div>
     <script>
         (async () => {
             await microsoftTeams.app.initialize();
             microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
                 microsoftTeams.pages.config.setConfig({
-                    suggestedDisplayName: "AI Presenter",
+                    suggestedDisplayName: "DeckFM",
                     entityId: "presenter-meeting",
                     contentUrl: window.location.origin,
                     websiteUrl: window.location.origin

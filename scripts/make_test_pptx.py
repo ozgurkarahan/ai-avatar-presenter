@@ -1,10 +1,10 @@
-"""Create a tiny 3-slide PPTX for UC2 library testing."""
+"""Create a tiny 3-slide PPTX for video library testing."""
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 
-OUT = Path(__file__).resolve().parent.parent / "output" / "uc2-test-deck.pptx"
+OUT = Path(__file__).resolve().parent.parent / "output" / "video-test-deck.pptx"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 prs = Presentation()
@@ -12,7 +12,7 @@ prs.slide_width = Inches(13.333)
 prs.slide_height = Inches(7.5)
 
 SLIDES = [
-    ("Frontier Firm in 2026",
+    ("AI-First Company in 2026",
      "How AI agents augment every role — from engineers to marketers."),
     ("Three Pillars",
      "1. Your people\n2. Your agents\n3. Your IQ (organizational knowledge)."),
@@ -53,11 +53,11 @@ for i, (title, body) in enumerate(SLIDES, start=1):
     f = slide.shapes.add_textbox(Inches(0.8), Inches(6.8), Inches(11.5), Inches(0.5))
     ff = f.text_frame
     fp = ff.paragraphs[0]
-    fp.text = f"AI Avatar Presenter — Demo · Slide {i} / {len(SLIDES)}"
+    fp.text = f"DeckFM — Demo · Slide {i} / {len(SLIDES)}"
     fp.runs[0].font.size = Pt(12)
     fp.runs[0].font.color.rgb = RGBColor(0x90, 0xA4, 0xC0)
 
-prs.core_properties.author = "AI Avatar Presenter"
-prs.core_properties.last_modified_by = "AI Avatar Presenter"
+prs.core_properties.author = "DeckFM"
+prs.core_properties.last_modified_by = "DeckFM"
 prs.save(str(OUT))
 print(f"wrote {OUT}  ({OUT.stat().st_size/1024:.1f} KB, {len(SLIDES)} slides)")

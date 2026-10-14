@@ -1,4 +1,4 @@
-"""AI Presenter Agent — Microsoft Agent Framework entry point.
+"""DeckFM Agent — Microsoft Agent Framework entry point.
 
 Run standalone:
     python agent_app.py
@@ -21,7 +21,7 @@ from azure.ai.agentserver.agentframework import from_agent_framework
 from agent_tools import ALL_TOOLS
 
 INSTRUCTIONS = """\
-You are the AI Presenter Assistant — an AI-powered avatar presentation helper.
+You are the DeckFM Assistant — an AI-powered avatar presentation helper.
 
 ## Your Capabilities (via tools)
 - **translate_slide_notes**: Translate text (e.g., speaker notes) to French, Spanish, or English.

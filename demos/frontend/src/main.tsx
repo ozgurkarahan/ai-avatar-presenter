@@ -1,17 +1,17 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import App from './App';
+import LivePage from './pages/LivePage';
 import PodcastPage from './pages/PodcastPage';
 import PodcastLibraryPage from './pages/PodcastLibraryPage';
-import StaticVideoPage from './pages/StaticVideoPage';
-import StaticVideoLibraryPage from './pages/StaticVideoLibraryPage';
-import Uc1HubPage from './pages/Uc1HubPage';
-import Uc1LearnPage from './pages/Uc1LearnPage';
-import Uc1DecksPage from './pages/Uc1DecksPage';
-import Uc1PresentPage from './pages/Uc1PresentPage';
-import Uc1PathsListPage from './pages/Uc1PathsListPage';
-import Uc1PathPlayerPage from './pages/Uc1PathPlayerPage';
+import VideoPage from './pages/VideoPage';
+import VideoLibraryPage from './pages/VideoLibraryPage';
+import HomePage from './pages/HomePage';
+import SearchPage from './pages/SearchPage';
+import DecksPage from './pages/DecksPage';
+import DeckPresentPage from './pages/DeckPresentPage';
+import PlaylistsPage from './pages/PlaylistsPage';
+import PlaylistPlayerPage from './pages/PlaylistPlayerPage';
 import TopNav from './components/TopNav';
 import AuthToast from './components/AuthToast';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -32,17 +32,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AuthToast />
       <RoutedContent>
       <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/uc1" element={<Uc1HubPage />} />
-        <Route path="/uc1/learn" element={<Uc1LearnPage />} />
-        <Route path="/uc1/decks" element={<Uc1DecksPage />} />
-        <Route path="/uc1/paths" element={<Uc1PathsListPage />} />
-        <Route path="/uc1/paths/:pathId" element={<Uc1PathPlayerPage />} />
-        <Route path="/uc1/present/:deckId" element={<Uc1PresentPage />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/live" element={<LivePage />} />
+        <Route path="/decks" element={<DecksPage />} />
+        <Route path="/decks/:deckId/present" element={<DeckPresentPage />} />
+        <Route path="/search" element={<SearchPage />} />
+        <Route path="/playlists" element={<PlaylistsPage />} />
+        <Route path="/playlists/:playlistId" element={<PlaylistPlayerPage />} />
         <Route path="/podcast" element={<PodcastPage />} />
         <Route path="/podcast/library" element={<PodcastLibraryPage />} />
-        <Route path="/video" element={<StaticVideoPage />} />
-        <Route path="/video/library" element={<StaticVideoLibraryPage />} />
+        <Route path="/video" element={<VideoPage />} />
+        <Route path="/video/library" element={<VideoLibraryPage />} />
       </Routes>
       </RoutedContent>
     </BrowserRouter>

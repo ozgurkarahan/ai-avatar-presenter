@@ -1,4 +1,4 @@
-// Typed API client for the UC3 /api/podcast/* endpoints.
+// Typed API client for the /api/podcast/* endpoints.
 
 export type SourceKind = 'pptx' | 'pdf' | 'docx' | 'txt' | 'md' | 'url';
 export type Speaker = 'interviewer' | 'expert';

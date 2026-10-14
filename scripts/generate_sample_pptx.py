@@ -1,5 +1,5 @@
 """
-Generate docs/samples/smart-glass-sample.pptx — a 5-slide demo deck for UC3.
+Generate docs/samples/smart-glass-sample.pptx — a 5-slide demo deck for the podcast.
 
 Theme: dynamic electrochromic ("smart") glazing — a realistic, vendor-neutral
 technology story that works well for a dual-avatar podcast demo (Interviewer +
@@ -29,7 +29,7 @@ CLOUD = RGBColor(0xF1, 0xF5, 0xF9)
 SLIDES = [
     {
         "title": "Smart Glass — Dynamic Glazing for Net-Zero Buildings",
-        "subtitle": "AI Avatar Presenter — Demo · Innovation Podcast",
+        "subtitle": "DeckFM — Demo · Innovation Podcast",
         "bullets": [
             "Electrochromic glass that tints on demand",
             "Reduces HVAC energy use by up to 20%",
@@ -140,7 +140,7 @@ def _add_footer(slide, n: int, total: int) -> None:
     box = slide.shapes.add_textbox(Inches(0.4), Inches(7.0), Inches(12.5), Inches(0.4))
     tf = box.text_frame
     p = tf.paragraphs[0]
-    p.text = f"AI Avatar Presenter — Demo   ·   Slide {n} of {total}"
+    p.text = f"DeckFM — Demo   ·   Slide {n} of {total}"
     p.font.size = Pt(10)
     p.font.color.rgb = RGBColor(0x94, 0xA3, 0xB8)
 
@@ -195,8 +195,8 @@ def build() -> Path:
         _add_footer(s, i, total)
         s.notes_slide.notes_text_frame.text = data["notes"]
 
-    prs.core_properties.author = "AI Avatar Presenter"
-    prs.core_properties.last_modified_by = "AI Avatar Presenter"
+    prs.core_properties.author = "DeckFM"
+    prs.core_properties.last_modified_by = "DeckFM"
     OUT.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(OUT))
     return OUT

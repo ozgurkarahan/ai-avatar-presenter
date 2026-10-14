@@ -3,36 +3,34 @@ import { NavLink } from 'react-router-dom';
 import { SIGN_OUT_URL, signInUrl, useAuth } from '../services/auth';
 
 type NavItem = { to: string; end?: boolean; icon: string; label: string; desc: string; adminOnly?: boolean };
-type NavGroup = { title: string; tag: string; items: NavItem[] };
+// `label` (optional) prefixes a group of pills, e.g. "Video:".
+type NavGroup = { id: string; label?: string; title: string; items: NavItem[] };
 
 const groups: NavGroup[] = [
   {
-    title: 'AI Presenter',
-    tag: 'Legacy',
+    id: 'main',
+    title: 'Decks',
     items: [
-      { to: '/', end: true, icon: '🎙️', label: 'Presenter', desc: 'Original single-deck presenter (kept for compatibility).', adminOnly: true },
+      { to: '/', end: true, icon: '🏠', label: 'Home', desc: 'Start here — live demo, decks, search and playlists.' },
+      { to: '/live', end: true, icon: '🎙️', label: 'Live', desc: 'Upload one deck and let the live avatar present it, with slide Q&A.', adminOnly: true },
+      { to: '/decks', icon: '📚', label: 'Decks', desc: 'Upload, browse, publish and present your decks.' },
+      { to: '/search', icon: '🔎', label: 'Search', desc: 'Ask anything across all decks; the avatar presents the right slide.', adminOnly: true },
+      { to: '/playlists', icon: '📻', label: 'Playlists', desc: 'Chain decks into ordered playlists with progress tracking.', adminOnly: true },
     ],
   },
   {
-    title: 'Learning Hub',
-    tag: 'UC1',
+    id: 'video',
+    label: 'Video',
+    title: 'Narrated video',
     items: [
-      { to: '/uc1', end: true, icon: '🏠', label: 'Hub', desc: 'UC1 Learning Hub home — pick Learn or Decks.' },
-      { to: '/uc1/learn', icon: '🎓', label: 'Learn', desc: 'Ask anything across all decks; the avatar presents the right slide.', adminOnly: true },
-      { to: '/uc1/decks', icon: '📚', label: 'Decks', desc: 'Upload, browse, tag, and manage your training decks.' },
+      { to: '/video', end: true, icon: '🎬', label: 'Create', desc: 'Build a pre-rendered narrated avatar video from a .pptx.', adminOnly: true },
+      { to: '/video/library', icon: '🎞️', label: 'Library', desc: 'Browse and play previously generated videos.' },
     ],
   },
   {
-    title: 'Static Video',
-    tag: 'UC2',
-    items: [
-      { to: '/video', end: true, icon: '🎬', label: 'Generate', desc: 'Build a pre-rendered avatar video from a .pptx.', adminOnly: true },
-      { to: '/video/library', icon: '🎞️', label: 'Library', desc: 'Browse and play previously generated static videos.' },
-    ],
-  },
-  {
-    title: 'Podcast',
-    tag: 'UC3',
+    id: 'podcast',
+    label: 'Podcast',
+    title: 'Two-avatar podcast',
     items: [
       { to: '/podcast', end: true, icon: '🎧', label: 'Create', desc: 'Convert a document into a two-host podcast conversation.', adminOnly: true },
       { to: '/podcast/library', icon: '📚', label: 'Library', desc: 'Browse previously generated podcasts.' },
@@ -57,15 +55,12 @@ const pillActiveStyle: React.CSSProperties = {
   color: 'white',
   fontWeight: 600,
 };
-const tagStyle: React.CSSProperties = {
-  fontSize: 9,
-  fontWeight: 800,
-  letterSpacing: 0.7,
-  padding: '2px 5px',
-  borderRadius: 3,
-  background: 'rgba(255,255,255,0.12)',
+const groupLabelStyle: React.CSSProperties = {
+  fontSize: 11.5,
+  fontWeight: 700,
   color: 'rgba(255,255,255,0.7)',
-  marginRight: 4,
+  marginRight: 2,
+  whiteSpace: 'nowrap',
 };
 const sepStyle: React.CSSProperties = {
   width: 1,
@@ -88,13 +83,16 @@ export default function TopNav() {
         flexWrap: 'wrap',
       }}
     >
-      <div style={{ color: 'white', fontWeight: 700, fontSize: 13, letterSpacing: 0.2, marginRight: 8 }}>
-        AI Avatar Presenter
+      <div
+        style={{ color: 'white', fontWeight: 700, fontSize: 13, letterSpacing: 0.2, marginRight: 8 }}
+        title="AI avatars that present, narrate and podcast your decks"
+      >
+        DeckFM
       </div>
       {groups.map((g, idx) => (
-        <React.Fragment key={g.tag}>
+        <React.Fragment key={g.id}>
           {idx > 0 && <div style={sepStyle} aria-hidden />}
-          <span style={tagStyle} title={g.title}>{g.tag}</span>
+          {g.label && <span style={groupLabelStyle} title={g.title}>{g.label}:</span>}
           {g.items.map((it) => (
             <NavLink
               key={it.to}

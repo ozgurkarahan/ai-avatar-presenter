@@ -11,28 +11,28 @@ UUID = "0b5f2a7e-1c2d-4e5f-8a9b-0c1d2e3f4a5b"
 # (method, path, kwargs) — a sample of gated (cost-bearing / admin) routes.
 GATED = [
     ("post", "/api/upload", {"files": {"file": ("a.pptx", b"PK\x03\x04", "application/octet-stream")}}),
-    ("post", "/api/uc1/upload", {"files": {"file": ("a.pptx", b"PK\x03\x04", "application/octet-stream")}}),
-    ("post", "/api/static-video/ingest", {"files": {"file": ("a.pdf", b"%PDF", "application/pdf")}}),
+    ("post", "/api/decks/upload", {"files": {"file": ("a.pptx", b"PK\x03\x04", "application/octet-stream")}}),
+    ("post", "/api/video/ingest", {"files": {"file": ("a.pdf", b"%PDF", "application/pdf")}}),
     ("post", "/api/podcast/ingest", {"files": {"file": ("a.txt", b"hello", "text/plain")}}),
     ("post", "/api/podcast/render", {"json": {}}),
-    ("post", f"/api/static-video/render/{UUID}", {}),
+    ("post", f"/api/video/render/{UUID}", {}),
     ("delete", "/api/podcast/library/job-1234abcd", {}),
-    ("delete", "/api/static-video/library/sv-1234abcd", {}),
-    ("delete", f"/api/uc1/decks/{UUID}", {}),
+    ("delete", "/api/video/library/sv-1234abcd", {}),
+    ("delete", f"/api/decks/{UUID}", {}),
     ("delete", f"/api/presentations/{UUID}", {}),
-    ("post", "/api/static-video/library/sv-1234abcd/publish", {"json": {"published": True}}),
+    ("post", "/api/video/library/sv-1234abcd/publish", {"json": {"published": True}}),
     ("post", "/api/podcast/library/job-1234abcd/publish", {"json": {"published": True}}),
-    ("post", f"/api/uc1/decks/{UUID}/publish", {"json": {"published": True}}),
+    ("post", f"/api/decks/{UUID}/publish", {"json": {"published": True}}),
     ("post", "/api/agent/chat", {"json": {"messages": [{"role": "user", "content": "hi"}]}}),
     ("post", "/api/translate", {"json": {"text": "hi", "target_language": "fr-FR"}}),
     ("post", "/api/avatar/batch", {"json": {"presentation_id": UUID}}),
-    ("post", "/api/uc1/paths/recommend", {"json": {"topic": "safety"}}),
-    ("post", "/api/uc1/paths/path_0123456789ab/progress", {"json": {"deck_id": UUID, "slide_index": 0}}),
+    ("post", "/api/playlists/recommend", {"json": {"topic": "safety"}}),
+    ("post", "/api/playlists/pl_0123456789ab/progress", {"json": {"deck_id": UUID, "slide_index": 0}}),
     ("get", "/api/presentations", {}),
     ("get", f"/api/slides/{UUID}", {}),
     ("get", "/api/podcast/voices", {}),
-    ("get", "/api/uc1/paths", {}),
-    ("post", "/api/uc1/learn/search", {"json": {"query": "x"}}),
+    ("get", "/api/playlists", {}),
+    ("post", "/api/search", {"json": {"query": "x"}}),
 ]
 
 
@@ -92,9 +92,9 @@ def test_anonymous_routes_stay_open(client, easyauth):
     assert client.get("/api/health").status_code == 200
     assert client.get("/api/me").status_code == 200
     assert client.get("/api/avatars").status_code == 200
-    assert client.get("/api/static-video/library").status_code == 200
+    assert client.get("/api/video/library").status_code == 200
     assert client.get("/api/podcast/library").status_code == 200
-    assert client.get("/api/uc1/decks").status_code == 200
+    assert client.get("/api/decks").status_code == 200
 
 
 # ---------------------------------------------------------------------------

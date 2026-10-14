@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for UC1 API tests.
+"""Shared pytest fixtures for the decks / playlists API tests.
 
 Drives a live backend via the AI_PRESENTER_BASE_URL env var (default
 http://localhost:8000 — local dev started with run-local.ps1, AUTH_MODE=disabled).
@@ -15,7 +15,7 @@ import pytest
 
 BASE_URL = os.environ.get("AI_PRESENTER_BASE_URL", "http://localhost:8000").rstrip("/")
 
-FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "uc1"
+FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "decks"
 
 # filename → (language, topic-specific query, expected top deck title substring)
 FIXTURES = [
@@ -47,16 +47,16 @@ def uploaded_decks(client) -> Iterator[dict[str, dict]]:
         path = FIXTURE_DIR / filename
         with path.open("rb") as fh:
             r = client.post(
-                "/api/uc1/upload",
+                "/api/decks/upload",
                 files={"file": (filename, fh, "application/vnd.openxmlformats-officedocument.presentationml.presentation")},
                 data={"language": language},
             )
         assert r.status_code == 200, f"upload {filename} failed: {r.status_code} {r.text}"
         uploaded[filename] = r.json()
     yield uploaded
-    # Teardown — force=true so any referencing test paths don't block deletion
+    # Teardown — force=true so any referencing test playlists don't block deletion
     for resp in uploaded.values():
         try:
-            client.delete(f"/api/uc1/decks/{resp['deck_id']}?force=true")
+            client.delete(f"/api/decks/{resp['deck_id']}?force=true")
         except Exception:
             pass

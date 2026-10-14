@@ -220,7 +220,7 @@ function Hero() {
       <div style={{ position: 'absolute', top: -50, right: -50, width: 240, height: 240,
         borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
       <div style={{ fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', opacity: 0.7 }}>
-        AI Avatar Presenter
+        DeckFM
       </div>
       <h1 style={{ fontSize: 36, margin: '8px 0', fontWeight: 800, letterSpacing: '-0.5px' }}>
         AI Podcast Generator

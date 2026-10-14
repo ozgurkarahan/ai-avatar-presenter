@@ -1,4 +1,4 @@
-"""Generate 6 distinct test .pptx files for UC1 multi-deck search testing.
+"""Generate 6 distinct test .pptx files for multi-deck search testing.
 
 Each deck covers a different topic with topic-specific vocabulary so we can
 assert that a topic-specific query returns slides from the correct deck.
@@ -6,7 +6,7 @@ assert that a topic-specific query returns slides from the correct deck.
 Usage:
     python scripts/make_multideck_test.py [output_dir]
 
-Defaults to ./tests/fixtures/uc1/
+Defaults to ./tests/fixtures/decks/
 """
 from __future__ import annotations
 
@@ -162,7 +162,7 @@ def build_deck(out_path: Path, title: str, slides: list[tuple[str, str, str]]) -
     slide = prs.slides.add_slide(layout)
     slide.shapes.title.text = title
     if len(slide.placeholders) > 1:
-        slide.placeholders[1].text = "AI Avatar Presenter — Demo"
+        slide.placeholders[1].text = "DeckFM — Demo"
 
     # Content slides
     content_layout = prs.slide_layouts[1]
@@ -178,15 +178,15 @@ def build_deck(out_path: Path, title: str, slides: list[tuple[str, str, str]]) -
         notes_tf = s.notes_slide.notes_text_frame
         notes_tf.text = notes_text
 
-    prs.core_properties.author = "AI Avatar Presenter"
-    prs.core_properties.last_modified_by = "AI Avatar Presenter"
+    prs.core_properties.author = "DeckFM"
+    prs.core_properties.last_modified_by = "DeckFM"
     prs.core_properties.title = title
     prs.save(str(out_path))
     print(f"Wrote {out_path}  ({len(slides) + 1} slides)")
 
 
 def main() -> None:
-    out_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "uc1"
+    out_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "decks"
     out_dir.mkdir(parents=True, exist_ok=True)
     for deck in DECKS:
         build_deck(out_dir / deck["filename"], deck["title"], deck["slides"])

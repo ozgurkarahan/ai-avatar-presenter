@@ -1,4 +1,4 @@
-"""Generate 9 coherent sample test decks (3 groups x 3 decks) for UC1/UC2/UC3 e2e tests.
+"""Generate 9 coherent sample test decks (3 groups x 3 decks) for the decks / video / podcast e2e tests.
 
 Each deck has 5 slides (title + 3 content + conclusion) with a 2-sentence speaker
 note (~300 chars) suitable for avatar narration (~25-30s spoken).
@@ -262,8 +262,8 @@ def build_deck(filename: str, spec: dict) -> Path:
     _add_title_slide(prs, *slides[0])
     for s in slides[1:]:
         _add_content_slide(prs, *s)
-    prs.core_properties.author = "AI Avatar Presenter"
-    prs.core_properties.last_modified_by = "AI Avatar Presenter"
+    prs.core_properties.author = "DeckFM"
+    prs.core_properties.last_modified_by = "DeckFM"
     prs.core_properties.title = spec["title"]
     out = OUT / f"{filename}.pptx"
     prs.save(out)

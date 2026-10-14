@@ -1,4 +1,4 @@
-"""Authentication / authorization for the AI Presenter backend.
+"""Authentication / authorization for the DeckFM backend.
 
 Hybrid exposure model:
 - ``AUTH_MODE=easyauth`` (default): trust the Azure Container Apps Easy Auth

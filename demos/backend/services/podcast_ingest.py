@@ -1,4 +1,4 @@
-"""Multi-format document ingestion for UC3 podcast generation.
+"""Multi-format document ingestion for podcast generation.
 
 Normalizes PPTX / PDF / DOCX / TXT / MD / URL inputs into a `Document`
 that downstream services (script generation, composition) consume.

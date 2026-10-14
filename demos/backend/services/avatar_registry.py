@@ -1,6 +1,6 @@
 """Avatar registry — single source of truth for all avatar metadata.
 
-Every render path (UC1 live Voice Live, UC2 batch video, UC3 podcast)
+Every render path (live Voice Live avatar, batch video, podcast)
 consumes this module so the rest of the codebase never hard-codes an
 avatar identity.
 

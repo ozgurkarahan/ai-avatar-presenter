@@ -32,7 +32,7 @@ class AzureConfig:
     search_endpoint: str = ""
     # Optional; when empty the AI Search client uses DefaultAzureCredential.
     search_key: str = ""
-    search_index: str = "uc1-decks"
+    search_index: str = "decks"
 
 
 def load_config() -> AzureConfig:
@@ -59,5 +59,5 @@ def load_config() -> AzureConfig:
         blob_container=os.environ.get("AZURE_BLOB_CONTAINER", "slide-images"),
         search_endpoint=os.environ.get("AZURE_SEARCH_ENDPOINT", ""),
         search_key=os.environ.get("AZURE_SEARCH_KEY", ""),
-        search_index=os.environ.get("AZURE_SEARCH_INDEX", "uc1-decks"),
+        search_index=os.environ.get("AZURE_SEARCH_INDEX", "decks"),
     )

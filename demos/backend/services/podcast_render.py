@@ -1,4 +1,4 @@
-"""Per-speaker batch avatar synthesis for the UC3 podcast.
+"""Per-speaker batch avatar synthesis for the podcast.
 
 Design intent: submit ONE batch synthesis job per (avatar, voice) pair with
 multiple SSML inputs (one per turn) so we incur batch overhead only twice

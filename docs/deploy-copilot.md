@@ -1,8 +1,8 @@
-# Deploying AI Presenter (Copilot Instance)
+# Deploying DeckFM (Copilot Instance)
 
 ## Overview
 
-This guide deploys a **parallel instance** of AI Presenter to Azure with the "copilot" suffix.
+This guide deploys a **parallel instance** of DeckFM to Azure with the "copilot" suffix.
 It creates its own Container App and Registry but **reuses the existing Azure OpenAI and AI Speech services**.
 
 ## Prerequisites

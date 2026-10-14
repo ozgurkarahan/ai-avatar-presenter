@@ -265,7 +265,7 @@ def test_pending_render_cap(monkeypatch):
 
 
 def test_progress_user_id_ignores_request_input(client, monkeypatch):
-    import routers.uc1_paths as paths
+    import routers.playlists as playlists
 
     deck = "0b5f2a7e-1c2d-4e5f-8a9b-0c1d2e3f4a5b"
     saved = {}
@@ -273,10 +273,10 @@ def test_progress_user_id_ignores_request_input(client, monkeypatch):
     class Store:
         cosmos_available = True
 
-        def get_uc1_path(self, pid):
-            return {"id": pid, "source": "uc1-path", "steps": [{"deck_id": deck, "slide_count": 3, "order": 0}]}
+        def get_playlist(self, pid):
+            return {"id": pid, "source": "playlist", "steps": [{"deck_id": deck, "slide_count": 3, "order": 0}]}
 
-        def get_progress(self, user_id, path_id):
+        def get_progress(self, user_id, playlist_id):
             saved.setdefault("read", []).append(user_id)
             return None
 
@@ -284,12 +284,12 @@ def test_progress_user_id_ignores_request_input(client, monkeypatch):
             saved["doc"] = doc
             return doc
 
-    monkeypatch.setattr(paths, "_store", lambda cfg: Store())
-    r = client.post("/api/uc1/paths/path_0123456789ab/progress",
+    monkeypatch.setattr(playlists, "_store", lambda cfg: Store())
+    r = client.post("/api/playlists/pl_0123456789ab/progress",
                     json={"user_id": "victim", "deck_id": deck, "slide_index": 1, "completed": True})
     assert r.status_code == 200, r.text
     assert saved["doc"]["user_id"] == "local-dev" and saved["doc"]["id"].startswith("local-dev:")
-    r = client.get("/api/uc1/paths/path_0123456789ab/progress", params={"user_id": "victim"})
+    r = client.get("/api/playlists/pl_0123456789ab/progress", params={"user_id": "victim"})
     assert r.status_code == 200 and r.json()["user_id"] == "local-dev"
     assert "victim" not in saved["read"]
 

@@ -47,6 +47,24 @@
     "maxPendingRenders": {
       "value": "${MAX_PENDING_RENDERS=3}"
     },
+    "publicDemoEnabled": {
+      "value": "${PUBLIC_DEMO_ENABLED=false}"
+    },
+    "demoMaxConcurrent": {
+      "value": "${DEMO_MAX_CONCURRENT=1}"
+    },
+    "demoSessionSeconds": {
+      "value": "${DEMO_SESSION_SECONDS=180}"
+    },
+    "demoDailySessions": {
+      "value": "${DEMO_DAILY_SESSIONS=20}"
+    },
+    "demoDailySessionsPerIp": {
+      "value": "${DEMO_DAILY_SESSIONS_PER_IP=3}"
+    },
+    "demoMaxSpeaks": {
+      "value": "${DEMO_MAX_SPEAKS=0}"
+    },
     "useExternalAiServices": {
       "value": "${USE_EXTERNAL_AI_SERVICES=false}"
     },

@@ -38,6 +38,12 @@ _OFFLINE_ENV = {
     "ALLOWED_ORIGINS": "",
     "ENABLE_URL_INGEST": "false",
     "CUSTOM_AVATARS_JSON": "",
+    "PUBLIC_DEMO_ENABLED": "false",
+    "DEMO_MAX_CONCURRENT": "1",
+    "DEMO_SESSION_SECONDS": "180",
+    "DEMO_DAILY_SESSIONS": "20",
+    "DEMO_DAILY_SESSIONS_PER_IP": "3",
+    "DEMO_MAX_SPEAKS": "",
 }
 os.environ.update(_OFFLINE_ENV)
 
@@ -52,17 +58,21 @@ def pytest_configure(config):  # noqa: D401
 def _reset_state(monkeypatch):
     for k, v in _OFFLINE_ENV.items():
         monkeypatch.setenv(k, v)
-    from security import DAILY_QUOTA, PENDING_RENDERS, VOICE_SESSIONS
+    from security import DAILY_QUOTA, DEMO_QUOTA, DEMO_SESSIONS, PENDING_RENDERS, VOICE_SESSIONS
     from services import avatar_registry
 
     DAILY_QUOTA.reset()
     PENDING_RENDERS.reset()
     VOICE_SESSIONS.reset()
+    DEMO_SESSIONS.reset()
+    DEMO_QUOTA.reset()
     avatar_registry.reload("")
     yield
     DAILY_QUOTA.reset()
     PENDING_RENDERS.reset()
     VOICE_SESSIONS.reset()
+    DEMO_SESSIONS.reset()
+    DEMO_QUOTA.reset()
     avatar_registry.reload("")
 
 

@@ -21,10 +21,10 @@ from config import AzureConfig
 logger = logging.getLogger(__name__)
 
 COSMOS_CONTAINER = "presentations"
-COSMOS_PROGRESS_CONTAINER = "uc1_progress"
+COSMOS_PROGRESS_CONTAINER = "playlist_progress"
 
 # Presentation / deck ids are uuid4 strings; blob prefixes derived from them
-# must never collapse to a library root (e.g. "static-videos/").
+# must never collapse to a library root (e.g. "videos/").
 _PRESENTATION_ID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 DEFAULT_SAS_MINUTES = 24 * 60
 PUBLIC_SAS_MINUTES = 15
@@ -320,21 +320,21 @@ class PresentationStore:
             logger.error("Failed to list presentations: %s", e)
             return []
 
-    def list_uc1_decks(self) -> list[dict]:
-        """List UC1 Learning Hub decks (source='uc1') with metadata."""
+    def list_decks(self) -> list[dict]:
+        """List catalog decks (source='deck') with metadata."""
         self._ensure_init()
         if not self._cosmos_container:
             return []
         try:
             query = (
                 "SELECT c.id, c.filename, c.slide_count, c.language, "
-                "c.uploaded_at, c.tags, c.source, c.published FROM c WHERE c.source = 'uc1'"
+                "c.uploaded_at, c.tags, c.source, c.published, c.live_demo FROM c WHERE c.source = 'deck'"
             )
             return list(self._cosmos_container.query_items(
                 query=query, enable_cross_partition_query=True
             ))
         except Exception as e:
-            logger.error("Failed to list UC1 decks: %s", e)
+            logger.error("Failed to list decks: %s", e)
             return []
 
     def delete_presentation(self, presentation_id: str) -> bool:
@@ -354,11 +354,31 @@ class PresentationStore:
             return False
 
     def set_deck_published(self, deck_id: str, published: bool) -> dict | None:
-        """Set the ``published`` flag on a UC1 deck. Returns the updated doc."""
+        """Set the ``published`` flag on a catalog deck. Returns the updated doc.
+
+        Unpublishing also clears ``live_demo`` (a demo deck must be public).
+        """
         doc = self.get_presentation(deck_id)
-        if not doc or doc.get("source") != "uc1":
+        if not doc or doc.get("source") != "deck":
             return None
         doc["published"] = bool(published)
+        if not published:
+            doc["live_demo"] = False
+        if not self.save_presentation(doc):
+            return None
+        return doc
+
+    def set_deck_live_demo(self, deck_id: str, enabled: bool) -> dict | None:
+        """Set the ``live_demo`` flag on a catalog deck. Returns the updated doc.
+
+        Raises ``ValueError`` when enabling it on an unpublished deck.
+        """
+        doc = self.get_presentation(deck_id)
+        if not doc or doc.get("source") != "deck":
+            return None
+        if enabled and doc.get("published") is not True:
+            raise ValueError("Deck must be published before enabling the live demo")
+        doc["live_demo"] = bool(enabled)
         if not self.save_presentation(doc):
             return None
         return doc
@@ -386,39 +406,39 @@ class PresentationStore:
             return False
 
     # ------------------------------------------------------------------
-    # UC1 Learning Paths (stored in `presentations` container, /id partition)
+    # Playlists (stored in `presentations` container, /id partition)
     # ------------------------------------------------------------------
 
-    def list_uc1_paths(self) -> list[dict]:
+    def list_playlists(self) -> list[dict]:
         self._ensure_init()
         if not self._cosmos_container:
             return []
         try:
             q = (
                 "SELECT c.id, c.title, c.description, c.status, c.steps, "
-                "c.created_at, c.updated_at FROM c WHERE c.source = 'uc1-path'"
+                "c.created_at, c.updated_at FROM c WHERE c.source = 'playlist'"
             )
             return list(self._cosmos_container.query_items(query=q, enable_cross_partition_query=True))
         except Exception as e:
-            logger.error("Failed to list UC1 paths: %s", e)
+            logger.error("Failed to list playlists: %s", e)
             return []
 
-    def get_uc1_path(self, path_id: str) -> dict | None:
+    def get_playlist(self, playlist_id: str) -> dict | None:
         self._ensure_init()
         if not self._cosmos_container:
             return None
         try:
-            doc = self._cosmos_container.read_item(item=path_id, partition_key=path_id)
-            if doc.get("source") != "uc1-path":
+            doc = self._cosmos_container.read_item(item=playlist_id, partition_key=playlist_id)
+            if doc.get("source") != "playlist":
                 return None
             return doc
         except cosmos_exceptions.CosmosResourceNotFoundError:
             return None
         except Exception as e:
-            logger.error("Failed to read path %s: %s", path_id, e)
+            logger.error("Failed to read playlist %s: %s", playlist_id, e)
             return None
 
-    def save_uc1_path(self, doc: dict) -> bool:
+    def save_playlist(self, doc: dict) -> bool:
         self._ensure_init()
         if not self._cosmos_container:
             return False
@@ -426,31 +446,31 @@ class PresentationStore:
             self._cosmos_container.upsert_item(doc)
             return True
         except Exception as e:
-            logger.error("Failed to save path: %s", e)
+            logger.error("Failed to save playlist: %s", e)
             return False
 
-    def delete_uc1_path(self, path_id: str) -> bool:
+    def delete_playlist(self, playlist_id: str) -> bool:
         self._ensure_init()
         if not self._cosmos_container:
             return False
         try:
-            self._cosmos_container.delete_item(item=path_id, partition_key=path_id)
+            self._cosmos_container.delete_item(item=playlist_id, partition_key=playlist_id)
             return True
         except cosmos_exceptions.CosmosResourceNotFoundError:
             return False
         except Exception as e:
-            logger.error("Failed to delete path %s: %s", path_id, e)
+            logger.error("Failed to delete playlist %s: %s", playlist_id, e)
             return False
 
-    def paths_referencing_deck(self, deck_id: str) -> list[dict]:
-        """Return all paths whose steps include the given deck_id."""
+    def playlists_referencing_deck(self, deck_id: str) -> list[dict]:
+        """Return all playlists whose steps include the given deck_id."""
         self._ensure_init()
         if not self._cosmos_container:
             return []
         try:
             q = (
                 "SELECT * FROM c "
-                "WHERE c.source = 'uc1-path' AND "
+                "WHERE c.source = 'playlist' AND "
                 "EXISTS(SELECT VALUE s FROM s IN c.steps WHERE s.deck_id = @deck_id)"
             )
             params = [{"name": "@deck_id", "value": deck_id}]
@@ -458,18 +478,18 @@ class PresentationStore:
                 query=q, parameters=params, enable_cross_partition_query=True,
             ))
         except Exception as e:
-            logger.error("Failed to find paths for deck %s: %s", deck_id, e)
+            logger.error("Failed to find playlists for deck %s: %s", deck_id, e)
             return []
 
     # ------------------------------------------------------------------
-    # UC1 User progress (NEW container, /user_id partition)
+    # Playlist progress per user (`playlist_progress` container, /user_id partition)
     # ------------------------------------------------------------------
 
-    def get_progress(self, user_id: str, path_id: str) -> dict | None:
+    def get_progress(self, user_id: str, playlist_id: str) -> dict | None:
         self._ensure_init()
         if not self._progress_container:
             return None
-        doc_id = f"{user_id}:{path_id}"
+        doc_id = f"{user_id}:{playlist_id}"
         try:
             return self._progress_container.read_item(item=doc_id, partition_key=user_id)
         except cosmos_exceptions.CosmosResourceNotFoundError:

@@ -7,7 +7,7 @@ Target a local dev backend started with ``run-local.ps1`` (``AUTH_MODE=disabled`
 so every caller is treated as admin). Against a deployed instance the gated
 endpoints return 401/403 for anonymous callers.
 
-WARNING: PHASE 0 deletes every deck, path and library item on the target.
+WARNING: STEP 0 deletes every deck, playlist and library item on the target.
 
 Usage:
     AI_PRESENTER_BASE_URL=http://localhost:8000 python tests/e2e_full.py
@@ -69,55 +69,55 @@ class Log:
 # Database reset
 # ---------------------------------------------------------------------------
 def reset_db(client: httpx.Client, log: Log) -> None:
-    log.header("PHASE 0  DATABASE RESET")
+    log.header("STEP 0  DATABASE RESET")
 
-    # UC1 paths first (they reference decks)
+    # Playlists first (they reference decks)
     try:
-        paths = client.get("/api/uc1/paths").json()
-        for p in paths:
-            r = client.delete(f"/api/uc1/paths/{p['id']}")
-            log.step(f"deleted path '{p.get('title', p['id'])}' -> {r.status_code}")
-        log.ok(f"UC1 paths cleared ({len(paths)} deleted)")
+        playlists = client.get("/api/playlists").json()
+        for p in playlists:
+            r = client.delete(f"/api/playlists/{p['id']}")
+            log.step(f"deleted playlist '{p.get('title', p['id'])}' -> {r.status_code}")
+        log.ok(f"playlists cleared ({len(playlists)} deleted)")
     except Exception as e:
-        log.fail(f"UC1 paths reset: {e}")
+        log.fail(f"playlists reset: {e}")
 
-    # UC1 decks
+    # Decks
     try:
-        decks = client.get("/api/uc1/decks").json()
+        decks = client.get("/api/decks").json()
         for d in decks:
             did = d.get("deck_id") or d.get("id")
-            r = client.delete(f"/api/uc1/decks/{did}?force=true")
+            r = client.delete(f"/api/decks/{did}?force=true")
             log.step(f"deleted deck '{d.get('title', did)}' -> {r.status_code}")
-        log.ok(f"UC1 decks cleared ({len(decks)} deleted)")
+        log.ok(f"decks cleared ({len(decks)} deleted)")
     except Exception as e:
-        log.fail(f"UC1 decks reset: {e}")
+        log.fail(f"decks reset: {e}")
 
-    # UC2 static-video library
+    # Video library
     try:
-        lib = client.get("/api/static-video/library").json()
+        lib = client.get("/api/video/library").json()
         for item in lib:
             jid = item.get("job_id") or item.get("id")
-            client.delete(f"/api/static-video/library/{jid}")
-        log.ok(f"UC2 library cleared ({len(lib)} deleted)")
+            client.delete(f"/api/video/library/{jid}")
+        log.ok(f"video library cleared ({len(lib)} deleted)")
     except Exception as e:
-        log.fail(f"UC2 library reset: {e}")
+        log.fail(f"video library reset: {e}")
 
-    # UC3 podcast library
+    # Podcast library
     try:
         lib = client.get("/api/podcast/library").json()
         for item in lib:
             jid = item.get("job_id") or item.get("id")
             client.delete(f"/api/podcast/library/{jid}")
-        log.ok(f"UC3 library cleared ({len(lib)} deleted)")
+        log.ok(f"podcast library cleared ({len(lib)} deleted)")
     except Exception as e:
-        log.fail(f"UC3 library reset: {e}")
+        log.fail(f"podcast library reset: {e}")
 
 
 # ---------------------------------------------------------------------------
-# UC1 — Upload and Learning Hub
+# Decks — upload and catalog
 # ---------------------------------------------------------------------------
 def upload_sample_decks(client: httpx.Client, log: Log) -> dict[str, dict]:
-    log.header("PHASE 1  UC1 UPLOAD SAMPLE FIXTURES (9 decks)")
+    log.header("STEP 1  DECKS UPLOAD SAMPLE FIXTURES (9 decks)")
 
     manifest_path = FIXTURE_DIR / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -129,7 +129,7 @@ def upload_sample_decks(client: httpx.Client, log: Log) -> dict[str, dict]:
         log.step(f"uploading {fname} ({lang}) ...")
         with path.open("rb") as fh:
             r = client.post(
-                "/api/uc1/upload",
+                "/api/decks/upload",
                 files={"file": (fname, fh, "application/vnd.openxmlformats-officedocument.presentationml.presentation")},
                 data={"language": lang},
             )
@@ -141,13 +141,13 @@ def upload_sample_decks(client: httpx.Client, log: Log) -> dict[str, dict]:
     return uploaded
 
 
-def test_uc1_hub(client: httpx.Client, log: Log, uploaded: dict) -> None:
-    log.header("PHASE 2  UC1 HUB LISTING & FILTERING")
-    decks = client.get("/api/uc1/decks").json()
+def test_decks_catalog(client: httpx.Client, log: Log, uploaded: dict) -> None:
+    log.header("STEP 2  DECKS LISTING & FILTERING")
+    decks = client.get("/api/decks").json()
     if len(decks) == len(uploaded):
-        log.ok(f"hub returns all {len(decks)} uploaded decks")
+        log.ok(f"catalog returns all {len(decks)} uploaded decks")
     else:
-        log.fail(f"hub returns {len(decks)} decks, expected {len(uploaded)}")
+        log.fail(f"catalog returns {len(decks)} decks, expected {len(uploaded)}")
 
     langs = {d.get("language") for d in decks}
     if {"fr-FR", "en-US", "es-ES"}.issubset(langs):
@@ -156,8 +156,8 @@ def test_uc1_hub(client: httpx.Client, log: Log, uploaded: dict) -> None:
         log.fail(f"missing languages; got {sorted(langs)}")
 
 
-def test_uc1_learn_search(client: httpx.Client, log: Log) -> None:
-    log.header("PHASE 3  UC1 LEARN SEARCH (semantic Q&A)")
+def test_deck_search(client: httpx.Client, log: Log) -> None:
+    log.header("STEP 3  DECK SEARCH (semantic Q&A)")
     queries = [
         ("Quels sont les équipements de protection individuelle ?", "fr-FR", "securite"),
         ("How to reduce carbon emissions in cement production?", "en-US", "decarbon"),
@@ -165,7 +165,7 @@ def test_uc1_learn_search(client: httpx.Client, log: Log) -> None:
     ]
     for q, lang, expected_frag in queries:
         try:
-            r = client.post("/api/uc1/learn/search", json={"query": q, "language": lang, "top_k": 3})
+            r = client.post("/api/search", json={"query": q, "language": lang, "top_k": 3})
             if r.status_code != 200:
                 log.fail(f"search '{q[:40]}...' -> {r.status_code} {r.text[:150]}")
                 continue
@@ -186,10 +186,10 @@ def test_uc1_learn_search(client: httpx.Client, log: Log) -> None:
 
 
 # ---------------------------------------------------------------------------
-# UC1 — Paths (manual + AI recommend)
+# Playlists (manual + AI recommend)
 # ---------------------------------------------------------------------------
-def test_uc1_paths_manual(client: httpx.Client, log: Log, uploaded: dict) -> list[str]:
-    log.header("PHASE 4  UC1 PATHS CREATION (one per group)")
+def test_playlists_manual(client: httpx.Client, log: Log, uploaded: dict) -> list[str]:
+    log.header("STEP 4  PLAYLISTS CREATION (one per group)")
     groups: dict[str, list[dict]] = {"A_safety_fr": [], "B_sustainability_en": [], "C_ai_es": []}
     for up in uploaded.values():
         groups.setdefault(up["group"], []).append(up)
@@ -201,45 +201,45 @@ def test_uc1_paths_manual(client: httpx.Client, log: Log, uploaded: dict) -> lis
         # Preserve upload order (which matches manifest order = pedagogical order)
         steps = [{"deck_id": d["deck_id"], "order": i} for i, d in enumerate(decks)]
         body = {
-            "title": f"E2E Path — {gkey}",
-            "description": f"Auto-generated path for group {gkey} by e2e_full.py",
+            "title": f"E2E Playlist — {gkey}",
+            "description": f"Auto-generated playlist for group {gkey} by e2e_full.py",
             "steps": steps,
         }
-        r = client.post("/api/uc1/paths", json=body)
+        r = client.post("/api/playlists", json=body)
         if r.status_code == 200:
             pid = r.json()["id"]
             created_ids.append(pid)
-            log.ok(f"created path for group {gkey} ({len(steps)} steps) -> {pid}")
+            log.ok(f"created playlist for group {gkey} ({len(steps)} steps) -> {pid}")
         else:
-            log.fail(f"create path {gkey} -> {r.status_code} {r.text[:200]}")
+            log.fail(f"create playlist {gkey} -> {r.status_code} {r.text[:200]}")
     return created_ids
 
 
-def test_uc1_path_progress(client: httpx.Client, log: Log, path_ids: list[str]) -> None:
-    log.header("PHASE 5  UC1 PATH PROGRESS TRACKING")
-    if not path_ids:
-        log.skip("no paths created")
+def test_playlist_progress(client: httpx.Client, log: Log, playlist_ids: list[str]) -> None:
+    log.header("STEP 5  PLAYLIST PROGRESS TRACKING")
+    if not playlist_ids:
+        log.skip("no playlists created")
         return
-    pid = path_ids[0]
+    pid = playlist_ids[0]
     user_id = "e2e-user"
-    detail = client.get(f"/api/uc1/paths/{pid}").json()
+    detail = client.get(f"/api/playlists/{pid}").json()
     first_deck = detail["steps"][0]["deck_id"]
     # Walk slides 0..3 of first deck
     for i in range(4):
-        r = client.post(f"/api/uc1/paths/{pid}/progress",
+        r = client.post(f"/api/playlists/{pid}/progress",
                         json={"user_id": user_id, "deck_id": first_deck, "slide_index": i})
         if r.status_code != 200:
             log.fail(f"progress slide {i} -> {r.status_code} {r.text[:200]}")
             return
-    prog = client.get(f"/api/uc1/paths/{pid}/progress?user_id={user_id}").json()
+    prog = client.get(f"/api/playlists/{pid}/progress?user_id={user_id}").json()
     if prog.get("resume_slide_index") == 3:
         log.ok(f"progress recorded and retrieved (resume_slide_index={prog.get('resume_slide_index')})")
     else:
         log.fail(f"progress mismatch: expected resume_slide_index=3, got {prog}")
 
 
-def test_uc1_paths_ai_recommend(client: httpx.Client, log: Log) -> None:
-    log.header("PHASE 6  UC1 AI PATH RECOMMEND (GPT-4.1)")
+def test_playlists_ai_recommend(client: httpx.Client, log: Log) -> None:
+    log.header("STEP 6  AI PLAYLIST RECOMMEND (GPT-4.1)")
     scenarios = [
         ("sécurité sur chantier et prévention des risques", "fr-FR", ["securite", "risques", "urgence"]),
         ("decarbonization and low-carbon materials in construction", "en-US", ["decarbon", "low-carbon", "circular"]),
@@ -247,7 +247,7 @@ def test_uc1_paths_ai_recommend(client: httpx.Client, log: Log) -> None:
     ]
     for topic, lang, expected_keywords in scenarios:
         log.step(f"recommend for topic='{topic[:50]}...' lang={lang}")
-        r = client.post("/api/uc1/paths/recommend",
+        r = client.post("/api/playlists/recommend",
                         json={"topic": topic, "max_steps": 3, "language": lang})
         if r.status_code != 200:
             log.fail(f"recommend -> {r.status_code} {r.text[:200]}")
@@ -263,51 +263,51 @@ def test_uc1_paths_ai_recommend(client: httpx.Client, log: Log) -> None:
 
 
 # ---------------------------------------------------------------------------
-# UC2 / UC3 smoke tests
+# Video / podcast smoke tests
 # ---------------------------------------------------------------------------
-def test_uc2_static_video(client: httpx.Client, log: Log, uploaded: dict, skip: bool = False) -> None:
-    log.header("PHASE 7  UC2 STATIC VIDEO (smoke)")
+def test_video(client: httpx.Client, log: Log, uploaded: dict, skip: bool = False) -> None:
+    log.header("STEP 7  VIDEO (smoke)")
     if skip:
         log.skip("--skip-video specified")
         return
     # Only smoke test: verify ingest endpoint accepts a deck. Full render is expensive.
     first = next(iter(uploaded.values()))
-    # UC2's ingest expects different payload — let's check if library endpoint at least works
+    # The video ingest expects different payload — let's check if library endpoint at least works
     try:
-        r = client.get("/api/static-video/library")
+        r = client.get("/api/video/library")
         if r.status_code == 200:
-            log.ok(f"UC2 library endpoint reachable ({len(r.json())} items)")
+            log.ok(f"video library endpoint reachable ({len(r.json())} items)")
         else:
-            log.fail(f"UC2 library -> {r.status_code}")
-        r = client.get("/api/static-video/languages")
+            log.fail(f"video library -> {r.status_code}")
+        r = client.get("/api/video/languages")
         if r.status_code == 200:
-            log.ok(f"UC2 languages endpoint: {len(r.json())} languages")
+            log.ok(f"video languages endpoint: {len(r.json())} languages")
         else:
-            log.fail(f"UC2 languages -> {r.status_code}")
+            log.fail(f"video languages -> {r.status_code}")
     except Exception as e:
-        log.fail(f"UC2 smoke: {e}")
+        log.fail(f"video smoke: {e}")
 
 
-def test_uc3_podcast(client: httpx.Client, log: Log) -> None:
-    log.header("PHASE 8  UC3 PODCAST / CREATE (smoke)")
+def test_podcast(client: httpx.Client, log: Log) -> None:
+    log.header("STEP 8  PODCAST / CREATE (smoke)")
     try:
         r = client.get("/api/podcast/library")
         if r.status_code == 200:
-            log.ok(f"UC3 library endpoint reachable ({len(r.json())} items)")
+            log.ok(f"podcast library endpoint reachable ({len(r.json())} items)")
         else:
-            log.fail(f"UC3 library -> {r.status_code}")
+            log.fail(f"podcast library -> {r.status_code}")
         r = client.get("/api/podcast/avatars")
         if r.status_code == 200:
-            log.ok(f"UC3 avatars endpoint: {len(r.json())} avatars")
+            log.ok(f"podcast avatars endpoint: {len(r.json())} avatars")
         else:
-            log.fail(f"UC3 avatars -> {r.status_code}")
+            log.fail(f"podcast avatars -> {r.status_code}")
         r = client.get("/api/podcast/voices")
         if r.status_code == 200:
-            log.ok(f"UC3 voices endpoint: {len(r.json())} voices")
+            log.ok(f"podcast voices endpoint: {len(r.json())} voices")
         else:
-            log.fail(f"UC3 voices -> {r.status_code}")
+            log.fail(f"podcast voices -> {r.status_code}")
     except Exception as e:
-        log.fail(f"UC3 smoke: {e}")
+        log.fail(f"podcast smoke: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ def main() -> int:
         if not args.skip_reset:
             reset_db(client, log)
         else:
-            log.header("PHASE 0  DATABASE RESET  [SKIPPED]")
+            log.header("STEP 0  DATABASE RESET  [SKIPPED]")
 
         uploaded = upload_sample_decks(client, log)
         if len(uploaded) < 9:
@@ -338,13 +338,13 @@ def main() -> int:
         # Give Cosmos a moment to index
         time.sleep(3)
 
-        test_uc1_hub(client, log, uploaded)
-        test_uc1_learn_search(client, log)
-        path_ids = test_uc1_paths_manual(client, log, uploaded)
-        test_uc1_path_progress(client, log, path_ids)
-        test_uc1_paths_ai_recommend(client, log)
-        test_uc2_static_video(client, log, uploaded, skip=args.skip_video)
-        test_uc3_podcast(client, log)
+        test_decks_catalog(client, log, uploaded)
+        test_deck_search(client, log)
+        playlist_ids = test_playlists_manual(client, log, uploaded)
+        test_playlist_progress(client, log, playlist_ids)
+        test_playlists_ai_recommend(client, log)
+        test_video(client, log, uploaded, skip=args.skip_video)
+        test_podcast(client, log)
 
     return log.summary()
 

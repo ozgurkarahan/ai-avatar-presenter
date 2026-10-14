@@ -59,6 +59,24 @@ param dailyGenerationQuota string = '50'
 @description('Global queued/running render jobs')
 param maxPendingRenders string = '3'
 
+@description('Kill switch for the anonymous narration-only live avatar demo (true/false)')
+param publicDemoEnabled string = 'false'
+
+@description('Global concurrent anonymous demo sessions (separate from maxVoiceSessions)')
+param demoMaxConcurrent string = '1'
+
+@description('Hard cap in seconds per anonymous demo session')
+param demoSessionSeconds string = '180'
+
+@description('Anonymous demo sessions per UTC day (global)')
+param demoDailySessions string = '20'
+
+@description('Anonymous demo sessions per client IP per UTC day')
+param demoDailySessionsPerIp string = '3'
+
+@description('Narrations per demo session; 0 = 2 x slide count (hard max 40)')
+param demoMaxSpeaks string = '0'
+
 // ---------------------------------------------------------------------------
 // External (pre-existing) AI Services / Speech resource, e.g. one hosting custom photo avatars
 // ---------------------------------------------------------------------------
@@ -262,6 +280,12 @@ module containerapp 'modules/containerapp.bicep' = {
     maxVoiceSessionSeconds: maxVoiceSessionSeconds
     dailyGenerationQuota: dailyGenerationQuota
     maxPendingRenders: maxPendingRenders
+    publicDemoEnabled: publicDemoEnabled
+    demoMaxConcurrent: demoMaxConcurrent
+    demoSessionSeconds: demoSessionSeconds
+    demoDailySessions: demoDailySessions
+    demoDailySessionsPerIp: demoDailySessionsPerIp
+    demoMaxSpeaks: demoMaxSpeaks
     tags: tags
   }
 }

@@ -1,13 +1,13 @@
 # End-to-end test fixtures — 9 coherent decks in 3 groups
 
-Purpose: end-to-end test corpus for the **3 use cases** (UC1 Learning Hub/Paths, UC2 Avatar Video Library, UC3 Create/Q&A Library). Each deck has 5 slides with 2-sentence speaker notes (~25-30 s spoken per slide).
+Purpose: end-to-end test corpus for the decks catalog / playlists, the narrated video library and the podcast library. Each deck has 5 slides with 2-sentence speaker notes (~25-30 s spoken per slide).
 
 Regenerate with:
 ```bash
 python tests/fixtures/samples/_generate.py
 ```
 
-## Groups — each forms a natural learning path
+## Groups — each forms a natural playlist
 
 ### 🛡️ Group A — Safety & Compliance (🇫🇷 FR)
 Progression: fundamentals → risk identification → emergency response.
@@ -38,10 +38,10 @@ Progression: intro to industrial AI → AI in production → AI ethics.
 
 ## Test coverage unlocked
 
-- **UC1 Learning Hub**: 9 decks in 3 languages → test upload, listing, filtering.
-- **UC1 Learning Paths**: 3 natural paths creatable (manually and via AI recommend).
-- **UC1 AI Recommend**: test topics "sécurité chantier" → group A, "decarbonization" → B, "inteligencia artificial" → C.
-- **UC2 Avatar Video Library**: each PPT exercises a different language + can be regenerated in another.
-- **UC3 Create / Q&A Library**: coherent corpus for retrieval tests ("Quels matériaux bas carbone ?", "¿Qué es el mantenimiento predictivo?", etc.).
+- **Decks catalog**: 9 decks in 3 languages → test upload, listing, filtering.
+- **Playlists**: 3 natural playlists creatable (manually and via AI recommend).
+- **AI playlist recommendation**: test topics "sécurité chantier" → group A, "decarbonization" → B, "inteligencia artificial" → C.
+- **Video library**: each PPT exercises a different language + can be regenerated in another.
+- **Podcast library / Q&A**: coherent corpus for retrieval tests ("Quels matériaux bas carbone ?", "¿Qué es el mantenimiento predictivo?", etc.).
 
 `manifest.json` is regenerated on each run and lists every deck with its group, language, tags, and slide count — consumable by automated e2e tests.

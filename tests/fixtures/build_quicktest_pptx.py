@@ -1,4 +1,4 @@
-"""Build a *tiny* 2-slide PPT for fast UC3 podcast iteration (~30s total speech)."""
+"""Build a *tiny* 2-slide PPT for fast podcast iteration (~30s total speech)."""
 from pathlib import Path
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -43,8 +43,8 @@ def build():
 
         slide.notes_slide.notes_text_frame.text = s["notes"]
 
-    prs.core_properties.author = "AI Avatar Presenter"
-    prs.core_properties.last_modified_by = "AI Avatar Presenter"
+    prs.core_properties.author = "DeckFM"
+    prs.core_properties.last_modified_by = "DeckFM"
     prs.save(OUT)
     print(f"Wrote {OUT} ({OUT.stat().st_size} bytes, {len(SLIDES)} slides)")
 
