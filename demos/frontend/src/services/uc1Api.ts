@@ -287,7 +287,7 @@ export function getOrCreateUserId(): string {
   try {
     let id = localStorage.getItem(USER_ID_KEY);
     if (!id) {
-      id = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+      id = 'u_' + crypto.randomUUID();
       localStorage.setItem(USER_ID_KEY, id);
     }
     return id;

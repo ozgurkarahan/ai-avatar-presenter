@@ -159,7 +159,7 @@ def test_manifest_structure():
         root = ET.fromstring(manifest_xml)
 
         # Namespaces present
-        assert "imsproject.org" in root.tag or root.tag.endswith("manifest")
+        assert root.tag in ("{http://www.imsproject.org/xsd/imscp_rootv1p1p2}manifest", "manifest")
         assert "adlcp" in manifest_xml
 
         # Organization

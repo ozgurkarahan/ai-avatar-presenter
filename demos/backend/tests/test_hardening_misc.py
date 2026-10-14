@@ -144,7 +144,7 @@ def test_security_headers(client):
     assert r.headers["referrer-policy"] == "strict-origin-when-cross-origin"
     csp = r.headers["content-security-policy"]
     assert csp.startswith("frame-ancestors ") and "*" != csp.split()[-1]
-    assert "https://teams.microsoft.com" in csp and "frame-ancestors *" not in csp
+    assert "https://teams.microsoft.com" in csp.split() and "frame-ancestors *" not in csp
 
 
 def test_frame_ancestors_env():
