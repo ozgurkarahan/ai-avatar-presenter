@@ -49,13 +49,17 @@ Every nav link has a hover tooltip; links that require sign-in show a 🔒 for a
 
 ## 📸 Screenshots
 
-| Narrated slide video | Two-avatar podcast |
-|---|---|
-| ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: slide above two photo-avatar hosts with subtitles](docs/screenshots/podcast-frame.png) |
+**Live avatar demo** — anyone can try it on the decks marked *Live demo* (narration-only, time-boxed, no sign-in):
 
-| Published video library | Decks (read-only for visitors) | Slide viewer |
+![Live avatar demo: a photo avatar presents the current slide, with Speak, Present all and Stop controls and a countdown](docs/screenshots/live-demo.png)
+
+| Home | Narrated slide video | Two-avatar podcast |
 |---|---|---|
-| ![Video library with three published videos](docs/screenshots/video-library.png) | ![Decks catalog with a sign-in prompt](docs/screenshots/decks.png) | ![Slide viewer with the live avatar panel gated behind sign-in](docs/screenshots/slide-viewer.png) |
+| ![DeckFM home page with the tagline and a "Try the live avatar demo" button](docs/screenshots/home.png) | ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: slide above two photo-avatar hosts with subtitles](docs/screenshots/podcast-frame.png) |
+
+| Published video library | Decks | Slide viewer |
+|---|---|---|
+| ![Video library with published videos](docs/screenshots/video-library.png) | ![Decks catalog with Live demo badges](docs/screenshots/decks.png) | ![Read-only slide viewer](docs/screenshots/slide-viewer.png) |
 
 The avatars shown are custom **photo avatars** (one portrait each, animated by Azure AI Speech). Out of the box the app uses the stock Azure avatars (Lisa, Harry, …); see [Custom photo avatars](#custom-photo-avatars-optional).
 
