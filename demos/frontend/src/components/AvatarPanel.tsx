@@ -246,6 +246,18 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
       }));
     }
 
+    // TURN over TCP/TLS 443 as fallback: Azure only advertises UDP 3478, which
+    // proxies and firewalls that block UDP cannot reach.
+    servers = servers.map((s: any) => {
+      const entry = typeof s === 'string' ? { urls: s } : s;
+      const urls: string[] = Array.isArray(entry.urls) ? entry.urls : [entry.urls];
+      const extra = urls.flatMap((u) => {
+        const host = /^turns?:([^:?]+)/.exec(u)?.[1];
+        return host ? [`turn:${host}:443?transport=tcp`, `turns:${host}:443?transport=tcp`] : [];
+      });
+      return { ...entry, urls: Array.from(new Set([...urls, ...extra])) };
+    });
+
     // Relay-only: on corporate / NAT-heavy networks the host and srflx pairs
     // never connect and ICE fails before it falls back to the TURN relay.
     const pc = new RTCPeerConnection({
@@ -263,12 +275,19 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     pc.onconnectionstatechange = () => {
       if (peerConnectionRef.current !== pc) return;
       if (pc.connectionState === 'connected') {
+        setConnected(true);
         setStatus((s) => (s.startsWith('Reconnected') ? s : 'Avatar connected — ready to present'));
       } else if (pc.connectionState === 'failed') {
-        setConnected(false);
-        setStatus('Video connection failed — your network may block WebRTC. Press Stop and try again.');
+        stopSessionRef.current();
+        setStatus('Video connection failed — your network blocks the avatar stream. Try another network.');
       }
     };
+    setTimeout(() => {
+      if (peerConnectionRef.current === pc && pc.connectionState !== 'connected') {
+        stopSessionRef.current();
+        setStatus('Video connection timed out — your network blocks the avatar stream. Try another network.');
+      }
+    }, 20000);
 
     // Helper: send the current local SDP offer to the backend (idempotent)
     let sdpSent = false;
@@ -440,13 +459,11 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
         if (serverSdp) {
           console.log('[WS] server SDP received in', msg.type);
           handleAnswer(msg);
-          setConnected(true);
           retryCountRef.current = 0;
           setStatus('Connecting video…');
         }
       } else if ((msg.server_sdp || msg.sdp || msg.answer) && (!msg.type || msg.type === 'session.avatar.connected')) {
         handleAnswer(msg);
-        setConnected(true);
         retryCountRef.current = 0;
         if (pendingReconnectSpeakRef.current) {
           pendingReconnectSpeakRef.current = false;
