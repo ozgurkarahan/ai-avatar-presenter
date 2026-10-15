@@ -1,4 +1,8 @@
 import type { Page, Route } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const AVATAR_DIR = path.join(__dirname, '..', '..', 'demos', 'backend', 'static', 'avatars');
 
 // Shared /api mocks for the regression + screenshot specs (deterministic, no Azure).
 export type Role = 'visitor' | 'admin';
@@ -46,7 +50,12 @@ export const calls: { method: string; path: string; body: string | null }[] = []
 
 export async function mockApi(page: Page, role: Role) {
   calls.length = 0;
-  await page.route('**/static/avatars/**', (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG_1PX }));
+  await page.route('**/static/avatars/**', (r) => {
+    // Use the real (git-ignored) deployment avatars when present for realistic screenshots.
+    const file = path.join(AVATAR_DIR, path.basename(new URL(r.request().url()).pathname));
+    const body = fs.existsSync(file) ? fs.readFileSync(file) : PNG_1PX;
+    return r.fulfill({ status: 200, contentType: 'image/png', body });
+  });
   await page.route('**/media/**', (r) => r.fulfill({ status: 200, contentType: 'video/mp4', body: '' }));
   await page.route('**/api/**', async (route: Route) => {
     const req = route.request();

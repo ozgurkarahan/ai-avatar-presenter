@@ -1,146 +1,213 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  ArrowRight, Clapperboard, Headphones, Layers, ListMusic, Mic, Play, Search, type LucideIcon,
+} from 'lucide-react';
 import { useAuth } from '../services/auth';
 import { useDemoConfig } from '../services/demo';
 import { type Deck, listDecks } from '../services/decksApi';
+import { listLibrary as listVideos, type LibrarySummary as VideoSummary } from '../services/videoApi';
+import { listLibrary as listPodcasts, type LibrarySummary as PodcastSummary } from '../services/podcast';
+import { type AvatarInfo, pickDefaultAvatar, useAvatars } from '../services/avatars';
+import {
+  Button, ButtonLink, EpisodeList, EpisodeRow, HostDisc, HostsMini, LivePill, SectionHead,
+  episodeNumber, formatDuration, humanizeTitle, languageName, pluralize,
+} from '../ui';
+import '../styles/pages/home.css';
 
-const theme = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc',
-  text: '#1a1a2e', muted: '#64748b',
-  card: '#ffffff', cardAlt: '#f8fafc', border: '#e2e8f0',
-  shadow: '0 4px 20px rgba(0, 51, 102, 0.08)',
+type Dept = { to: string; icon: LucideIcon; kicker: string; title: string; desc: string; adminOnly?: boolean };
+
+const DEPARTMENTS: Dept[] = [
+  { to: '/decks', icon: Layers, kicker: 'Decks', title: 'Browse & present', desc: 'Every published deck, presented slide by slide by the live avatar.' },
+  { to: '/search', icon: Search, kicker: 'Search', title: 'Ask your decks', desc: 'Ask anything; the right slide is found and presented for you.', adminOnly: true },
+  { to: '/playlists', icon: ListMusic, kicker: 'Playlists', title: 'Learning paths', desc: 'Chain decks into ordered playlists and resume where you left off.', adminOnly: true },
+  { to: '/live', icon: Mic, kicker: 'Live', title: 'Present a new deck', desc: 'Drop a .pptx and the avatar presents it, with Q&A grounded in the slides.', adminOnly: true },
+  { to: '/video/library', icon: Clapperboard, kicker: 'Video', title: 'Narrated videos', desc: 'Avatar-narrated videos with subtitles and a SCORM package.' },
+  { to: '/podcast/library', icon: Headphones, kicker: 'Podcast', title: 'Two-host podcasts', desc: 'Two avatars discuss your document in a podcast conversation.' },
+];
+
+type Episode = {
+  key: string;
+  kind: 'deck' | 'video' | 'podcast';
+  title: string;
+  date: number;
+  to: string;
+  meta: string[];
+  hosts: (AvatarInfo | undefined)[];
+  duration: string;
+  live?: boolean;
 };
 
-const cards: { to: string; emoji: string; title: string; desc: string; adminOnly?: boolean }[] = [
-  {
-    to: '/decks',
-    emoji: '📚',
-    title: 'Decks',
-    desc: 'Upload, browse and publish your decks. The live avatar presents any of them, slide by slide.',
-  },
-  {
-    to: '/search',
-    emoji: '🔎',
-    title: 'Search',
-    desc: 'Ask anything across all your decks. The AI finds the right slide and the avatar presents it.',
-    adminOnly: true,
-  },
-  {
-    to: '/playlists',
-    emoji: '📻',
-    title: 'Playlists',
-    desc: 'Chain decks into ordered playlists. Progress is tracked so you can resume anytime.',
-    adminOnly: true,
-  },
-  {
-    to: '/live',
-    emoji: '🎙️',
-    title: 'Live',
-    desc: 'Drop a single .pptx and let the live avatar present it, with Q&A grounded in the slides.',
-    adminOnly: true,
-  },
-  {
-    to: '/video/library',
-    emoji: '🎞️',
-    title: 'Video',
-    desc: 'Narrated avatar videos rendered from your decks, with subtitles and a SCORM package.',
-  },
-  {
-    to: '/podcast/library',
-    emoji: '🎧',
-    title: 'Podcast',
-    desc: 'Two avatars discuss your document in a podcast-style conversation.',
-  },
-];
+const KIND: Record<Episode['kind'], { icon: LucideIcon; label: string }> = {
+  deck: { icon: Mic, label: 'Live presentation' },
+  video: { icon: Clapperboard, label: 'Narrated video' },
+  podcast: { icon: Headphones, label: 'Podcast' },
+};
+
+const time = (iso?: string | null) => (iso ? new Date(iso).getTime() || 0 : 0);
 
 export default function HomePage() {
   const navigate = useNavigate();
   const auth = useAuth();
   const locked = !auth.loading && !auth.is_admin;
   const demo = useDemoConfig();
-  const [demoDeck, setDemoDeck] = useState<Deck | null>(null);
+  const { avatars } = useAvatars();
+  const [decks, setDecks] = useState<Deck[]>([]);
+  const [videos, setVideos] = useState<VideoSummary[]>([]);
+  const [podcasts, setPodcasts] = useState<PodcastSummary[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listDecks().then((d) => { if (!cancelled) setDecks(d); }).catch(() => { /* home stays usable */ });
+    listVideos().then((v) => { if (!cancelled) setVideos(v); }).catch(() => {});
+    listPodcasts().then((p) => { if (!cancelled) setPodcasts(p); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Surface the anonymous live avatar demo when at least one deck allows it.
-  useEffect(() => {
-    if (!locked || !demo.enabled) return;
-    let cancelled = false;
-    listDecks()
-      .then((ds) => { if (!cancelled) setDemoDeck(ds.find((d) => d.live_demo) ?? null); })
-      .catch(() => { /* home stays usable without the demo link */ });
-    return () => { cancelled = true; };
-  }, [locked, demo.enabled]);
+  const demoDeck = locked && demo.enabled ? decks.find((d) => d.live_demo) ?? null : null;
+
+  const lead = pickDefaultAvatar(avatars);
+  const co = useMemo(() => {
+    const others = avatars.filter((a) => a.id !== lead?.id);
+    return others.find((a) => a.gender !== lead?.gender && a.thumbnail_url)
+      ?? others.find((a) => a.gender !== lead?.gender)
+      ?? others[0];
+  }, [avatars, lead]);
+  const byName = (name?: string | null) => avatars.find((a) => a.display_name === name);
+
+  const episodes = useMemo<Episode[]>(() => {
+    const items: Episode[] = [
+      ...decks.map((d) => ({
+        key: `deck-${d.deck_id}`, kind: 'deck' as const, title: humanizeTitle(d.title), date: time(d.uploaded_at),
+        to: `/decks/${d.deck_id}/present`, meta: [pluralize(d.slide_count, 'slide'), languageName(d.language)],
+        hosts: [lead], duration: '', live: !!d.live_demo && demo.enabled,
+      })),
+      ...videos.map((v) => ({
+        key: `video-${v.job_id}`, kind: 'video' as const, title: humanizeTitle(v.title || v.document_title), date: time(v.created_at),
+        to: '/video/library', meta: ['Narrated video', languageName(v.language)], hosts: [lead],
+        duration: formatDuration(v.duration_sec),
+      })),
+      ...podcasts.map((p) => {
+        const named = (p.speaker_names ?? []).map(byName).filter(Boolean) as AvatarInfo[];
+        return {
+          key: `podcast-${p.job_id}`, kind: 'podcast' as const, title: humanizeTitle(p.title || p.document_title), date: time(p.created_at),
+          to: '/podcast/library', meta: ['Podcast', languageName(p.language)],
+          hosts: named.length ? named : [lead, co], duration: formatDuration(p.duration_sec),
+        };
+      }),
+    ];
+    return items.sort((a, b) => b.date - a.date).slice(0, 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [decks, videos, podcasts, avatars, demo.enabled]);
+
+  const minutes = Math.max(1, Math.round(demo.session_seconds / 60));
+
   return (
-    <div style={{ minHeight: 'calc(100vh - 60px)', background: theme.cardAlt, padding: '56px 24px' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: theme.accent, textTransform: 'uppercase' }}>
-            DeckFM
-          </div>
-          <h1 style={{ margin: '8px 0 12px', fontSize: 38, color: theme.brand, fontWeight: 800 }}>
-            AI avatars that present, narrate and podcast your decks
+    <div className="container page" style={{ paddingTop: 0 }}>
+      <section className="home-hero" aria-labelledby="home-title">
+        <div className="home-hero__copy">
+          <div className="eyebrow">Presented · Narrated · Podcast — by AI hosts</div>
+          <h1 id="home-title" className="display home-hero__title">
+            Every deck deserves a <em>great host.</em>
           </h1>
-          <p style={{ fontSize: 17, color: theme.muted, maxWidth: 620, margin: '0 auto', lineHeight: 1.55 }}>
-            Upload your decks once. Ask questions anytime. The avatar presents the exact slide that answers you.
+          <p className="lead">
+            AI avatars that present, narrate and podcast your decks. Upload once, ask anything —
+            {lead?.display_name ? ` ${lead.display_name}` : ' the avatar'} presents the exact slide that answers you.
           </p>
+          <div className="home-hero__ctas">
+            {demoDeck ? (
+              <Button
+                variant="primary"
+                size="lg"
+                icon={Play}
+                data-testid="home-try-live-demo"
+                onClick={() => navigate(`/decks/${demoDeck.deck_id}/present`)}
+              >
+                Watch the live demo
+              </Button>
+            ) : (
+              <ButtonLink to="/decks" variant="primary" size="lg" icon={Layers}>Browse decks</ButtonLink>
+            )}
+            <ButtonLink to={demoDeck ? '/decks' : '/podcast/library'} size="lg">
+              {demoDeck ? 'Browse decks' : 'Listen to a podcast'}
+            </ButtonLink>
+            {demoDeck && <span className="home-hero__note">Narration-only · up to {minutes} min · no sign-in</span>}
+          </div>
         </div>
 
-        {demoDeck && (
-          <div style={{ textAlign: 'center', marginTop: -24, marginBottom: 36 }}>
-            <button
-              type="button"
-              data-testid="home-try-live-demo"
-              onClick={() => navigate(`/decks/${demoDeck.deck_id}/present`)}
-              style={{
-                background: '#9a3412', color: 'white', border: 'none', borderRadius: 999,
-                padding: '12px 26px', fontSize: 16, fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 6px 18px rgba(154, 52, 18, 0.25)',
-              }}
-            >
-              🎙️ Try the live avatar demo →
-            </button>
-            <div style={{ fontSize: 12.5, color: theme.muted, marginTop: 8 }}>
-              Narration-only · up to {Math.max(1, Math.round(demo.session_seconds / 60))} min · no sign-in needed
-            </div>
-          </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
-          {cards.map((c) => (
-            <button
-              key={c.to}
-              onClick={() => navigate(c.to)}
-              style={{
-                background: theme.card,
-                border: `1px solid ${theme.border}`,
-                borderRadius: 16,
-                padding: '36px 32px',
-                textAlign: 'left',
-                cursor: 'pointer',
-                boxShadow: theme.shadow,
-                transition: 'transform 0.15s, box-shadow 0.15s, border-color 0.15s',
-                color: theme.text,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.borderColor = theme.accent;
-                e.currentTarget.style.boxShadow = '0 10px 30px rgba(0, 51, 102, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = theme.border;
-                e.currentTarget.style.boxShadow = theme.shadow;
-              }}
-            >
-              <div style={{ fontSize: 48, marginBottom: 16 }}>{c.emoji}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: theme.brand, marginBottom: 8 }}>{c.title}</div>
-              <div style={{ fontSize: 15, color: theme.muted, lineHeight: 1.5 }}>{c.desc}</div>
-              <div style={{ marginTop: 20, fontSize: 13, fontWeight: 600, color: theme.accent }}>
-                {locked && c.adminOnly ? '🔒 Sign-in required' : `Open ${c.title} →`}
+        <div className="home-hosts" aria-label="Your hosts">
+          {lead && (
+            <div className="home-host home-host--lead">
+              <HostDisc host={lead} ring speaking style={{ '--disc': 'clamp(170px, 22vw, 260px)' } as React.CSSProperties} />
+              <div className="home-host__role">
+                {demoDeck ? <LivePill>On air</LivePill> : <span className="eyebrow">Host</span>}
+                <span className="home-host__name">{lead.display_name}</span>
               </div>
-            </button>
+            </div>
+          )}
+          {co && (
+            <div className="home-host home-host--co">
+              <HostDisc host={co} tone="sand" style={{ '--disc': 'clamp(110px, 14vw, 180px)' } as React.CSSProperties} />
+              <div className="home-host__role">
+                <span className="eyebrow">Co-host</span>
+                <span className="home-host__name">{co.display_name}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {episodes.length > 0 && (
+        <section className="home-section" aria-labelledby="home-episodes">
+          <SectionHead
+            className="home-section__head"
+            title={<span id="home-episodes">This week on DeckFM</span>}
+            aside={pluralize(decks.length + videos.length + podcasts.length, 'episode')}
+          />
+          <EpisodeList label="Latest episodes">
+            {episodes.map((e, i) => (
+              <EpisodeRow
+                key={e.key}
+                num={episodeNumber(i + 1)}
+                title={e.title}
+                to={e.to}
+                meta={e.meta}
+                kind={KIND[e.kind]}
+                hosts={<HostsMini hosts={e.hosts} />}
+                duration={e.live ? <LivePill>Live demo</LivePill> : e.duration}
+                actions={(
+                  <Link
+                    to={e.to}
+                    className={`btn btn--icon btn--sm${i === 0 ? ' btn--primary' : ''}`}
+                    aria-label={`Open ${e.title}`}
+                  >
+                    <Play aria-hidden />
+                  </Link>
+                )}
+              />
+            ))}
+          </EpisodeList>
+        </section>
+      )}
+
+      <section className="home-section" aria-labelledby="home-sections">
+        <SectionHead className="home-section__head" title={<span id="home-sections">Inside DeckFM</span>} aside="Six ways in" />
+        <div className="home-departments">
+          {DEPARTMENTS.map((d) => (
+            <Link key={d.to} to={d.to} className="home-dept">
+              <span className="home-dept__kicker eyebrow"><d.icon aria-hidden />{d.kicker}</span>
+              <span className="home-dept__title">{d.title}</span>
+              <span className="home-dept__desc">{d.desc}</span>
+              <span className="home-dept__cta">
+                {locked && d.adminOnly
+                  ? <span className="home-dept__lock">Sign-in required</span>
+                  : <>Open {d.kicker} <ArrowRight aria-hidden /></>}
+              </span>
+            </Link>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

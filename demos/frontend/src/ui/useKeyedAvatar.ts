@@ -27,6 +27,7 @@ function remember(url: string, value: string | null) {
 }
 
 function cornersAreGreen(data: Uint8ClampedArray, w: number, h: number): boolean {
+  if (w < 16 || h < 16) return false;
   const patch = Math.max(2, Math.floor(Math.min(w, h) * 0.04));
   const corners: [number, number][] = [[0, 0], [w - patch, 0], [0, h - patch], [w - patch, h - patch]];
   let green = 0;

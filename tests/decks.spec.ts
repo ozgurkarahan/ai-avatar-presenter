@@ -42,10 +42,10 @@ test.describe.configure({ mode: 'serial' });
 test.describe('Decks — per-page smoke', () => {
   test('Home page renders heading + tiles', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
-    await expect(page.getByRole('heading', { name: /present, narrate and podcast your decks/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Search/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Decks/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Playlists/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Search/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Decks/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Playlists/i })).toBeVisible();
   });
 
   test('Decks page renders upload zone and heading', async ({ page }) => {
@@ -75,7 +75,7 @@ test.describe('Decks — navigation links', () => {
     await page.goto(`${BASE_URL}/decks`);
     await page.getByRole('link', { name: /Home/ }).first().click();
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/?$`));
-    await expect(page.getByRole('heading', { name: /podcast your decks/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   test('TopNav: Search pill navigates to /search', async ({ page }) => {
@@ -100,25 +100,27 @@ test.describe('Decks — navigation links', () => {
 
   test('TopNav: Video Create pill navigates to /video (non-regression)', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
+    await page.getByRole('button', { name: /^Create/ }).click();
     await page.locator('a[href="/video"]').first().click();
     await expect(page).toHaveURL(/\/video(\/)?$/);
   });
 
   test('TopNav: Podcast Create pill navigates to /podcast (non-regression)', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
+    await page.getByRole('button', { name: /^Create/ }).click();
     await page.locator('a[href="/podcast"]').first().click();
     await expect(page).toHaveURL(/\/podcast(\/)?$/);
   });
 
   test('Home tile → Search', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
-    await page.getByRole('button', { name: /Open Search/i }).click();
+    await page.getByRole('link', { name: /Open Search/i }).click();
     await expect(page).toHaveURL(/\/search$/);
   });
 
   test('Home tile → Decks', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
-    await page.getByRole('button', { name: /Open Decks/i }).click();
+    await page.getByRole('link', { name: /Open Decks/i }).click();
     await expect(page).toHaveURL(/\/decks$/);
   });
 });

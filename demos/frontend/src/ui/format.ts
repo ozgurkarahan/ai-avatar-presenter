@@ -33,8 +33,12 @@ export function humanizeTitle(title: string | null | undefined): string {
   if (!t) return 'Untitled';
   if (/\s/.test(t) || /[A-Z]/.test(t)) return t;
   const spaced = t.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  const words = spaced.split(' ').map((w) => (ACRONYMS.has(w.toLowerCase()) ? w.toUpperCase() : w));
+  const out = words.join(' ');
+  return out.charAt(0).toUpperCase() + out.slice(1);
 }
+
+const ACRONYMS = new Set(['ai', 'ia', 'ki', 'api', 'pdf', 'co2', 'esg', 'ux', 'mdr', 'iot']);
 
 /** 98 → "1:38"; 3725 → "1:02:05"; null → "—". */
 export function formatDuration(seconds: number | null | undefined): string {

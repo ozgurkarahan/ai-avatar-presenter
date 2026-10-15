@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Lock, ShieldAlert, X } from 'lucide-react';
 import { AUTH_ERROR_EVENT, type AuthErrorDetail, signIn, useAuth } from '../services/auth';
 import { NOT_ENABLED_MESSAGE } from './AuthGate';
+import { buttonClass } from '../ui';
 
 /** Global banner for 401/403 responses from the API (see installAuthErrorInterceptor). */
 export default function AuthToast() {
@@ -25,19 +27,11 @@ export default function AuthToast() {
 
   if (!toast) return null;
   const needsSignIn = toast.status === 401 && !auth.authenticated;
+  const Icon = needsSignIn ? Lock : ShieldAlert;
   return (
-    <div
-      role="alert"
-      data-testid="auth-toast"
-      style={{
-        position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 2000,
-        background: needsSignIn ? '#003366' : '#9a3412', color: 'white',
-        borderRadius: 10, padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-        display: 'flex', alignItems: 'center', gap: 12, fontSize: 13.5, maxWidth: 'calc(100vw - 32px)',
-      }}
-    >
-      <span aria-hidden>{needsSignIn ? '🔒' : '⛔'}</span>
-      <span>
+    <div role="alert" data-testid="auth-toast" className="toast">
+      <Icon aria-hidden style={{ width: 18, height: 18, flex: 'none' }} />
+      <span style={{ flex: 1 }}>
         {needsSignIn
           ? 'Sign in required — this action is only available to signed-in demo users.'
           : toast.status === 401
@@ -45,24 +39,12 @@ export default function AuthToast() {
             : NOT_ENABLED_MESSAGE}
       </span>
       {(needsSignIn || toast.status === 401) && auth.auth_mode !== 'disabled' && (
-        <button
-          type="button"
-          onClick={signIn}
-          style={{
-            background: 'white', color: '#003366', border: 'none', borderRadius: 6,
-            padding: '4px 10px', fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
-          }}
-        >
+        <button type="button" onClick={signIn} className={buttonClass({ size: 'sm', variant: 'primary' })}>
           Sign in
         </button>
       )}
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={() => setToast(null)}
-        style={{ background: 'transparent', color: 'white', border: 'none', cursor: 'pointer', fontSize: 15 }}
-      >
-        ✕
+      <button type="button" aria-label="Dismiss" onClick={() => setToast(null)} className={buttonClass({ size: 'sm', variant: 'ghost', iconOnly: true })}>
+        <X aria-hidden />
       </button>
     </div>
   );
