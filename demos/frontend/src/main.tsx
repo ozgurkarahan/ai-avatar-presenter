@@ -16,6 +16,7 @@ import TopNav from './components/TopNav';
 import AuthToast from './components/AuthToast';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider, installAuthErrorInterceptor } from './services/auth';
+import './styles/index.css';
 
 installAuthErrorInterceptor();
 

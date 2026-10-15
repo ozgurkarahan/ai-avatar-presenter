@@ -1,0 +1,147 @@
+/*
+ * DeckFM design tokens — "Radio Editorial".
+ * Single source of truth for colour, type, space, shape and motion.
+ * Components must reference these variables; never hard-code hex values.
+ */
+:root {
+  /* Surfaces */
+  --c-bg: #F6F1E8;          /* cream page */
+  --c-paper: #FBF8F2;       /* raised paper (cards, inputs) */
+  --c-surface: #FFFFFF;     /* slides, media frames */
+  --c-sand: #EADFCF;        /* host-disc / placeholder fill */
+  --c-stage: #1C1917;       /* behind video players */
+  --c-on-stage: #F6F1E8;
+
+  /* Ink */
+  --c-ink: #1C1917;
+  --c-ink-2: #3B3631;       /* secondary body text */
+  --c-muted: #6B645D;       /* 5.18:1 on bg — AA */
+  --c-line: #E2D9CA;        /* hairlines */
+  --c-line-strong: #CFC3B0; /* input borders, dashed zones */
+  --c-rule: #1C1917;        /* masthead + section rules */
+
+  /* Accent */
+  --c-clay: #B8461E;        /* fills: CTA, live, active */
+  --c-clay-ink: #A63D17;    /* small accent text — 5.65:1 on bg */
+  --c-clay-50: #F6E6DC;     /* tinted backgrounds */
+  --c-on-clay: #FFFFFF;     /* 5.34:1 on clay */
+  --c-sage: #3F6F5E;        /* success / secondary accent — 5.12:1 */
+  --c-sage-50: #E4ECE6;
+
+  /* Feedback */
+  --c-danger: #9A2B12;
+  --c-danger-50: #FBE7DF;
+  --c-info-50: #EFE9DE;
+  --c-focus: #A63D17;
+  --c-scrim: rgba(28, 25, 23, 0.72);
+
+  /* Type */
+  --font-display: 'Newsreader Variable', Newsreader, Georgia, 'Times New Roman', serif;
+  --font-ui: 'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --fs-display: clamp(2.75rem, 1.6rem + 3.6vw, 5rem);    /* 44 → 80 */
+  --fs-h1: clamp(2rem, 1.45rem + 1.8vw, 3.25rem);         /* 32 → 52 */
+  --fs-h2: clamp(1.625rem, 1.4rem + 0.75vw, 2.125rem);    /* 26 → 34 */
+  --fs-h3: 1.5625rem;    /* 25 */
+  --fs-lead: 1.15625rem; /* 18.5 */
+  --fs-body: 0.9375rem;  /* 15 */
+  --fs-sm: 0.8125rem;    /* 13 */
+  --fs-xs: 0.71875rem;   /* 11.5 — eyebrows */
+  --lh-tight: 1.02;
+  --lh-snug: 1.2;
+  --lh-body: 1.6;
+  --tracking-eyebrow: 0.16em;
+
+  /* Space (4px grid) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 96px;
+
+  /* Shape */
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+  --bw: 1px;
+
+  /* Elevation — editorial = flat; only overlays lift */
+  --shadow-overlay: 0 24px 60px rgba(28, 25, 23, 0.22);
+  --shadow-media: 0 12px 32px rgba(28, 25, 23, 0.14);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 320ms;
+
+  /* Layout */
+  --maxw: 1280px;
+  --maxw-text: 680px;
+  --gutter: clamp(16px, 5vw, 80px);
+  --masthead-h: 72px;
+  --tap: 44px;
+
+  color-scheme: light;
+}
+
+/* Microsoft Teams — dark theme (set by services/teams via data-theme on <html>) */
+[data-theme='teams-dark'] {
+  --c-bg: #1F1E1D;
+  --c-paper: #292826;
+  --c-surface: #FFFFFF;
+  --c-sand: #3A352F;
+  --c-stage: #0F0E0D;
+  --c-ink: #F3EEE6;
+  --c-ink-2: #DDD5CA;
+  --c-muted: #B9B0A5;
+  --c-line: #3E3B37;
+  --c-line-strong: #5A544D;
+  --c-rule: #F3EEE6;
+  --c-clay: #B8461E;
+  --c-clay-ink: #F2936C;
+  --c-clay-50: #3B2A21;
+  --c-on-clay: #FFFFFF;
+  --c-sage: #8CC0A9;
+  --c-sage-50: #26332D;
+  --c-danger: #FF9C7F;
+  --c-danger-50: #3D211A;
+  --c-info-50: #2E2B27;
+  --c-focus: #F2936C;
+  color-scheme: dark;
+}
+
+/* Microsoft Teams — high contrast */
+[data-theme='teams-contrast'] {
+  --c-bg: #000000;
+  --c-paper: #000000;
+  --c-surface: #FFFFFF;
+  --c-sand: #000000;
+  --c-stage: #000000;
+  --c-on-stage: #FFFFFF;
+  --c-ink: #FFFFFF;
+  --c-ink-2: #FFFFFF;
+  --c-muted: #FFFFFF;
+  --c-line: #FFFFFF;
+  --c-line-strong: #FFFFFF;
+  --c-rule: #FFFFFF;
+  --c-clay: #FFFF00;
+  --c-clay-ink: #FFFF00;
+  --c-clay-50: #000000;
+  --c-on-clay: #000000;
+  --c-sage: #3FF23F;
+  --c-sage-50: #000000;
+  --c-danger: #FF6B6B;
+  --c-danger-50: #000000;
+  --c-info-50: #000000;
+  --c-focus: #00FFFF;
+  --c-scrim: rgba(0, 0, 0, 0.9);
+  color-scheme: dark;
+}

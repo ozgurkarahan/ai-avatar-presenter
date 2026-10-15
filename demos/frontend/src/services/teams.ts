@@ -61,3 +61,23 @@ export function onTeamsThemeChange(callback: (theme: string) => void): void {
     app.registerOnThemeChangeHandler(callback);
   }
 }
+
+/** Maps a Teams theme name onto the `data-theme` token overrides (styles/tokens.css). */
+export function applyTeamsThemeToDocument(theme: string): void {
+  const root = document.documentElement;
+  if (theme === 'dark') root.dataset.theme = 'teams-dark';
+  else if (theme === 'contrast') root.dataset.theme = 'teams-contrast';
+  else delete root.dataset.theme;
+}
+
+/**
+ * Initializes Teams once and keeps the document theme in sync with the host.
+ * Outside Teams this resolves to `false` and leaves the default light theme.
+ */
+export async function syncDocumentThemeWithTeams(): Promise<boolean> {
+  const inTeams = await initializeTeams();
+  if (!inTeams) return false;
+  applyTeamsThemeToDocument(getTeamsTheme());
+  onTeamsThemeChange(applyTeamsThemeToDocument);
+  return true;
+}
