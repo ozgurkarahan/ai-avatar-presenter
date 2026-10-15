@@ -96,6 +96,15 @@ Only the concurrency slot is in-process (the app is capped at one replica).
   rightmost entry becomes that proxy's address and the per-IP quota degrades to
   a global one — revisit before doing so. The global daily cap and concurrency
   cap do not depend on the IP.
+- **Validating the chain:** set `LOG_FORWARDING_CHAIN=true` on a revision
+  (`az containerapp update --set-env-vars`), open a demo WebSocket with an
+  invalid `deck_id` (rejected before any session/quota logic), read the
+  `Forwarding chain:` log line, then remove the variable. It logs raw IPs, so
+  keep it off otherwise. Note that managed corporate devices may reach Azure
+  through Microsoft's secure-access edge, so ACA sees rotating Microsoft
+  egress IPs rather than the home line — `DEMO_QUOTA_EXEMPT_IPS` only matches
+  devices that connect directly (signed-in admins use the admin avatar and
+  are never subject to demo quotas).
 - A quota unit is consumed when a session is accepted, even if the visitor
   leaves immediately or Azure fails to connect (conservative).
 
