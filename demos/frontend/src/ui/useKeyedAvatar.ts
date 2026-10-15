@@ -15,6 +15,8 @@ const MAX_ENTRIES = 32;
 const MAX_SIDE = 640;
 const resolved = new Map<string, string | null>();
 const inflight = new Map<string, Promise<string | null>>();
+/** URLs whose image failed to load at all — callers show a monogram instead. */
+const failed = new Set<string>();
 
 function remember(url: string, value: string | null) {
   resolved.set(url, value);
@@ -67,7 +69,7 @@ function process(url: string): Promise<string | null> {
       if (new URL(url, window.location.href).origin !== window.location.origin) img.crossOrigin = 'anonymous';
     } catch { /* relative URL */ }
     img.decoding = 'async';
-    img.onerror = () => resolve(null);
+    img.onerror = () => { failed.add(url); resolve(null); };
     img.onload = () => {
       try {
         const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
@@ -109,7 +111,7 @@ export function keyAvatar(url: string): Promise<string | null> {
 /** Returns the keyed (transparent) image URL when available, else the original. */
 export function useKeyedAvatar(url: string | null | undefined): { src: string | null; status: KeyedStatus } {
   const initial = (): { src: string | null; status: KeyedStatus } => {
-    if (!url) return { src: null, status: 'none' };
+    if (!url || failed.has(url)) return { src: null, status: 'none' };
     if (resolved.has(url)) {
       const k = resolved.get(url);
       return k ? { src: k, status: 'keyed' } : { src: url, status: 'original' };
@@ -123,7 +125,10 @@ export function useKeyedAvatar(url: string | null | undefined): { src: string | 
     if (!url || resolved.has(url)) return;
     let cancelled = false;
     keyAvatar(url).then((k) => {
-      if (!cancelled) setState(k ? { src: k, status: 'keyed' } : { src: url, status: 'original' });
+      if (cancelled) return;
+      if (k) setState({ src: k, status: 'keyed' });
+      else if (failed.has(url)) setState({ src: null, status: 'none' });
+      else setState({ src: url, status: 'original' });
     });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

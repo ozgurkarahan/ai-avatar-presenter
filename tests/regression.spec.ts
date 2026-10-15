@@ -160,6 +160,51 @@ test.describe('Regression — search, libraries, playlists', () => {
   });
 });
 
+test.describe('Regression — redesign behaviours', () => {
+  test('mobile menu sheet opens and navigates', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await open(page, 'visitor', '/');
+    await page.getByRole('button', { name: /open menu/i }).click();
+    const sheet = page.getByRole('navigation', { name: 'Sections' });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('link', { name: 'Decks' }).click();
+    await expect(page).toHaveURL(/\/decks$/);
+    await expect(sheet).toHaveCount(0);
+  });
+
+  test('create menu is keyboard operable and closes on Escape', async ({ page }) => {
+    await open(page, 'admin', '/');
+    const trigger = page.getByRole('button', { name: /^Create/ });
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menu', { name: 'Create' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu', { name: 'Create' })).toHaveCount(0);
+  });
+
+  test('presenter controls work from the keyboard', async ({ page }) => {
+    await open(page, 'visitor', '/decks/deck-plain/present');
+    await page.getByTestId('slide-next').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('slide-counter')).toContainText('2');
+    await page.getByTestId('slide-prev').focus();
+    await page.keyboard.press(' ');
+    await expect(page.getByTestId('slide-counter')).toContainText('1');
+  });
+
+  test('host disc falls back to a monogram when the avatar image fails', async ({ page }) => {
+    await mockApi(page, 'visitor');
+    await page.route('**/static/avatars/photo_female.png', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    const sofia = page.getByRole('img', { name: 'Sofia' }).first();
+    await expect(sofia).toHaveAttribute('data-avatar-status', 'none');
+    await expect(sofia).toContainText('S');
+    const lucas = page.getByRole('img', { name: 'Lucas' }).first();
+    await expect(lucas).toHaveAttribute('data-avatar-status', /keyed|original/);
+  });
+});
+
 test.describe('Regression — testid inventory', () => {
   test('stable hooks still exist on their pages', async ({ page }) => {
     const expectations: [Role, string, string[]][] = [

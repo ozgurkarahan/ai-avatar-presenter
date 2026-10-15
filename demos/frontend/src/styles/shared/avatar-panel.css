@@ -137,6 +137,14 @@
   min-width: 0;
 }
 
+/* Keep controls aligned with the capped portrait stage when the rail is wide (stacked layout). */
+.avatar-rail--portrait .avatar-rail__controls,
+.avatar-rail--portrait .avatar-rail__note {
+  width: 100%;
+  max-width: 460px;
+  margin-inline: auto;
+}
+
 .avatar-rail__start {
   flex: 1 1 auto;
 }

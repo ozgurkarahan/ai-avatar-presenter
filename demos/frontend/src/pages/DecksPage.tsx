@@ -1,30 +1,33 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowRight, Eye, Layers, Mic, Play, Trash2 } from 'lucide-react';
 import { Deck, deleteDeck, listDecks, publishDeck, setDeckLiveDemo, uploadDeck } from '../services/decksApi';
 import { useAuth } from '../services/auth';
 import { useDemoConfig } from '../services/demo';
+import { pickDefaultAvatar, useAvatars } from '../services/avatars';
 import { GateNotice, LiveDemoBadge, LiveDemoToggle, PublishBadge, PublishToggle } from '../components/AuthGate';
+import {
+  Alert, Button, Dropzone, EmptyState, EpisodeList, EpisodeRow, HostDisc, HostsMini, LivePill, PageHeader,
+  SectionHead, Spinner, episodeNumber, formatDate, humanizeTitle, languageName, pluralize,
+} from '../ui';
+import '../styles/pages/decks.css';
 
-const theme = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc',
-  text: '#1a1a2e', muted: '#64748b',
-  card: '#ffffff', cardAlt: '#f8fafc', border: '#e2e8f0',
-  shadow: '0 4px 20px rgba(0, 51, 102, 0.08)',
-};
+const PPTX_ACCEPT = '.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const DECK_KIND = { icon: Mic, label: 'Live presentation' };
 
 export default function DecksPage() {
   const navigate = useNavigate();
   const [decks, setDecks] = useState<Deck[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const auth = useAuth();
   const isAdmin = auth.is_admin;
   const [publishing, setPublishing] = useState<string | null>(null);
   const [liveBusy, setLiveBusy] = useState<string | null>(null);
   const demo = useDemoConfig();
+  const { avatars } = useAvatars();
+  const host = pickDefaultAvatar(avatars);
   const firstLiveDemo = decks?.find((d) => d.live_demo);
   const showDemoCta = !auth.loading && !isAdmin && demo.enabled && !!firstLiveDemo;
 
@@ -78,7 +81,6 @@ export default function DecksPage() {
       setError(`Upload failed: ${e?.message ?? e}`);
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
     }
   }
 
@@ -91,191 +93,143 @@ export default function DecksPage() {
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 60px)', background: theme.cardAlt, padding: '32px 24px' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: theme.accent, textTransform: 'uppercase' }}>
-            DeckFM · Decks
-          </div>
-          <h1 style={{ margin: '6px 0 4px', fontSize: 28, color: theme.brand, fontWeight: 800 }}>Decks</h1>
-          <p style={{ color: theme.muted, margin: 0 }}>
-            {isAdmin
-              ? 'Upload .pptx files to make them searchable and presentable by the avatar. Publish a deck to make it visible to anonymous visitors.'
-              : 'Browse the published decks slide by slide.'}
-          </p>
-        </div>
+    <div className="container page decks-page">
+      <PageHeader
+        eyebrow="Library"
+        title="Decks"
+        lead={isAdmin
+          ? 'Upload .pptx files to make them searchable and presentable by the avatar. Publish a deck to make it visible to anonymous visitors.'
+          : 'Browse the published decks slide by slide.'}
+      />
 
-        {showDemoCta && firstLiveDemo && (
-          <button
-            type="button"
-            data-testid="try-live-demo-cta"
-            onClick={() => navigate(`/decks/${firstLiveDemo.deck_id}/present`)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
-              background: 'linear-gradient(90deg, #fff7ed, #ffffff)', border: '1px solid #fdba74',
-              borderRadius: 12, padding: '14px 18px', marginBottom: 16, cursor: 'pointer', color: theme.text,
-            }}
-          >
-            <span style={{ fontSize: 26 }} aria-hidden>🎙️</span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontWeight: 700, color: '#9a3412', fontSize: 15 }}>Try the live avatar demo →</span>
-              <span style={{ fontSize: 13, color: theme.muted }}>
-                Watch the real-time avatar narrate “{firstLiveDemo.title}”. No sign-in needed.
-              </span>
-            </span>
-          </button>
-        )}
-
-        {!auth.loading && !isAdmin && (
-          <GateNotice action="upload decks and let the live avatar present them" style={{ marginBottom: 24 }} />
-        )}
-
-        {/* Upload zone */}
-        {isAdmin && (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            const f = e.dataTransfer.files?.[0];
-            if (f) handleFile(f);
-          }}
-          onClick={() => inputRef.current?.click()}
-          style={{
-            background: dragOver ? '#f0f9ff' : theme.card,
-            border: `2px dashed ${dragOver ? theme.accent : theme.border}`,
-            borderRadius: 14,
-            padding: '36px 24px',
-            textAlign: 'center',
-            cursor: uploading ? 'progress' : 'pointer',
-            marginBottom: 24,
-            transition: 'border-color 0.15s, background 0.15s',
-          }}
+      {showDemoCta && firstLiveDemo && (
+        <button
+          type="button"
+          data-testid="try-live-demo-cta"
+          className="decks-demo"
+          onClick={() => navigate(`/decks/${firstLiveDemo.deck_id}/present`)}
         >
-          <input
-            ref={inputRef}
-            data-testid="deck-upload-input"
-            type="file"
-            accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            style={{ display: 'none' }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+          {host && <HostDisc host={host} size={72} speaking label="" className="decks-demo__disc" />}
+          <span className="decks-demo__copy">
+            <LivePill>Live demo · no sign-in</LivePill>
+            <span className="decks-demo__title">Try the live avatar demo</span>
+            <span className="decks-demo__text">
+              {host?.display_name ? `Watch ${host.display_name}, the real-time avatar, narrate` : 'Watch the real-time avatar narrate'}
+              {' '}<em>{humanizeTitle(firstLiveDemo.title)}</em>.
+            </span>
+          </span>
+          <ArrowRight aria-hidden className="decks-demo__arrow" />
+        </button>
+      )}
+
+      {!auth.loading && !isAdmin && (
+        <GateNotice action="upload decks and let the live avatar present them" className="decks-gate" />
+      )}
+
+      {isAdmin && (
+        <Dropzone
+          className="decks-upload"
+          onFile={handleFile}
+          accept={PPTX_ACCEPT}
+          busy={uploading}
+          title="Drop a .pptx here or click to browse"
+          busyTitle="Uploading…"
+          hint="We'll extract slides, index them for search, and keep them ready to present."
+          inputProps={{ 'data-testid': 'deck-upload-input', accept: PPTX_ACCEPT }}
+        />
+      )}
+
+      {error && <Alert tone="error" className="decks-alert">{error}</Alert>}
+
+      {decks === null ? (
+        <div className="decks-state"><Spinner label="Loading decks…" /></div>
+      ) : decks.length === 0 ? (
+        <EmptyState icon={Layers} title={isAdmin ? 'No decks yet' : 'No published decks yet'}>
+          {isAdmin ? 'Upload a .pptx above to get started.' : 'Check back later.'}
+        </EmptyState>
+      ) : (
+        <section aria-labelledby="decks-list-title">
+          <SectionHead
+            title={<span id="decks-list-title">{isAdmin ? 'All decks' : 'Published decks'}</span>}
+            aside={pluralize(decks.length, 'deck')}
           />
-          <div style={{ fontSize: 42, marginBottom: 8 }}>{uploading ? '⏳' : '📤'}</div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: theme.brand }}>
-            {uploading ? 'Uploading…' : 'Drop a .pptx here or click to browse'}
-          </div>
-          <div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>
-            We'll extract slides, index them for search, and keep them ready to present.
-          </div>
-        </div>
-        )}
-
-        {error && (
-          <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
-            {error}
-          </div>
-        )}
-
-        {/* Deck grid */}
-        {decks === null ? (
-          <div style={{ color: theme.muted, textAlign: 'center', padding: 40 }}>Loading decks…</div>
-        ) : decks.length === 0 ? (
-          <div style={{ color: theme.muted, textAlign: 'center', padding: 40, background: theme.card, borderRadius: 12, border: `1px solid ${theme.border}` }}>
-            {isAdmin ? 'No decks yet. Upload a .pptx above to get started.' : 'No published decks yet. Check back later.'}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-            {decks.map((d) => (
-              <div
-                key={d.deck_id}
-                data-testid="deck-card"
-                style={{
-                  background: theme.card,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: 12,
-                  padding: 18,
-                  boxShadow: theme.shadow,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: theme.brand, lineHeight: 1.3, flex: 1, wordBreak: 'break-word' }}>
-                    {d.title}
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, background: theme.cardAlt, color: theme.muted, padding: '2px 8px', borderRadius: 999, border: `1px solid ${theme.border}`, whiteSpace: 'nowrap' }}>
-                    {d.language || '—'}
+          <EpisodeList label="Decks" className="decks-list">
+            {decks.map((d, i) => {
+              const title = humanizeTitle(d.title);
+              const to = `/decks/${d.deck_id}/present`;
+              const live = demo.enabled && !!d.live_demo;
+              const tags = d.tags && d.tags.length > 0 ? (
+                <span className="decks-tags">
+                  {d.tags.map((t) => <span key={t} className="decks-tag">#{t}</span>)}
+                </span>
+              ) : null;
+              const extra = isAdmin ? (
+                <>
+                  <PublishBadge published={d.published} />
+                  <LiveDemoBadge liveDemo={d.live_demo} />
+                  <span className="decks-toggles">
+                    <PublishToggle
+                      published={d.published}
+                      busy={publishing === d.deck_id}
+                      onToggle={(next) => handleTogglePublish(d.deck_id, next)}
+                    />
+                    <LiveDemoToggle
+                      liveDemo={d.live_demo}
+                      published={d.published}
+                      busy={liveBusy === d.deck_id}
+                      onToggle={(next) => handleToggleLiveDemo(d.deck_id, next)}
+                    />
                   </span>
-                </div>
-                <div style={{ fontSize: 13, color: theme.muted }}>
-                  {d.slide_count} slide{d.slide_count === 1 ? '' : 's'}
-                  {d.uploaded_at ? ` · ${new Date(d.uploaded_at).toLocaleDateString()}` : ''}
-                </div>
-                {isAdmin ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <PublishBadge published={d.published} />
-                      <LiveDemoBadge liveDemo={d.live_demo} />
-                    </span>
-                    <span style={{ display: 'flex', gap: 6 }}>
-                      <PublishToggle
-                        published={d.published}
-                        busy={publishing === d.deck_id}
-                        onToggle={(next) => handleTogglePublish(d.deck_id, next)}
-                      />
-                      <LiveDemoToggle
-                        liveDemo={d.live_demo}
-                        published={d.published}
-                        busy={liveBusy === d.deck_id}
-                        onToggle={(next) => handleToggleLiveDemo(d.deck_id, next)}
-                      />
-                    </span>
-                  </div>
-                ) : demo.enabled && d.live_demo ? (
-                  <div><LiveDemoBadge liveDemo={d.live_demo} /></div>
-                ) : null}
-                {d.tags && d.tags.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {d.tags.map((t) => (
-                      <span key={t} style={{ fontSize: 11, background: '#eff6ff', color: theme.brandLight, padding: '2px 7px', borderRadius: 4 }}>
-                        #{t}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                  <button
-                    data-testid="deck-open"
-                    onClick={() => navigate(`/decks/${d.deck_id}/present`)}
-                    style={{
-                      flex: 1, padding: '8px 12px', border: 'none', borderRadius: 6,
-                      background: theme.brandLight, color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                    }}
-                  >
-                    {isAdmin ? '🎙️ Present' : demo.enabled && d.live_demo ? '🎙️ View & try live demo' : '👀 View slides'}
-                  </button>
-                  {isAdmin && (
-                  <button
-                    onClick={() => handleDelete(d.deck_id)}
-                    disabled={deleting === d.deck_id}
-                    style={{
-                      padding: '8px 12px', border: `1px solid ${theme.border}`, borderRadius: 6,
-                      background: 'white', color: '#c0392b', fontWeight: 600, fontSize: 13,
-                      cursor: deleting === d.deck_id ? 'progress' : 'pointer',
-                      opacity: deleting === d.deck_id ? 0.6 : 1,
-                    }}
-                  >
-                    {deleting === d.deck_id ? '…' : '🗑'}
-                  </button>
+                </>
+              ) : live ? <LiveDemoBadge liveDemo={d.live_demo} /> : null;
+              return (
+                <EpisodeRow
+                  key={d.deck_id}
+                  data-testid="deck-card"
+                  num={episodeNumber(i + 1)}
+                  title={title}
+                  to={to}
+                  titleProps={{ title: d.title }}
+                  meta={[
+                    pluralize(d.slide_count, 'slide'),
+                    languageName(d.language),
+                    formatDate(d.uploaded_at),
+                    tags,
+                  ]}
+                  kind={DECK_KIND}
+                  hosts={host ? <HostsMini hosts={[host]} /> : null}
+                  extra={extra}
+                  actions={(
+                    <>
+                      <Button
+                        size="sm"
+                        data-testid="deck-open"
+                        variant={d.live_demo && (isAdmin || demo.enabled) ? 'primary' : 'outline'}
+                        icon={isAdmin ? Mic : live ? Play : Eye}
+                        onClick={() => navigate(to)}
+                      >
+                        {isAdmin ? 'Present' : live ? 'Try live demo' : 'View slides'}
+                      </Button>
+                      {isAdmin && (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          iconOnly
+                          icon={Trash2}
+                          aria-label={`Delete deck ${title}`}
+                          title="Delete deck"
+                          busy={deleting === d.deck_id}
+                          onClick={() => handleDelete(d.deck_id)}
+                        />
+                      )}
+                    </>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                />
+              );
+            })}
+          </EpisodeList>
+        </section>
+      )}
     </div>
   );
 }

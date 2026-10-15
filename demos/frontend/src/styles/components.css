@@ -1009,6 +1009,11 @@ input[type='range'] {
   max-width: 640px;
 }
 
+.modal__panel.stage {
+  background: var(--c-stage);
+  color: var(--c-on-stage);
+}
+
 .modal__close {
   position: absolute;
   top: var(--sp-3);

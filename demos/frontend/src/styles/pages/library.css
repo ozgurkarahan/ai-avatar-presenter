@@ -1,0 +1,195 @@
+/* Libraries (videos, podcasts) — editorial episode list + stage player. */
+.library__alert {
+  margin-bottom: var(--sp-5);
+}
+
+.library__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-8) 0;
+}
+
+.library__count {
+  margin-bottom: var(--sp-3);
+}
+
+.library__empty-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+/* The page header already draws the rule above. */
+.library .empty {
+  border-top: 0;
+}
+
+/* ---------- Rows ---------- */
+.library-row .episode-row__meta .chip {
+  padding-block: 1px;
+}
+
+.library-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+}
+
+.library-row--thumb .episode-row__body {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--sp-4);
+}
+
+.library-row--thumb .episode-row__title {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.library-row--thumb .episode-row__meta {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* The thumbnail is decorative: let clicks fall through to the stretched title. */
+.library-row--thumb .episode-row__extra {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  margin-top: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .library-row--thumb .episode-row__body {
+    grid-template-columns: 72px minmax(0, 1fr);
+    column-gap: var(--sp-3);
+  }
+
+  .library-row--admin .episode-row__actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+}
+
+/* ---------- Player (Modal variant="stage") ---------- */
+.modal__panel.library-player {
+  display: flex;
+  flex-direction: column;
+  /* .modal__panel's light background otherwise wins over .stage. */
+  background: var(--c-stage);
+  color: var(--c-on-stage);
+}
+
+.library-player .modal__close {
+  background: color-mix(in srgb, var(--c-stage) 55%, transparent);
+}
+
+.library-player__screen {
+  background: var(--c-stage);
+}
+
+.library-player__screen video {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  background: var(--c-stage);
+}
+
+.library-player__status {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  padding: var(--sp-8) var(--sp-5);
+  color: var(--c-on-stage);
+  text-align: center;
+}
+
+.library-player__status .muted {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.library-player__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-6) var(--sp-6);
+  border-top: var(--bw) solid color-mix(in srgb, var(--c-on-stage) 14%, transparent);
+}
+
+.library-player__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--c-on-stage);
+  opacity: 0.7;
+}
+
+.library-player__eyebrow svg {
+  width: 15px;
+  height: 15px;
+}
+
+.library-player__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--c-on-stage);
+  overflow-wrap: anywhere;
+}
+
+.library-player__source {
+  margin: 0;
+  color: var(--c-on-stage);
+  opacity: 0.75;
+  font-size: var(--fs-sm);
+}
+
+.library-player__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--sp-4);
+  color: var(--c-on-stage);
+  opacity: 0.72;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.library-player__downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.library-player__downloads .btn:not(.btn--primary) {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--c-on-stage) 35%, transparent);
+  color: var(--c-on-stage);
+}
+
+.library-player__downloads .btn:not(.btn--primary):hover {
+  background: var(--c-on-stage);
+  border-color: var(--c-on-stage);
+  color: var(--c-stage);
+}
+
+.library-player__downloads .btn:focus-visible {
+  outline-color: var(--c-on-stage);
+}
+
+@media (max-width: 640px) {
+  .library-player__info {
+    padding: var(--sp-4) var(--sp-4) var(--sp-5);
+  }
+}

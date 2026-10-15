@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mic, Search, SearchX } from 'lucide-react';
 import { SearchResult, searchDecks } from '../services/decksApi';
 import { useAuth } from '../services/auth';
 import { GatedPanel } from '../components/AuthGate';
-
-const theme = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc',
-  text: '#1a1a2e', muted: '#64748b',
-  card: '#ffffff', cardAlt: '#f8fafc', border: '#e2e8f0',
-  shadow: '0 4px 20px rgba(0, 51, 102, 0.08)',
-};
+import {
+  Alert, Button, EmptyState, Field, Input, PageHeader, Spinner, episodeNumber, humanizeTitle,
+} from '../ui';
+import '../styles/pages/search.css';
 
 const EXAMPLES = [
   'How do we prevent phishing?',
@@ -20,17 +18,18 @@ const EXAMPLES = [
 export default function SearchPage() {
   const auth = useAuth();
   if (auth.loading) {
-    return <div style={{ padding: 60, textAlign: 'center', color: theme.muted }}>Loading…</div>;
+    return <div className="container page search-state"><Spinner label="Loading…" /></div>;
   }
   if (!auth.is_admin) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 60px)', background: theme.cardAlt, padding: '40px 24px' }}>
+      <div className="container page">
+        <h1 className="sr-only">Search</h1>
         <GatedPanel
-          icon="🎓"
+          icon={Search}
           title="AI search across decks is limited to demo users"
           description="Search runs a semantic search over every deck and lets the live avatar present the matching slide. Published decks remain browsable without signing in."
           action="ask questions across the decks"
-          links={[{ href: '/decks', label: '📚 Browse the decks' }, { href: '/video/library', label: '🎞️ Browse the video library' }]}
+          links={[{ href: '/decks', label: 'Browse the decks' }, { href: '/video/library', label: 'Browse the video library' }]}
         />
       </div>
     );
@@ -67,153 +66,100 @@ function DeckSearch() {
   }
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 60px)', background: theme.cardAlt, padding: '32px 24px' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto' }}>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, color: theme.accent, textTransform: 'uppercase' }}>
-            DeckFM · Search
-          </div>
-          <h1 style={{ margin: '6px 0 4px', fontSize: 28, color: theme.brand, fontWeight: 800 }}>
-            Ask anything about your decks
-          </h1>
-          <p style={{ color: theme.muted, margin: 0 }}>
-            We'll find the matching slide and the avatar will present it to you.
-          </p>
-        </div>
+    <div className="container page search-page">
+      <PageHeader
+        eyebrow="Search"
+        title="Ask anything about your decks"
+        lead="We'll find the matching slide and the avatar will present it to you."
+      />
 
-        <form
-          onSubmit={(e) => { e.preventDefault(); submit(query); }}
-          style={{
-            display: 'flex', gap: 10, alignItems: 'center',
-            background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12,
-            padding: 8, boxShadow: theme.shadow, marginBottom: 20,
-          }}
-        >
-          <input
+      <form
+        className="search-form"
+        role="search"
+        onSubmit={(e) => { e.preventDefault(); submit(query); }}
+      >
+        <Field label="Your question" labelHidden className="search-form__field">
+          <Input
             data-testid="search-input"
             type="text"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ask anything about your decks…"
-            style={{
-              flex: 1, border: 'none', outline: 'none', fontSize: 16,
-              padding: '12px 14px', background: 'transparent', color: theme.text,
-            }}
+            className="search-form__input"
           />
-          <button
-            type="submit"
-            disabled={loading || !query.trim()}
-            style={{
-              padding: '12px 22px', border: 'none', borderRadius: 8,
-              background: theme.brandLight, color: 'white', fontWeight: 600, fontSize: 14,
-              cursor: loading ? 'progress' : 'pointer',
-              opacity: loading || !query.trim() ? 0.6 : 1,
-            }}
-          >
-            {loading ? 'Searching…' : 'Search'}
-          </button>
-        </form>
+        </Field>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          icon={Search}
+          busy={loading}
+          disabled={!query.trim()}
+          className="search-form__submit"
+        >
+          {loading ? 'Searching…' : 'Search'}
+        </Button>
+      </form>
 
-        {error && (
-          <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
-            {error}
-          </div>
-        )}
+      {error && <Alert tone="error" className="search-alert">{error}</Alert>}
 
-        {loading && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-            <div
-              style={{
-                width: 36, height: 36, borderRadius: '50%',
-                border: `3px solid ${theme.border}`, borderTopColor: theme.accent,
-                animation: 'deck-spin 0.8s linear infinite',
-              }}
-            />
-            <style>{'@keyframes deck-spin { to { transform: rotate(360deg); } }'}</style>
-          </div>
-        )}
+      {loading && (
+        <div className="search-state"><Spinner label="Searching your decks…" /></div>
+      )}
 
-        {!loading && results === null && (
-          <div style={{ textAlign: 'center', padding: '32px 16px', color: theme.muted }}>
-            <div style={{ fontSize: 14, marginBottom: 12 }}>
-              Try: {EXAMPLES.map((e, i) => (
-                <React.Fragment key={e}>
-                  {i > 0 && ' · '}
-                  <button
-                    type="button"
-                    onClick={() => submit(e)}
-                    style={{
-                      border: `1px solid ${theme.border}`, background: theme.card,
-                      color: theme.brandLight, padding: '4px 10px', borderRadius: 999,
-                      fontSize: 13, cursor: 'pointer', margin: '4px 2px',
-                    }}
-                  >
-                    {e}
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        )}
+      {!loading && results === null && (
+        <div className="search-examples">
+          <span className="eyebrow">Try</span>
+          <ul className="search-examples__list">
+            {EXAMPLES.map((e) => (
+              <li key={e}>
+                <button type="button" className="search-example" onClick={() => submit(e)}>{e}</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-        {!loading && results !== null && results.length === 0 && (
-          <div style={{ textAlign: 'center', padding: 40, color: theme.muted, background: theme.card, borderRadius: 12, border: `1px solid ${theme.border}` }}>
-            No results. Try rephrasing, or upload more decks in <a href="/decks" style={{ color: theme.accent }}>Decks</a>.
-          </div>
-        )}
+      {!loading && results !== null && results.length === 0 && (
+        <EmptyState icon={SearchX} title="No results">
+          Try rephrasing, or upload more decks in <Link to="/decks">Decks</Link>.
+        </EmptyState>
+      )}
 
-        {!loading && results && results.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {results.map((r, idx) => (
-              <div
+      {!loading && results && results.length > 0 && (
+        <ol className="search-results" aria-label="Search results">
+          {results.map((r, idx) => {
+            const slideLabel = `Slide ${r.slide_index + 1}`;
+            return (
+              <li
                 key={`${r.deck_id}-${r.slide_index}-${idx}`}
                 data-testid="search-result"
-                style={{
-                  background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12,
-                  padding: 18, boxShadow: theme.shadow,
-                  display: 'flex', flexDirection: 'column', gap: 8,
-                }}
+                className="search-result"
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ fontSize: 12, color: theme.muted, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>
-                    {r.deck_title}
+                <span className="search-result__num" aria-hidden>{episodeNumber(idx + 1)}</span>
+                <div className="search-result__body">
+                  <div className="search-result__source">
+                    <span className="search-result__deck" title={r.deck_title}>{humanizeTitle(r.deck_title)}</span>
+                    <span aria-hidden>·</span>
+                    <span>{slideLabel}</span>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, background: theme.cardAlt, color: theme.brandLight, padding: '2px 8px', borderRadius: 999, border: `1px solid ${theme.border}` }}>
-                    Slide {r.slide_index + 1}
-                  </span>
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: theme.brand, lineHeight: 1.3 }}>
-                  {r.slide_title || `Slide ${r.slide_index + 1}`}
-                </div>
-                <div
-                  style={{
-                    fontSize: 14, color: theme.text, lineHeight: 1.55,
-                    display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}
-                >
-                  {r.snippet}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                  <div style={{ fontSize: 11, color: theme.muted }}>
-                    score {r.score?.toFixed?.(2) ?? r.score}
+                  <h2 className="search-result__title">{r.slide_title || slideLabel}</h2>
+                  {r.snippet && <blockquote className="search-result__snippet">{r.snippet}</blockquote>}
+                  <div className="search-result__foot">
+                    <span className="search-result__score tabular">
+                      Relevance {r.score?.toFixed?.(2) ?? r.score}
+                    </span>
+                    <Button size="sm" variant="primary" icon={Mic} onClick={() => present(r)}>
+                      Present this slide
+                    </Button>
                   </div>
-                  <button
-                    onClick={() => present(r)}
-                    style={{
-                      padding: '8px 16px', border: 'none', borderRadius: 8,
-                      background: theme.brandLight, color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                    }}
-                  >
-                    🎙️ Present this slide
-                  </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </div>
   );
 }

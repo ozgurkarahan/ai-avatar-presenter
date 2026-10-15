@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Mic } from 'lucide-react';
 import PptUpload from '../components/PptUpload';
 import PresentationList from '../components/PresentationList';
 import SlideViewer from '../components/SlideViewer';
@@ -6,91 +7,46 @@ import AvatarPanel from '../components/AvatarPanel';
 import LanguageSelector from '../components/LanguageSelector';
 import QaChat from '../components/QaChat';
 import { getSlides, getTranslationsStatus, type Presentation } from '../services/api';
-import { initializeTeams, isInTeams, getTeamsTheme, onTeamsThemeChange } from '../services/teams';
+import { initializeTeams } from '../services/teams';
 import { useAuth } from '../services/auth';
 import { AdminOnly, GatedPanel } from '../components/AuthGate';
+import { Alert, PageHeader, Spinner, humanizeTitle, pluralize } from '../ui';
+import '../styles/pages/live.css';
 
-// Teams theme palette
-const themes: Record<string, { bg: string; surface: string; text: string; shadow: string }> = {
-  default: { bg: '#f5f7fa', surface: '#ffffff', text: '#1a1a2e', shadow: '0 1px 4px rgba(0,0,0,0.08)' },
-  dark:    { bg: '#1f1f1f', surface: '#2d2d2d', text: '#e0e0e0', shadow: '0 1px 4px rgba(0,0,0,0.3)' },
-  contrast:{ bg: '#000000', surface: '#1a1a1a', text: '#ffffff', shadow: '0 1px 4px rgba(255,255,255,0.1)' },
-};
-
-function getStyles(inTeams: boolean, theme: string): Record<string, React.CSSProperties> {
-  const t = themes[theme] ?? themes.default;
-  return {
-    container: {
-      minHeight: '100vh',
-      background: t.bg,
-      color: t.text,
-    },
-    header: {
-      background: 'linear-gradient(135deg, #003366 0%, #005599 100%)',
-      color: 'white',
-      padding: inTeams ? '8px 16px' : '16px 32px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-    },
-    headerTitle: {
-      fontSize: inTeams ? '16px' : '22px',
-      fontWeight: 700,
-    },
-    headerSubtitle: {
-      fontSize: inTeams ? '11px' : '13px',
-      opacity: 0.8,
-    },
-    main: {
-      maxWidth: '1400px',
-      margin: '0 auto',
-      padding: inTeams ? '12px' : '24px',
-    },
-    grid: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 380px',
-      gap: inTeams ? '16px' : '24px',
-      marginTop: inTeams ? '12px' : '20px',
-    },
-    leftPanel: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      gap: inTeams ? '12px' : '20px',
-    },
-    rightPanel: {
-      display: 'flex',
-      flexDirection: 'column' as const,
-      gap: inTeams ? '12px' : '20px',
-    },
-    card: {
-      background: t.surface,
-      borderRadius: '12px',
-      padding: inTeams ? '14px' : '20px',
-      boxShadow: t.shadow,
-    },
-  };
-}
+const EYEBROW = 'Create · Live presentation';
 
 export default function LivePage() {
   const auth = useAuth();
   if (auth.loading) {
-    return <div style={{ padding: 60, textAlign: 'center', color: '#64748b' }}>Loading…</div>;
+    return (
+      <div className="container page live-page">
+        <Spinner label="Loading…" />
+      </div>
+    );
   }
   if (!auth.is_admin) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 60px)', background: '#f5f7fa', padding: '40px 24px' }}>
+      <div className="container page live-page">
+        <PageHeader
+          eyebrow={EYEBROW}
+          title="Present a deck live"
+          lead="An AI avatar presents your PowerPoint slide by slide, in your language, and answers questions about it."
+        />
         <GatedPanel
-          icon="🎙️"
+          icon={Mic}
           title="The live presenter is limited to demo users"
           description="Upload a PowerPoint deck with speaker notes and a live AI avatar presents it in your language, with slide-aware Q&A. Published decks and videos remain browsable without signing in."
           action="upload a deck and try the live avatar"
-          links={[{ href: '/decks', label: '📚 Browse the decks' }, { href: '/video/library', label: '🎞️ Browse the video library' }, { href: '/podcast/library', label: '🎧 Browse the podcast library' }]}
+          links={[{ href: '/decks', label: 'Browse the decks' }, { href: '/video/library', label: 'Browse the video library' }, { href: '/podcast/library', label: 'Browse the podcast library' }]}
         />
       </div>
     );
   }
   return <LivePresenter />;
+}
+
+function deckTitle(filename: string): string {
+  return humanizeTitle(filename.replace(/\.pptx$/i, ''));
 }
 
 function LivePresenter() {
@@ -100,16 +56,11 @@ function LivePresenter() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [autoPlayVideo, setAutoPlayVideo] = useState(false);
   const [inTeams, setInTeams] = useState(false);
-  const [teamsTheme, setTeamsTheme] = useState('default');
 
+  // The Teams theme itself is synced onto <html data-theme> by the app shell;
+  // here we only need to know whether we run inside Teams (compact spacing).
   useEffect(() => {
-    initializeTeams().then((detected) => {
-      setInTeams(detected);
-      if (detected) {
-        setTeamsTheme(getTeamsTheme());
-        onTeamsThemeChange((theme) => setTeamsTheme(theme));
-      }
-    });
+    initializeTeams().then((detected) => setInTeams(detected));
   }, []);
 
   const [translationStatus, setTranslationStatus] = useState<string | null>(null);
@@ -154,104 +105,81 @@ function LivePresenter() {
     return () => { cancelled = true; };
   }, [presentation?.id]);
 
-  const styles = getStyles(inTeams, teamsTheme);
+  const rootClass = ['container', 'page', 'live-page', inTeams && 'live--teams'].filter(Boolean).join(' ');
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <div>
-          <div style={styles.headerTitle}>🎙️ DeckFM</div>
-          {!inTeams && (
-            <div style={styles.headerSubtitle}>AI Avatar Presentation Assistant</div>
-          )}
-        </div>
-        {presentation && (
-          <LanguageSelector value={language} onChange={setLanguage} />
-        )}
-      </header>
+    <div className={rootClass}>
+      {!presentation ? (
+        <PageHeader
+          className="live-header"
+          eyebrow={EYEBROW}
+          title="Present a deck live"
+          lead={inTeams ? undefined : 'Upload a PowerPoint file (.pptx) with speaker notes. The AI avatar presents your slides with multilingual text-to-speech and answers questions from the room.'}
+        />
+      ) : (
+        <PageHeader
+          className="live-header"
+          back={{ onClick: () => { setPresentation(null); setCurrentSlide(0); }, label: 'Back to presentations' }}
+          eyebrow={`${EYEBROW} · ${pluralize(presentation.slide_count ?? presentation.slides.length, 'slide')}`}
+          title={deckTitle(presentation.filename)}
+          actions={<LanguageSelector value={language} onChange={setLanguage} variant="light" />}
+        />
+      )}
 
-      <main style={styles.main}>
-        {translationStatus && (
-          <div style={{
-            background: '#e0edff',
-            color: '#1d4ed8',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            marginBottom: '12px',
-            textAlign: 'center' as const,
-          }}>
-            ⏳ {translationStatus}
-          </div>
-        )}
-        {!presentation ? (
-          <div style={{ ...styles.card, maxWidth: '600px', margin: inTeams ? '24px auto' : '60px auto', textAlign: 'center' as const }}>
-            <h2 style={{ marginBottom: '16px' }}>Upload a Presentation</h2>
-            <p style={{ color: teamsTheme === 'default' ? '#666' : '#aaa', marginBottom: '24px' }}>
-              Upload a PowerPoint file (.pptx) with speaker notes to get started.
-              The AI avatar will present your slides with multilingual text-to-speech.
-            </p>
+      {translationStatus && (
+        <Alert className="live-page__status">
+          <span className="cluster live-page__status-row">
+            <span className="spinner" aria-hidden />
+            {translationStatus}
+          </span>
+        </Alert>
+      )}
+
+      {!presentation ? (
+        <div className="live-start">
+          <section className="live-start__upload" aria-labelledby="live-upload-title">
+            <h2 id="live-upload-title" className="eyebrow live-start__title">Upload a presentation</h2>
             <PptUpload onUploaded={setPresentation} />
+          </section>
+          <div className="live-start__list">
             <PresentationList onSelect={(p) => { setPresentation(p); setCurrentSlide(0); }} />
           </div>
-        ) : (
-          <>
-            <button
-              onClick={() => { setPresentation(null); setCurrentSlide(0); }}
-              style={{
-                background: '#e2e8f0',
-                color: '#334155',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                padding: '6px 14px',
-                cursor: 'pointer',
-                fontSize: '13px',
-                marginBottom: '12px',
-                alignSelf: 'flex-start',
+        </div>
+      ) : (
+        <div className="live-presenter">
+          <div className="live-presenter__main">
+            <SlideViewer
+              presentation={presentation}
+              currentSlide={currentSlide}
+              onSlideChange={setCurrentSlide}
+              language={language}
+              autoPlayVideo={autoPlayVideo}
+              onVideoPlayingChange={(playing) => {
+                setVideoPlaying(playing);
+                if (playing) setAutoPlayVideo(false);
               }}
-            >
-              ← Back to presentations
-            </button>
-            <div style={styles.grid}>
-            <div style={styles.leftPanel}>
-              <div style={styles.card}>
-                <SlideViewer
-                  presentation={presentation}
-                  currentSlide={currentSlide}
-                  onSlideChange={setCurrentSlide}
-                  language={language}
-                  autoPlayVideo={autoPlayVideo}
-                  onVideoPlayingChange={(playing) => {
-                    setVideoPlaying(playing);
-                    if (playing) setAutoPlayVideo(false);
-                  }}
-                />
-              </div>
-            </div>
-            <div style={styles.rightPanel}>
-              <div style={styles.card}>
-                <AvatarPanel
-                  presentation={presentation}
-                  currentSlide={currentSlide}
-                  language={language}
-                  onSlideChange={setCurrentSlide}
-                  videoPlaying={videoPlaying}
-                  onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
-                />
-              </div>
-              <div style={styles.card}>
-                <AdminOnly action="chat with the presenter agent">
-                  <QaChat
-                    presentationId={presentation.id}
-                    slideIndex={currentSlide}
-                  />
-                </AdminOnly>
-              </div>
-            </div>
+            />
           </div>
-          </>
-        )}
-      </main>
+          <aside className="live-presenter__rail" aria-label="Presenter">
+            <AvatarPanel
+              presentation={presentation}
+              currentSlide={currentSlide}
+              language={language}
+              onSlideChange={setCurrentSlide}
+              videoPlaying={videoPlaying}
+              onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
+            />
+            <div className="live-presenter__qa">
+              <AdminOnly action="chat with the presenter agent">
+                <QaChat
+                  presentationId={presentation.id}
+                  slideIndex={currentSlide}
+                />
+              </AdminOnly>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

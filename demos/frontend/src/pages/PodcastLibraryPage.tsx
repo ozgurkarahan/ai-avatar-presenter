@@ -1,45 +1,53 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Captions, Download, Headphones, Layers, Music, Package, Play, Plus, RotateCw, Trash2,
+} from 'lucide-react';
 import {
   LibraryItem, LibrarySummary,
   deleteLibraryItem, getLibraryItem, listLibrary, publishLibraryItem,
 } from '../services/podcast';
 import { useAuth } from '../services/auth';
+import { type AvatarInfo, pickDefaultAvatar, useAvatars } from '../services/avatars';
 import { GateNotice, PublishBadge, PublishToggle } from '../components/AuthGate';
+import {
+  Alert, Button, ButtonLink, EmptyState, EpisodeList, EpisodeRow, HostsMini, Modal, PageHeader, Spinner,
+  buttonClass, episodeNumber, formatDate, formatDuration, humanizeTitle, languageName, pluralize,
+} from '../ui';
+import '../styles/pages/library.css';
 
-const theme = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc',
-  text: '#1a1a2e', muted: '#64748b',
-  card: '#ffffff', cardAlt: '#f8fafc', border: '#e2e8f0',
-  shadow: '0 4px 20px rgba(0, 51, 102, 0.08)',
-};
+const KIND = { icon: Headphones, label: 'Podcast' };
 
-function fmtDuration(sec: number | null): string {
-  if (!sec || sec <= 0) return '—';
-  const m = Math.floor(sec / 60);
-  const s = Math.round(sec - m * 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function fmtDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString(undefined, {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    });
-  } catch { return iso; }
-}
+const duration = (sec: number | null | undefined) => (sec && sec > 0 ? formatDuration(sec) : '—');
+const styleLabel = (style: string) => style.charAt(0).toUpperCase() + style.slice(1);
+const speakersOf = (item: LibrarySummary) => item.speaker_names?.filter(Boolean) ?? [];
 
 export default function PodcastLibraryPage() {
   const auth = useAuth();
   const isAdmin = auth.is_admin;
+  const { avatars } = useAvatars();
   const [publishing, setPublishing] = useState<string | null>(null);
   const [items, setItems] = useState<LibrarySummary[] | null>(null);
   const [selected, setSelected] = useState<LibraryItem | null>(null);
   const [loadingItem, setLoadingItem] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Fallback pair when speaker names don't match a known avatar: default host + a contrasting co-host.
+  const fallbackHosts = useMemo(() => {
+    const lead = pickDefaultAvatar(avatars);
+    const others = avatars.filter((a) => a.id !== lead?.id);
+    const co = others.find((a) => a.gender !== lead?.gender && a.thumbnail_url)
+      ?? others.find((a) => a.gender !== lead?.gender)
+      ?? others[0];
+    return [lead, co];
+  }, [avatars]);
+
+  const hostsFor = (item: LibrarySummary) => {
+    const named = speakersOf(item)
+      .map((name) => avatars.find((a) => a.display_name === name))
+      .filter(Boolean) as AvatarInfo[];
+    return named.length ? named : fallbackHosts;
+  };
 
   async function refresh() {
     setError(null);
@@ -95,328 +103,183 @@ export default function PodcastLibraryPage() {
     }
   }
 
+  const closePlayer = useCallback(() => setSelected(null), []);
+  const videoUrl = selected?.mp4_url ?? selected?.video_url ?? null;
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f7fa', color: theme.text }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '28px 32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: theme.brand }}>
-              📚 Podcast Library
-            </h1>
-            <div style={{ color: theme.muted, fontSize: 14, marginTop: 4 }}>
-              {isAdmin
-                ? "All podcasts you've generated. Publish a podcast to make it visible to anonymous visitors."
-                : 'Published podcasts. Click any card to play.'}
-            </div>
-          </div>
-          <button onClick={refresh} style={{
-            background: theme.card, color: theme.brand, border: `1px solid ${theme.border}`,
-            padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600,
-          }}>↻ Refresh</button>
-        </div>
-
-        {error && (
-          <div style={{ background: '#fee2e2', color: '#991b1b', padding: 12,
-                        borderRadius: 8, marginBottom: 16 }}>{error}</div>
+    <div className="container page library">
+      <PageHeader
+        eyebrow="Library"
+        title="Podcasts"
+        lead={isAdmin
+          ? "All podcasts you've generated. Publish a podcast to make it visible to anonymous visitors."
+          : 'Published two-host podcasts: our AI hosts discuss a document together. Pick an episode to play it.'}
+        actions={(
+          <>
+            <Button variant="ghost" icon={RotateCw} onClick={refresh}>Refresh</Button>
+            {isAdmin && <ButtonLink to="/podcast" variant="primary" icon={Plus}>Create podcast</ButtonLink>}
+          </>
         )}
+      />
 
-        {items === null ? (
-          <div style={{ color: theme.muted, padding: 40, textAlign: 'center' }}>Loading…</div>
-        ) : items.length === 0 ? (
-          <EmptyState isAdmin={isAdmin} />
-        ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 20,
-          }}>
-            {items.map((it) => (
-              <Card
-                key={it.job_id}
-                item={it}
-                onOpen={() => open(it.job_id)}
-                onDelete={() => remove(it.job_id)}
-                deleting={deleting === it.job_id}
-                isAdmin={isAdmin}
-                publishing={publishing === it.job_id}
-                onTogglePublish={(next) => togglePublish(it.job_id, next)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {error && <Alert tone="error" className="library__alert">{error}</Alert>}
 
-      <AnimatePresence>
-        {(selected || loadingItem) && (
-          <PlayerModal
-            item={selected}
-            loading={loadingItem}
-            onClose={() => setSelected(null)}
-          />
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+      {items === null ? (
+        <div className="library__loading"><Spinner label="Loading podcasts…" /></div>
+      ) : items.length === 0 ? (
+        <LibraryEmpty isAdmin={isAdmin} />
+      ) : (
+        <>
+          <div className="library__count eyebrow">{pluralize(items.length, 'episode')}</div>
+          <EpisodeList label="Podcasts" className="library-list">
+            {items.map((it, i) => {
+              const title = humanizeTitle(it.title);
+              const speakers = speakersOf(it);
+              return (
+                <EpisodeRow
+                  key={it.job_id}
+                  data-testid="library-item"
+                  className={['library-row', it.thumbnail_url && 'library-row--thumb', isAdmin && 'library-row--admin'].filter(Boolean).join(' ')}
+                  num={episodeNumber(i + 1)}
+                  title={title}
+                  onOpen={() => open(it.job_id)}
+                  meta={[
+                    formatDate(it.created_at),
+                    languageName(it.language),
+                    speakers.length > 0 ? speakers.join(' & ') : null,
+                    it.style ? styleLabel(it.style) : null,
+                    isAdmin ? <PublishBadge published={it.published} /> : null,
+                  ]}
+                  kind={KIND}
+                  hosts={<HostsMini hosts={hostsFor(it)} label={speakers.join(' and ') || undefined} />}
+                  duration={duration(it.duration_sec)}
+                  extra={it.thumbnail_url
+                    ? <img className="library-thumb" src={it.thumbnail_url} alt="" loading="lazy" />
+                    : undefined}
+                  actions={(
+                    <>
+                      <Button
+                        size="sm"
+                        iconOnly
+                        icon={Play}
+                        variant={i === 0 ? 'primary' : 'outline'}
+                        aria-label={`Play ${title}`}
+                        onClick={() => open(it.job_id)}
+                      />
+                      {isAdmin && (
+                        <>
+                          <PublishToggle
+                            published={it.published}
+                            busy={publishing === it.job_id}
+                            onToggle={(next) => togglePublish(it.job_id, next)}
+                          />
+                          <Button
+                            size="sm"
+                            iconOnly
+                            variant="danger"
+                            icon={Trash2}
+                            busy={deleting === it.job_id}
+                            aria-label={`Delete ${title}`}
+                            title="Delete"
+                            onClick={(e) => { e.stopPropagation(); remove(it.job_id); }}
+                          />
+                        </>
+                      )}
+                    </>
+                  )}
+                />
+              );
+            })}
+          </EpisodeList>
+        </>
+      )}
 
-function EmptyState({ isAdmin }: { isAdmin: boolean }) {
-  if (!isAdmin) {
-    return (
-      <div style={{
-        background: theme.card, borderRadius: 16, padding: 48,
-        textAlign: 'center', boxShadow: theme.shadow,
-      }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>🎧</div>
-        <h2 style={{ margin: 0, color: theme.brand }}>No published podcasts yet</h2>
-        <p style={{ color: theme.muted, marginTop: 8 }}>
-          Check back later — podcasts appear here once a demo user publishes them.
-        </p>
-        <GateNotice action="create your own podcast" style={{ marginTop: 16 }} />
-      </div>
-    );
-  }
-  return (
-    <div style={{
-      background: theme.card, borderRadius: 16, padding: 48,
-      textAlign: 'center', boxShadow: theme.shadow,
-    }}>
-      <div style={{ fontSize: 52, marginBottom: 16 }}>🎧</div>
-      <h2 style={{ margin: 0, color: theme.brand }}>No podcasts yet</h2>
-      <p style={{ color: theme.muted, marginTop: 8 }}>
-        Head to the Podcast tab and generate your first one — it will appear here automatically.
-      </p>
-      <a href="/podcast" style={{
-        display: 'inline-block', marginTop: 16,
-        background: theme.brand, color: 'white',
-        padding: '10px 22px', borderRadius: 8, textDecoration: 'none', fontWeight: 600,
-      }}>
-        + Create Podcast
-      </a>
-    </div>
-  );
-}
-
-function Card({ item, onOpen, onDelete, deleting, isAdmin, publishing, onTogglePublish }: {
-  item: LibrarySummary; onOpen: () => void; onDelete: () => void; deleting: boolean;
-  isAdmin: boolean; publishing: boolean; onTogglePublish: (next: boolean) => void;
-}) {
-  const speakers = item.speaker_names?.filter(Boolean) ?? [];
-  return (
-    <motion.div
-      data-testid="library-item"
-      initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4, boxShadow: '0 10px 30px rgba(0,51,102,0.16)' }}
-      style={{
-        background: theme.card, borderRadius: 14, overflow: 'hidden',
-        boxShadow: theme.shadow, cursor: 'pointer', display: 'flex',
-        flexDirection: 'column',
-      }}
-      onClick={onOpen}
-    >
-      <div style={{
-        position: 'relative', aspectRatio: '16 / 9',
-        background: `linear-gradient(135deg, ${theme.brand} 0%, ${theme.brandLight} 100%)`,
-      }}>
-        {item.thumbnail_url ? (
-          <img src={item.thumbnail_url} alt=""
-               style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{
-            position: 'absolute', inset: 0, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: 42,
-          }}>🎙️</div>
-        )}
-        <div style={{
-          position: 'absolute', bottom: 8, right: 8,
-          background: 'rgba(0,0,0,0.65)', color: 'white',
-          padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-        }}>
-          ⏱ {fmtDuration(item.duration_sec)}
-        </div>
-        <div style={{
-          position: 'absolute', top: 8, left: 8,
-          background: 'rgba(0, 51, 102, 0.9)', color: 'white',
-          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-          textTransform: 'uppercase', letterSpacing: 0.5,
-        }}>
-          🌍 {item.language}
-        </div>
-      </div>
-      <div style={{ padding: 14, flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: theme.text,
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden', lineHeight: 1.3, minHeight: '2.6em' }}>
-          {item.title}
-        </div>
-        {item.document_title && item.document_title !== item.title && (
-          <div style={{ fontSize: 12, color: theme.muted, marginBottom: 6,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            📄 {item.document_title}
-          </div>
-        )}
-        {(item.style || typeof item.turn_count === 'number' || isAdmin) && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-            {item.style && <Chip>{styleEmoji(item.style)} {item.style}</Chip>}
-            {typeof item.turn_count === 'number' && <Chip>💬 {item.turn_count} turns</Chip>}
-            {isAdmin && <PublishBadge published={item.published} />}
-          </div>
-        )}
-        <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8 }}>
-          📅 {fmtDate(item.created_at)}
-        </div>
-        {(isAdmin || speakers.length > 0) && (
-        <div style={{ fontSize: 12, color: theme.muted, marginTop: 'auto',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      borderTop: `1px solid ${theme.border}`, paddingTop: 8 }}>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {speakers.length > 0 ? `🎤 ${speakers.join(' + ')}` : ''}
-          </span>
-          {isAdmin && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <PublishToggle published={item.published} busy={publishing} onToggle={onTogglePublish} />
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            disabled={deleting}
-            style={{
-              background: 'transparent', border: 'none', color: '#ef4444',
-              cursor: deleting ? 'wait' : 'pointer', fontSize: 14, padding: 4,
-              flexShrink: 0, marginLeft: 6,
-            }}
-            title="Delete"
-          >
-            {deleting ? '…' : '🗑'}
-          </button>
-          </span>
-          )}
-        </div>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function Chip({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{
-      background: theme.cardAlt, color: theme.brand,
-      padding: '3px 9px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-      border: `1px solid ${theme.border}`,
-    }}>{children}</span>
-  );
-}
-
-function styleEmoji(style: string): string {
-  switch (style) {
-    case 'casual': return '☕';
-    case 'formal': return '🎩';
-    case 'debate': return '⚖️';
-    case 'explainer': return '🎓';
-    default: return '🎙️';
-  }
-}
-
-function PlayerModal({ item, loading, onClose }: {
-  item: LibraryItem | null; loading: boolean; onClose: () => void;
-}) {
-  const videoUrl = item?.mp4_url ?? item?.video_url ?? null;
-  return (
-    <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1000, padding: 20,
-      }}
-    >
-      <motion.div
-        initial={{ scale: 0.95, y: 16 }} animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.95, y: 16 }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: '#000', borderRadius: 14, overflow: 'hidden',
-          maxWidth: 1100, width: '100%', maxHeight: '92vh',
-          display: 'flex', flexDirection: 'column',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-        }}
+      <Modal
+        open={!!(selected || loadingItem)}
+        onClose={closePlayer}
+        label={selected ? humanizeTitle(selected.title) : 'Loading podcast'}
+        variant="stage"
+        className="library-player"
       >
-        {loading || !item ? (
-          <div style={{ padding: 80, color: 'white', textAlign: 'center' }}>Loading…</div>
+        {loadingItem || !selected ? (
+          <div className="library-player__status"><Spinner label="Loading podcast…" /></div>
         ) : (
           <>
-            <div style={{ position: 'relative', background: '#000' }}>
+            <div className="library-player__screen">
               {videoUrl ? (
-                <video
-                  data-testid="library-player"
-                  src={videoUrl}
-                  controls autoPlay
-                  style={{ width: '100%', maxHeight: '70vh', display: 'block' }}
-                />
+                <video data-testid="library-player" src={videoUrl} controls autoPlay />
               ) : (
-                <div style={{ padding: 80, color: 'white', textAlign: 'center' }}>
-                  Video unavailable
-                </div>
+                <div className="library-player__status">Video unavailable</div>
               )}
-              <button onClick={onClose} style={{
-                position: 'absolute', top: 12, right: 12,
-                background: 'rgba(0,0,0,0.7)', color: 'white',
-                border: 'none', borderRadius: '50%', width: 36, height: 36,
-                cursor: 'pointer', fontSize: 16,
-              }}>✕</button>
             </div>
-            <div style={{ padding: 18, background: theme.card, color: theme.text }}>
-              <h3 style={{ margin: 0, fontSize: 18 }}>{item.title}</h3>
-              {item.document_title && item.document_title !== item.title && (
-                <div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>
-                  Source: {item.document_title}
-                </div>
+            <div className="library-player__info">
+              <div className="eyebrow library-player__eyebrow"><Headphones aria-hidden />Podcast</div>
+              <h2 className="library-player__title">{humanizeTitle(selected.title)}</h2>
+              {selected.document_title && selected.document_title !== selected.title && (
+                <p className="library-player__source">Source: {selected.document_title}</p>
               )}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                <Chip>📅 {fmtDate(item.created_at)}</Chip>
-                <Chip>⏱ {fmtDuration(item.duration_sec)}</Chip>
-                <Chip>🌍 {item.language}</Chip>
-                {item.style && <Chip>{styleEmoji(item.style)} {item.style}</Chip>}
-                {typeof item.turn_count === 'number' && <Chip>💬 {item.turn_count} turns</Chip>}
-                {(item.speaker_names?.length ?? 0) > 0 && <Chip>🎤 {item.speaker_names!.join(' + ')}</Chip>}
+              <div className="library-player__meta">
+                <span>{formatDate(selected.created_at)}</span>
+                <span>{duration(selected.duration_sec)}</span>
+                <span>{languageName(selected.language)}</span>
+                {selected.style && <span>{styleLabel(selected.style)}</span>}
+                {typeof selected.turn_count === 'number' && <span>{pluralize(selected.turn_count, 'turn')}</span>}
+                {speakersOf(selected).length > 0 && <span>{speakersOf(selected).join(' & ')}</span>}
               </div>
-              <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div className="library-player__downloads">
                 {videoUrl && (
-                  <a href={videoUrl} download={`${item.title}.mp4`} style={btn('primary')}>
-                    ⬇ Download MP4
+                  <a href={videoUrl} download={`${selected.title}.mp4`} className={buttonClass({ variant: 'primary', size: 'sm' })}>
+                    <Download aria-hidden />Download MP4
                   </a>
                 )}
-                {item.mp3_url && (
-                  <a href={item.mp3_url} download={`${item.title}.mp3`} style={btn('secondary')}>
-                    ⬇ Audio
+                {selected.mp3_url && (
+                  <a href={selected.mp3_url} download={`${selected.title}.mp3`} className={buttonClass({ size: 'sm' })}>
+                    <Music aria-hidden />Audio MP3
                   </a>
                 )}
-                {item.srt_url && (
-                  <a href={item.srt_url} download={`${item.title}.srt`} style={btn('secondary')}>
-                    ⬇ Subtitles
+                {selected.srt_url && (
+                  <a href={selected.srt_url} download={`${selected.title}.srt`} className={buttonClass({ size: 'sm' })}>
+                    <Captions aria-hidden />Subtitles SRT
                   </a>
                 )}
-                {item.scorm_url && (
-                  <a href={item.scorm_url} download={`${item.title}-scorm.zip`} style={btn('secondary')}>
-                    📦 SCORM
+                {selected.scorm_url && (
+                  <a href={selected.scorm_url} download={`${selected.title}-scorm.zip`} className={buttonClass({ size: 'sm' })}>
+                    <Package aria-hidden />SCORM package
                   </a>
                 )}
               </div>
             </div>
           </>
         )}
-      </motion.div>
-    </motion.div>
+      </Modal>
+    </div>
   );
 }
 
-function btn(variant: 'primary' | 'secondary'): React.CSSProperties {
-  const primary = variant === 'primary';
-  return {
-    padding: '8px 16px', borderRadius: 8, textDecoration: 'none', fontWeight: 600,
-    fontSize: 13,
-    background: primary ? theme.brand : theme.cardAlt,
-    color: primary ? 'white' : theme.brand,
-    border: primary ? 'none' : `1px solid ${theme.border}`,
-  };
+function LibraryEmpty({ isAdmin }: { isAdmin: boolean }) {
+  if (!isAdmin) {
+    return (
+      <EmptyState
+        icon={Headphones}
+        title="No published podcasts yet"
+        action={(
+          <div className="library__empty-actions">
+            <GateNotice action="create your own podcast" />
+            <ButtonLink to="/decks" icon={Layers}>Browse decks</ButtonLink>
+          </div>
+        )}
+      >
+        Check back later — podcasts appear here once a demo user publishes them.
+      </EmptyState>
+    );
+  }
+  return (
+    <EmptyState
+      icon={Headphones}
+      title="No podcasts yet"
+      action={<ButtonLink to="/podcast" variant="primary" icon={Plus}>Create podcast</ButtonLink>}
+    >
+      Head to the podcast studio and generate your first one — it will appear here automatically.
+    </EmptyState>
+  );
 }

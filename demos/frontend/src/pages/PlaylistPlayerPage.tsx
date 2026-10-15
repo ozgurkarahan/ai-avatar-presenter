@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft, ArrowRight, Check, CircleCheck, ListVideo, Play, SlidersHorizontal, Unlink,
+} from 'lucide-react';
 import SlideViewer from '../components/SlideViewer';
 import AvatarPanel from '../components/AvatarPanel';
 import LanguageSelector from '../components/LanguageSelector';
@@ -8,19 +11,16 @@ import {
   DeckDetail, getDeck,
   PlaylistDetail, PlaylistProgress,
   getPlaylist, getProgress, postProgress, getOrCreateUserId,
-  DECK_VOICES, DECK_LANGUAGE_LABELS, avatarForVoice,
+  DECK_VOICES, avatarForVoice,
 } from '../services/decksApi';
 import { isPhotoAvatar, pickAvatarForGender, useAvatars } from '../services/avatars';
 import { useAuth } from '../services/auth';
 import { GatedPanel } from '../components/AuthGate';
-
-const theme = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc', accentLight: '#e0f2fe',
-  text: '#1a1a2e', muted: '#64748b',
-  card: '#ffffff', cardAlt: '#f8fafc', border: '#e2e8f0',
-  shadow: '0 4px 20px rgba(0, 51, 102, 0.08)',
-  success: '#16a34a', danger: '#dc2626',
-};
+import {
+  Alert, Button, Chip, EmptyState, Field, PageHeader, Progress, Select, Spinner,
+  humanizeTitle, languageName, pluralize,
+} from '../ui';
+import '../styles/pages/presenter.css';
 
 function deckToPresentation(d: DeckDetail): Presentation {
   return {
@@ -34,17 +34,22 @@ function deckToPresentation(d: DeckDetail): Presentation {
 export default function PlaylistPlayerPage() {
   const auth = useAuth();
   if (auth.loading) {
-    return <div style={{ padding: 60, textAlign: 'center', color: theme.muted }}>Loading…</div>;
+    return (
+      <div className="container page">
+        <div className="presenter__loading"><Spinner label="Loading…" /></div>
+      </div>
+    );
   }
   if (!auth.is_admin) {
     return (
-      <div style={{ minHeight: 'calc(100vh - 60px)', background: theme.cardAlt, padding: '40px 24px' }}>
+      <div className="container page">
+        <PageHeader eyebrow="Playlists" title="Follow a learning path" />
         <GatedPanel
-          icon="🛤️"
+          icon={ListVideo}
           title="Playlists are limited to demo users"
           description="Playlists track your progress across several decks and are presented live by the AI avatar. Published decks remain browsable without signing in."
           action="follow a playlist"
-          links={[{ href: '/decks', label: '📚 Browse the decks' }, { href: '/video/library', label: '🎞️ Browse the video library' }]}
+          links={[{ href: '/decks', label: 'Browse the decks' }, { href: '/video/library', label: 'Browse the video library' }]}
         />
       </div>
     );
@@ -192,255 +197,204 @@ function PathPlayer() {
 
   if (gone) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', color: theme.muted }}>
-        <div style={{ fontSize: 56, marginBottom: 16 }}>🚧</div>
-        <h2 style={{ color: theme.danger }}>Playlist is broken</h2>
-        <p>One of the referenced decks has been deleted.</p>
-        <button onClick={() => navigate('/playlists')} style={{ marginTop: 12, padding: '10px 18px', background: theme.brand, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-          ← Back to playlists
-        </button>
+      <div className="container page">
+        <PageHeader back={{ to: '/playlists', label: 'All playlists' }} eyebrow="Playlist" title="Playlist is broken" />
+        <EmptyState
+          icon={Unlink}
+          title="A deck in this playlist is missing"
+          action={(
+            <Button variant="primary" icon={ArrowLeft} onClick={() => navigate('/playlists')}>
+              Back to playlists
+            </Button>
+          )}
+        >
+          One of the referenced decks has been deleted.
+        </EmptyState>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: 60, textAlign: 'center' }}>
-        <div style={{ background: '#fee2e2', color: '#991b1b', padding: 16, borderRadius: 8, display: 'inline-block' }}>
-          {error}
-        </div>
+      <div className="container page">
+        <PageHeader back={{ to: '/playlists', label: 'All playlists' }} eyebrow="Playlist" title="Playlist unavailable" />
+        <Alert tone="error">{error}</Alert>
       </div>
     );
   }
 
   if (!playlist) {
-    return <div style={{ padding: 60, textAlign: 'center', color: theme.muted }}>Loading playlist…</div>;
+    return (
+      <div className="container page">
+        <div className="presenter__loading"><Spinner label="Loading playlist…" /></div>
+      </div>
+    );
   }
 
   const percent = progress?.percent ?? 0;
   const isComplete = progress?.total_slides && progress.completed_count >= progress.total_slides;
   const step = playlist.steps[currentStep];
+  const totalSlides = playlist.steps.reduce((n, s) => n + (s.slide_count ?? 0), 0);
+  const hasProgress = !!progress && progress.completed_count > 0;
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 60px)', background: theme.cardAlt, padding: '20px 24px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <button
-          onClick={() => navigate('/playlists')}
-          style={{
-            background: 'transparent', border: 'none', color: theme.brandLight,
-            cursor: 'pointer', fontSize: 13, marginBottom: 12, padding: 0,
-          }}
-        >
-          ← All playlists
-        </button>
+    <div className="container page presenter playlist-player">
+      <PageHeader
+        back={{ to: '/playlists', label: 'All playlists' }}
+        eyebrow={`Playlist · ${pluralize(playlist.steps.length, 'deck')} · ${pluralize(totalSlides, 'slide')}`}
+        title={humanizeTitle(playlist.title)}
+        lead={playlist.description || undefined}
+        actions={isComplete ? <Chip tone="sage" icon={CircleCheck}>100% complete</Chip> : undefined}
+      />
 
-        {/* Header + progress */}
-        <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 18, marginBottom: 14, boxShadow: theme.shadow }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <h1 style={{ margin: '0 0 4px', fontSize: 22, color: theme.brand, fontWeight: 800 }}>{playlist.title}</h1>
-              {playlist.description && <p style={{ margin: 0, fontSize: 13, color: theme.muted }}>{playlist.description}</p>}
-            </div>
-            {isComplete && (
-              <div style={{ background: '#dcfce7', color: theme.success, padding: '6px 12px', borderRadius: 6, fontWeight: 700, fontSize: 13 }}>
-                ✓ 100% complete
-              </div>
-            )}
-          </div>
-          <div style={{ marginTop: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: theme.muted, marginBottom: 4 }}>
-              <span>{progress?.completed_count ?? 0} / {progress?.total_slides ?? 0} slides</span>
-              <span>{percent.toFixed(0)}%</span>
-            </div>
-            <div style={{ height: 8, background: theme.cardAlt, borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ width: `${percent}%`, height: '100%', background: theme.accent, transition: 'width 0.3s' }} />
-            </div>
-          </div>
+      <div className="pp-progress">
+        <div className="pp-progress__meta small muted tabular">
+          <span>{progress?.completed_count ?? 0} / {progress?.total_slides ?? 0} slides</span>
+          <span>{percent.toFixed(0)}%</span>
         </div>
+        <Progress value={percent / 100} label="Playlist progress" />
+      </div>
 
-        {/* Stepper */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-          {playlist.steps.map((s, idx) => {
-            const done = (progress?.completed_slides?.[s.deck_id]?.length ?? 0) >= s.slide_count;
-            const active = idx === currentStep && started;
-            return (
+      <ol className="pp-steps" aria-label="Decks in this playlist">
+        {playlist.steps.map((s, idx) => {
+          const done = (progress?.completed_slides?.[s.deck_id]?.length ?? 0) >= s.slide_count;
+          const active = idx === currentStep && started;
+          return (
+            <li key={s.deck_id}>
               <button
-                key={s.deck_id}
+                type="button"
+                className={['pp-step', active && 'is-active', done && 'is-done'].filter(Boolean).join(' ')}
+                aria-current={active ? 'step' : undefined}
                 onClick={() => goToStep(idx)}
-                style={{
-                  flex: '1 1 180px', minWidth: 180, textAlign: 'left',
-                  background: active ? theme.accentLight : theme.card,
-                  border: `1px solid ${active ? theme.accent : theme.border}`,
-                  borderRadius: 10, padding: 12, cursor: 'pointer',
-                  boxShadow: active ? '0 0 0 2px rgba(0, 155, 220, 0.2)' : 'none',
-                }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    background: done ? theme.success : (active ? theme.accent : theme.border),
-                    color: 'white', fontSize: 11, fontWeight: 700,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {done ? '✓' : idx + 1}
-                  </span>
-                  <span style={{ fontSize: 11, color: theme.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    Step {idx + 1}
-                  </span>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: theme.brand, lineHeight: 1.3 }}>{s.deck_title}</div>
-                <div style={{ fontSize: 11, color: theme.muted, marginTop: 2 }}>{s.slide_count} slides</div>
+                <span className="pp-step__num" aria-hidden>
+                  {done ? <Check /> : idx + 1}
+                </span>
+                <span className="pp-step__text">
+                  <span className="eyebrow">Step {idx + 1}{done ? ' · Done' : ''}</span>
+                  <span className="pp-step__title">{humanizeTitle(s.deck_title)}</span>
+                  <span className="small muted">{pluralize(s.slide_count, 'slide')}</span>
+                </span>
               </button>
-            );
-          })}
-        </div>
+            </li>
+          );
+        })}
+      </ol>
 
-        {/* Avatar + voice + language — always visible so user can configure before starting */}
-        <div
-          style={{
-            background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12,
-            padding: 14, marginBottom: 14, boxShadow: theme.shadow,
-            display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap',
-          }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 700, color: theme.accent, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Presentation settings
-          </div>
+      {/* Avatar + voice + language — always visible so user can configure before starting */}
+      <section className="presenter-settings" aria-label="Presentation settings">
+        <div className="presenter-settings__intro">
+          <span className="eyebrow presenter-settings__label"><SlidersHorizontal aria-hidden />Presentation settings</span>
           {started && presentation && (
-            <span style={{ fontSize: 12, color: theme.muted }}>
-              · {step?.deck_title} · Slide {currentSlide + 1} / {presentation.slide_count}
+            <span className="small muted presenter-settings__context">
+              {humanizeTitle(step?.deck_title)} · Slide {currentSlide + 1} / {presentation.slide_count}
             </span>
           )}
+        </div>
 
-          <div style={{ flex: 1 }} />
-
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ fontWeight: 600, color: theme.muted }}>Avatar</span>
-            <select
-              value={selectedAvatar}
-              onChange={(e) => setSelectedAvatar(e.target.value)}
-              style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, fontSize: 13 }}
-            >
+        <div className="presenter-settings__fields">
+          <Field label="Avatar" inline size="sm">
+            <Select value={selectedAvatar} onChange={(e) => setSelectedAvatar(e.target.value)}>
               {avatars.length === 0 && <option value="">Default avatar</option>}
               {avatars.map((a) => <option key={a.id} value={a.id}>{a.display_name}</option>)}
-            </select>
-          </label>
+            </Select>
+          </Field>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-            <span style={{ fontWeight: 600, color: theme.muted }}>Voice</span>
-            <select
-              value={selectedVoice}
-              onChange={(e) => onVoiceChange(e.target.value)}
-              style={{ padding: '6px 8px', borderRadius: 6, border: `1px solid ${theme.border}`, fontSize: 13, minWidth: 180 }}
-            >
+          <Field label="Voice" inline size="sm" className="presenter-settings__voice">
+            <Select value={selectedVoice} onChange={(e) => onVoiceChange(e.target.value)}>
               {Array.from(voicesByLang.entries()).map(([lang, vs]) => (
-                <optgroup key={lang} label={DECK_LANGUAGE_LABELS[lang] ?? lang}>
+                <optgroup key={lang} label={languageName(lang)}>
                   {vs.map((v) => (
                     <option key={v.id} value={v.id}>
-                      {v.display_name} · {v.gender === 'male' ? '♂' : '♀'}
+                      {v.display_name} · {v.gender === 'male' ? 'Male' : 'Female'}
                     </option>
                   ))}
                 </optgroup>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
 
           <LanguageSelector value={language} onChange={setLanguage} variant="light" />
         </div>
+      </section>
 
-        {/* Start / Resume banner */}
-        {!started && step && (
-          <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 20, marginBottom: 14, textAlign: 'center', boxShadow: theme.shadow }}>
-            <div style={{ fontSize: 14, color: theme.muted, marginBottom: 4 }}>
-              {progress && progress.completed_count > 0
-                ? `Resume at step ${currentStep + 1}: ${step.deck_title}`
-                : `Ready to start with: ${step.deck_title}`}
-            </div>
-            <div style={{ fontSize: 12, color: theme.muted, marginBottom: 14 }}>
-              The avatar, voice and language above will be used for <b>all {playlist.steps.length} decks</b> in this playlist.
-            </div>
-            <button
-              data-testid="playlist-start"
-              onClick={() => setStarted(true)}
-              style={{
-                background: theme.brand, color: 'white', border: 'none',
-                borderRadius: 8, padding: '12px 28px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+      {/* Start / Resume banner */}
+      {!started && step && (
+        <section className="pp-start" aria-label="Start playlist">
+          <div className="pp-start__text">
+            <span className="eyebrow">{hasProgress ? `Resume at step ${currentStep + 1}` : 'Ready to start'}</span>
+            <h2 className="pp-start__title">{humanizeTitle(step.deck_title)}</h2>
+            <p className="small muted">
+              The avatar, voice and language above will be used for <strong>all {playlist.steps.length} decks</strong> in this playlist.
+            </p>
+          </div>
+          <Button
+            data-testid="playlist-start"
+            variant="primary"
+            size="lg"
+            icon={Play}
+            onClick={() => setStarted(true)}
+          >
+            {hasProgress ? 'Resume' : 'Start'}
+          </Button>
+        </section>
+      )}
+
+      {/* Player */}
+      {started && !presentation && (
+        <div className="presenter__loading"><Spinner label="Loading deck…" /></div>
+      )}
+      {started && presentation && (
+        <div className="presenter-grid">
+          <div className="presenter-grid__main">
+            <SlideViewer
+              presentation={presentation}
+              currentSlide={currentSlide}
+              onSlideChange={onSlideChange}
+              language={language}
+              autoPlayVideo={autoPlayVideo}
+              onVideoPlayingChange={(playing) => {
+                setVideoPlaying(playing);
+                if (playing) setAutoPlayVideo(false);
               }}
-            >
-              {progress && progress.completed_count > 0 ? '▶ Resume' : '▶ Start'}
-            </button>
+            />
+            <nav className="pp-deck-nav" aria-label="Playlist decks">
+              <Button
+                data-testid="playlist-prev-deck"
+                icon={ArrowLeft}
+                onClick={() => goToStep(currentStep - 1)}
+                disabled={currentStep === 0}
+              >
+                Previous deck
+              </Button>
+              <span className="small muted tabular">Deck {currentStep + 1} of {playlist.steps.length}</span>
+              <Button
+                data-testid="playlist-next-deck"
+                variant="primary"
+                iconRight={ArrowRight}
+                onClick={() => goToStep(currentStep + 1)}
+                disabled={currentStep === playlist.steps.length - 1}
+              >
+                Next deck
+              </Button>
+            </nav>
           </div>
-        )}
-
-        {/* Player */}
-        {started && !presentation && (
-          <div style={{ color: theme.muted, textAlign: 'center', padding: 60 }}>Loading deck…</div>
-        )}
-        {started && presentation && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.724fr) minmax(0, 1fr)', gap: 20, alignItems: 'start' }}>
-            <div>
-              <div style={{ background: theme.card, borderRadius: 12, padding: 16, boxShadow: theme.shadow, border: `1px solid ${theme.border}` }}>
-                <SlideViewer
-                  presentation={presentation}
-                  currentSlide={currentSlide}
-                  onSlideChange={onSlideChange}
-                  language={language}
-                  autoPlayVideo={autoPlayVideo}
-                  onVideoPlayingChange={(playing) => {
-                    setVideoPlaying(playing);
-                    if (playing) setAutoPlayVideo(false);
-                  }}
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
-                <button
-                  data-testid="playlist-prev-deck"
-                  onClick={() => goToStep(currentStep - 1)}
-                  disabled={currentStep === 0}
-                  style={{
-                    background: 'white', color: theme.brand,
-                    border: `1px solid ${theme.border}`, borderRadius: 8,
-                    padding: '10px 16px', fontSize: 13, fontWeight: 600,
-                    cursor: currentStep === 0 ? 'not-allowed' : 'pointer',
-                    opacity: currentStep === 0 ? 0.5 : 1,
-                  }}
-                >
-                  ← Previous deck
-                </button>
-                <button
-                  data-testid="playlist-next-deck"
-                  onClick={() => goToStep(currentStep + 1)}
-                  disabled={currentStep === playlist.steps.length - 1}
-                  style={{
-                    background: theme.brand, color: 'white', border: 'none',
-                    borderRadius: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600,
-                    cursor: currentStep === playlist.steps.length - 1 ? 'not-allowed' : 'pointer',
-                    opacity: currentStep === playlist.steps.length - 1 ? 0.5 : 1,
-                  }}
-                >
-                  Next deck →
-                </button>
-              </div>
-            </div>
-            <div>
-              <div style={{ background: theme.card, borderRadius: 12, padding: 16, boxShadow: theme.shadow, border: `1px solid ${theme.border}` }}>
-                <AvatarPanel
-                  presentation={presentation}
-                  currentSlide={currentSlide}
-                  language={language}
-                  onSlideChange={onSlideChange}
-                  videoPlaying={videoPlaying}
-                  onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
-                  selectedAvatar={selectedAvatar}
-                  selectedVoice={selectedVoice}
-                  autoStart={true}
-                  mode={avatarMode}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+          <aside className="presenter-grid__rail" aria-label="Now presenting">
+            <AvatarPanel
+              presentation={presentation}
+              currentSlide={currentSlide}
+              language={language}
+              onSlideChange={onSlideChange}
+              videoPlaying={videoPlaying}
+              onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
+              selectedAvatar={selectedAvatar}
+              selectedVoice={selectedVoice}
+              autoStart={true}
+              mode={avatarMode}
+            />
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
