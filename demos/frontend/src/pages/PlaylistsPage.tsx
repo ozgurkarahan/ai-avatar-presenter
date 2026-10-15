@@ -153,6 +153,7 @@ function PlaylistsList() {
             {playlists.map((p) => (
               <div
                 key={p.id}
+                data-testid="playlist-card"
                 style={{
                   background: theme.card, border: `1px solid ${theme.border}`,
                   borderRadius: 12, padding: 20, boxShadow: theme.shadow,

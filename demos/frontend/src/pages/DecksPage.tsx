@@ -155,6 +155,7 @@ export default function DecksPage() {
         >
           <input
             ref={inputRef}
+            data-testid="deck-upload-input"
             type="file"
             accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
             style={{ display: 'none' }}
@@ -188,6 +189,7 @@ export default function DecksPage() {
             {decks.map((d) => (
               <div
                 key={d.deck_id}
+                data-testid="deck-card"
                 style={{
                   background: theme.card,
                   border: `1px solid ${theme.border}`,
@@ -245,6 +247,7 @@ export default function DecksPage() {
                 )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
                   <button
+                    data-testid="deck-open"
                     onClick={() => navigate(`/decks/${d.deck_id}/present`)}
                     style={{
                       flex: 1, padding: '8px 12px', border: 'none', borderRadius: 6,

@@ -210,6 +210,7 @@ function Card({ item, onOpen, onDelete, deleting, isAdmin, publishing, onToggleP
 }) {
   return (
     <motion.div
+      data-testid="library-item"
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4, boxShadow: '0 10px 30px rgba(0,51,102,0.16)' }}
       style={{
@@ -330,6 +331,7 @@ function PlayerModal({ item, loading, onClose }: {
             <div style={{ position: 'relative', background: '#000' }}>
               {item.video_url ? (
                 <video
+                  data-testid="library-player"
                   src={item.video_url}
                   controls autoPlay
                   style={{ width: '100%', maxHeight: '70vh', display: 'block' }}

@@ -145,6 +145,7 @@ export default function QaChat({ presentationId, slideIndex }: Props) {
 
       <form style={styles.form} onSubmit={handleSubmit}>
         <input
+          data-testid="qa-input"
           style={styles.input}
           type="text"
           placeholder="Ask, translate, or present..."

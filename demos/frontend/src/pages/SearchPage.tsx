@@ -90,6 +90,7 @@ function DeckSearch() {
           }}
         >
           <input
+            data-testid="search-input"
             type="text"
             autoFocus
             value={query}
@@ -167,6 +168,7 @@ function DeckSearch() {
             {results.map((r, idx) => (
               <div
                 key={`${r.deck_id}-${r.slide_index}-${idx}`}
+                data-testid="search-result"
                 style={{
                   background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12,
                   padding: 18, boxShadow: theme.shadow,

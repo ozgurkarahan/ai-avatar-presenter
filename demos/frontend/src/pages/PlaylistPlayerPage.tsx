@@ -360,6 +360,7 @@ function PathPlayer() {
               The avatar, voice and language above will be used for <b>all {playlist.steps.length} decks</b> in this playlist.
             </div>
             <button
+              data-testid="playlist-start"
               onClick={() => setStarted(true)}
               style={{
                 background: theme.brand, color: 'white', border: 'none',
@@ -393,6 +394,7 @@ function PathPlayer() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
                 <button
+                  data-testid="playlist-prev-deck"
                   onClick={() => goToStep(currentStep - 1)}
                   disabled={currentStep === 0}
                   style={{
@@ -406,6 +408,7 @@ function PathPlayer() {
                   ← Previous deck
                 </button>
                 <button
+                  data-testid="playlist-next-deck"
                   onClick={() => goToStep(currentStep + 1)}
                   disabled={currentStep === playlist.steps.length - 1}
                   style={{

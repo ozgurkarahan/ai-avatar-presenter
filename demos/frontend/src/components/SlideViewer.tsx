@@ -201,18 +201,20 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
         <div style={styles.nav}>
           <button
             type="button"
+            data-testid="slide-prev"
             style={{ ...styles.navBtn, ...(currentSlide === 0 ? styles.navBtnDisabled : {}) }}
             disabled={currentSlide === 0}
             onClick={() => onSlideChange(currentSlide - 1)}
           >
             ◀ Prev
           </button>
-          <span style={styles.counter}>
+          <span style={styles.counter} data-testid="slide-counter">
             {currentSlide + 1} / {presentation.slide_count}
           </span>
           <button
             type="button"
             style={{ ...styles.navBtn, ...(currentSlide >= presentation.slide_count - 1 ? styles.navBtnDisabled : {}) }}
+            data-testid="slide-next"
             disabled={currentSlide >= presentation.slide_count - 1}
             onClick={() => onSlideChange(currentSlide + 1)}
           >
