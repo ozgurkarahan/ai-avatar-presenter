@@ -192,6 +192,23 @@ test.describe('Regression — redesign behaviours', () => {
     await expect(page.getByTestId('slide-counter')).toContainText('1');
   });
 
+  test('player modal traps focus, cycles Tab and restores focus on Escape', async ({ page }) => {
+    await open(page, 'visitor', '/video/library');
+    const trigger = page.getByTestId('library-item').first().locator('.episode-row__title');
+    await trigger.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const inDialog = () => page.evaluate(() => !!document.activeElement?.closest('[role=dialog]'));
+    expect(await inDialog()).toBe(true);
+    // Focusing something behind the scrim is pulled back into the dialog.
+    await page.evaluate(() => (document.querySelector('.masthead__brand') as HTMLElement).focus());
+    expect(await inDialog()).toBe(true);
+    for (let i = 0; i < 6; i++) { await page.keyboard.press('Tab'); expect(await inDialog()).toBe(true); }
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
   test('host disc falls back to a monogram when the avatar image fails', async ({ page }) => {
     await mockApi(page, 'visitor');
     await page.route('**/static/avatars/photo_female.png', (r) => r.fulfill({ status: 404, body: '' }));
