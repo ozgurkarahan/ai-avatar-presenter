@@ -190,6 +190,44 @@ def test_demo_ws_per_ip_quota_4429(client, demo_on, monkeypatch):
     assert len(demo_on) == 2
 
 
+def test_demo_ws_exempt_ip_bypasses_and_does_not_consume_quota(client, demo_on, monkeypatch):
+    from security import DEMO_QUOTA
+
+    monkeypatch.setenv("DEMO_DAILY_SESSIONS_PER_IP", "1")
+    monkeypatch.setenv("DEMO_DAILY_SESSIONS", "2")
+    monkeypatch.setenv("DEMO_QUOTA_EXEMPT_IPS", "203.0.113.7, 192.0.2.0/24")
+    home = {**ORIGIN, "x-forwarded-for": "203.0.113.7"}
+    for _ in range(3):  # well past the per-IP limit of 1
+        _run_session(client, headers=home)
+    _run_session(client, headers={**ORIGIN, "x-forwarded-for": "192.0.2.55"})  # CIDR match
+    assert len(demo_on) == 4
+    # Exempt sessions consume neither the global nor the minutes budget.
+    assert DEMO_QUOTA.remaining_today() == 2
+    _run_session(client, headers={**ORIGIN, "x-forwarded-for": "198.51.100.9"})
+    assert DEMO_QUOTA.remaining_today() == 1
+
+
+def test_demo_ws_exempt_ip_cannot_be_spoofed(client, demo_on, monkeypatch):
+    monkeypatch.setenv("DEMO_DAILY_SESSIONS_PER_IP", "1")
+    monkeypatch.setenv("DEMO_QUOTA_EXEMPT_IPS", "203.0.113.7")
+    attacker = {**ORIGIN, "x-forwarded-for": "203.0.113.7, 198.51.100.66"}  # real peer appended right
+    _run_session(client, headers=attacker)
+    assert _post_accept_close(client, _url(), attacker)[0] == 4429
+
+
+def test_demo_quota_exempt_parsing(monkeypatch):
+    from security import demo_quota_exempt
+
+    monkeypatch.delenv("DEMO_QUOTA_EXEMPT_IPS", raising=False)
+    assert demo_quota_exempt("203.0.113.7") is False
+    monkeypatch.setenv("DEMO_QUOTA_EXEMPT_IPS", " junk , 203.0.113.7 ,2001:db8::/32,")
+    assert demo_quota_exempt("203.0.113.7") is True
+    assert demo_quota_exempt("2001:db8::1") is True
+    assert demo_quota_exempt("203.0.113.8") is False
+    assert demo_quota_exempt("not-an-ip") is False
+    assert demo_quota_exempt("") is False
+
+
 def test_demo_ws_time_limit_4408_and_release(client, demo_on, monkeypatch, app_module):
     monkeypatch.setenv("DEMO_SESSION_SECONDS", "1")
 

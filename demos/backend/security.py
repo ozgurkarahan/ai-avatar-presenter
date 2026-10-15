@@ -282,6 +282,31 @@ def demo_daily_minutes() -> int:
     return _env_int("DEMO_DAILY_MINUTES", 60)
 
 
+def demo_quota_exempt(ip: Optional[str]) -> bool:
+    """True when ``ip`` matches ``DEMO_QUOTA_EXEMPT_IPS`` (comma-separated IPs
+    or CIDRs, e.g. the owner's home IP). Exempt sessions skip the daily
+    counters but still respect the concurrency and per-session time caps.
+    ``ip`` must come from :func:`client_ip` (trusted proxy hop), never from
+    a raw client-supplied header."""
+    raw = os.environ.get("DEMO_QUOTA_EXEMPT_IPS") or ""
+    if not ip or not raw.strip():
+        return False
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            if addr in ipaddress.ip_network(item, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def demo_max_speaks(slide_count: int) -> int:
     """Narrations allowed per demo session: ``DEMO_MAX_SPEAKS`` (unset / 0 ⇒
     2 × slide count), never above :data:`DEMO_MAX_SPEAKS_HARD_CAP`."""

@@ -37,6 +37,7 @@ from security import (
     client_ip,
     consume_quota,
     demo_max_speaks,
+    demo_quota_exempt,
     demo_session_seconds,
     is_valid,
     max_voice_session_seconds,
@@ -997,7 +998,12 @@ async def demo_voice_websocket(ws: WebSocket):
 
     try:
         ip = client_ip(ws.headers, ws.client.host if ws.client else None)
-        exhausted = await asyncio.to_thread(DEMO_QUOTA.try_consume, ip)
+        exempt = demo_quota_exempt(ip)
+        if exempt:
+            logger.info("Demo session quota-exempt (allowlisted client IP)")
+            exhausted = None
+        else:
+            exhausted = await asyncio.to_thread(DEMO_QUOTA.try_consume, ip)
         if exhausted:
             logger.info("Demo session refused: %s", exhausted)
             await ws.accept()
@@ -1042,7 +1048,8 @@ async def demo_voice_websocket(ws: WebSocket):
             except Exception:
                 pass
         finally:
-            await asyncio.to_thread(DEMO_QUOTA.add_seconds, time.monotonic() - started)
+            if not exempt:
+                await asyncio.to_thread(DEMO_QUOTA.add_seconds, time.monotonic() - started)
     finally:
         DEMO_SESSIONS.release()
 

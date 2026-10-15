@@ -51,6 +51,7 @@ allowlist is forced empty, so nobody can act as admin.
 | `DEMO_DAILY_SESSIONS` / `DEMO_DAILY_SESSIONS_PER_IP` | `20` / `3` | Demo sessions per UTC day, globally and per client IP. Worst case avatar minutes/day = `DEMO_DAILY_SESSIONS` × `DEMO_SESSION_SECONDS` / 60 (60 min with defaults). |
 | `DEMO_DAILY_MINUTES` | `60` | Hard cap on total public-demo streaming minutes per UTC day (durable counter in Cosmos). |
 | `DEMO_MAX_SPEAKS` | `0` | Narrations per demo session; `0` = 2 × slide count (hard max 40). |
+| `DEMO_QUOTA_EXEMPT_IPS` | *(empty)* | Comma-separated client IPs/CIDRs (e.g. the owner's home IP) exempt from the demo daily quotas. Matched against the trusted proxy hop, so it cannot be spoofed via `X-Forwarded-For`; exempt sessions don't consume the visitors' budget but still respect `DEMO_MAX_CONCURRENT` and `DEMO_SESSION_SECONDS`. Keep it in the azd env, not in git. |
 | `USE_EXTERNAL_AI_SERVICES` | `false` | Reuse an existing AI Services / Speech resource (e.g. one hosting custom photo avatars). |
 | `EXTERNAL_AI_SERVICES_ENDPOINT` / `_REGION` / `_RESOURCE_ID` | empty | Details of that resource (may be in another resource group of the same subscription). |
 | `ASSIGN_EXTERNAL_AI_SERVICES_ROLES` | `true` | Grant the app identity `Cognitive Services User`, `Cognitive Services Speech User` and `Foundry User` on the external resource. Requires Owner / User Access Administrator on its resource group; set `false` and assign them manually otherwise. |

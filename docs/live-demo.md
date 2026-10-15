@@ -123,6 +123,7 @@ Only the concurrency slot is in-process (the app is capped at one replica).
 | `DEMO_DAILY_SESSIONS_PER_IP` | `3` | Sessions per UTC day per client IP. |
 | `DEMO_DAILY_MINUTES` | `60` | Hard cap on total demo streaming minutes per UTC day (all visitors). |
 | `DEMO_MAX_SPEAKS` | `0` | Narrations per session; `0`/unset = 2 × slide count; never above 40. |
+| `DEMO_QUOTA_EXEMPT_IPS` | *(empty)* | Comma-separated client IPs/CIDRs (e.g. the owner's home IP) that skip the daily quotas. Matched on the same trusted client IP as the per-IP quota (not spoofable); exempt sessions don't consume the shared budget but still obey `DEMO_MAX_CONCURRENT` and `DEMO_SESSION_SECONDS`. Set it in the azd env, never commit it. |
 
 All are read per call, so a config change (new revision) takes effect
 immediately; flipping `PUBLIC_DEMO_ENABLED=false` blocks new sessions at once.
