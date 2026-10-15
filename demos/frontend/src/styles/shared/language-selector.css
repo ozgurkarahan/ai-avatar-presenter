@@ -1,0 +1,8 @@
+/* LanguageSelector — compact inline select. */
+.language-selector {
+  flex: none;
+}
+
+.language-selector .field__select {
+  min-width: 9.5rem;
+}

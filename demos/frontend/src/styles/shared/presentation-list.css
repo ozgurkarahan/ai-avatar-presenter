@@ -1,0 +1,92 @@
+/* PresentationList — compact list of saved decks on the Live page. */
+.deck-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.deck-picker__list {
+  list-style: none;
+  padding: 0;
+  border-bottom: var(--bw) solid var(--c-line);
+}
+
+.deck-picker__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-top: var(--bw) solid var(--c-line);
+  transition: background-color var(--dur) var(--ease);
+}
+
+.deck-picker__row:hover {
+  background: var(--c-paper);
+}
+
+.deck-picker__row.is-busy {
+  cursor: progress;
+}
+
+.deck-picker__open {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: var(--sp-3) var(--sp-2);
+  border: 0;
+  background: none;
+  color: var(--c-ink);
+  text-align: left;
+}
+
+.deck-picker__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--c-sand);
+  color: var(--c-ink-2);
+}
+
+.deck-picker__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.deck-picker__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.deck-picker__name {
+  font-family: var(--font-display);
+  font-size: 1.1875rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-picker__open:hover .deck-picker__name {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.deck-picker__actions {
+  display: flex;
+  flex: none;
+  gap: var(--sp-1);
+  padding-right: var(--sp-2);
+}
+
+.deck-picker__delete:hover:not(:disabled) {
+  background: var(--c-danger-50);
+  color: var(--c-danger);
+}

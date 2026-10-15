@@ -1,0 +1,77 @@
+/* AuthGate — gate notices, gated panels, publish / live-demo controls. */
+.gate-notice {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+}
+
+.gate-notice .gate-notice__icon {
+  margin-top: 0;
+}
+
+.gate-notice__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.gate-notice .btn svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 0;
+}
+
+.gate-notice--compact {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.78125rem;
+}
+
+.gate-notice--compact .gate-notice__text {
+  flex-basis: auto;
+}
+
+.gated-panel {
+  max-width: 720px;
+  margin-inline: auto;
+  background: var(--c-paper);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--r-md);
+  padding-inline: clamp(var(--sp-4), 4vw, var(--sp-7));
+}
+
+.gated-panel__title {
+  font-size: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.gated-panel__text {
+  max-width: 560px;
+}
+
+.gated-panel__notice {
+  width: 100%;
+  max-width: 520px;
+  margin-top: var(--sp-2);
+  text-align: left;
+}
+
+.gated-panel__links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.live-demo-toggle.is-on {
+  background: var(--c-clay-50);
+  border-color: var(--c-clay);
+  color: var(--c-clay-ink);
+}
+
+.live-demo-toggle.is-on:hover:not(:disabled) {
+  background: var(--c-clay);
+  border-color: var(--c-clay);
+  color: var(--c-on-clay);
+}

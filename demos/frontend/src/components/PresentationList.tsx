@@ -1,63 +1,20 @@
 import React, { useEffect, useState } from 'react';
+import { Presentation as DeckIcon, Share2, Trash2 } from 'lucide-react';
 import { listPresentations, getSlides, deletePresentation, sharePresentation, type PresentationListItem, type Presentation } from '../services/api';
+import { Button, Spinner, humanizeTitle, pluralize } from '../ui';
+import '../styles/shared/presentation-list.css';
 
 interface Props {
   onSelect: (presentation: Presentation) => void;
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  container: { marginTop: '24px' },
-  heading: { fontSize: '16px', fontWeight: 600, marginBottom: '12px' },
-  list: { listStyle: 'none', padding: 0, margin: 0 },
-  item: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '12px 16px',
-    marginBottom: '8px',
-    borderRadius: '8px',
-    background: '#f0f4f8',
-    cursor: 'pointer',
-    transition: 'background 0.15s',
-  },
-  itemHover: { background: '#dce6f0' },
-  name: { fontWeight: 500, fontSize: '14px' },
-  badge: {
-    fontSize: '12px',
-    color: '#555',
-    background: '#e0e0e0',
-    borderRadius: '12px',
-    padding: '2px 10px',
-  },
-  actions: {
-    display: 'flex',
-    gap: '6px',
-    alignItems: 'center',
-  },
-  actionBtn: {
-    padding: '4px 10px',
-    border: 'none',
-    borderRadius: '5px',
-    fontSize: '12px',
-    cursor: 'pointer',
-    fontWeight: 500,
-  },
-  deleteBtn: {
-    background: '#fee2e2',
-    color: '#b91c1c',
-  },
-  shareBtn: {
-    background: '#e0edff',
-    color: '#1d4ed8',
-  },
-  empty: { color: '#999', fontSize: '13px', fontStyle: 'italic' as const },
-  loading: { color: '#888', fontSize: '13px' },
-};
+function deckTitle(filename: string): string {
+  return humanizeTitle(filename.replace(/\.pptx$/i, ''));
+}
 
 export default function PresentationList({ onSelect }: Props) {
   const [items, setItems] = useState<PresentationListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -106,45 +63,61 @@ export default function PresentationList({ onSelect }: Props) {
     }
   };
 
-  if (loading) return <div style={styles.loading}>Loading saved presentations...</div>;
+  if (loading) return <Spinner label="Loading saved presentations…" />;
   if (items.length === 0) return null;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.heading}>Or choose a saved presentation:</div>
-      <ul style={styles.list}>
-        {items.map((item) => (
-          <li
-            key={item.id}
-            style={hoveredId === item.id ? { ...styles.item, ...styles.itemHover } : styles.item}
-            onMouseEnter={() => setHoveredId(item.id)}
-            onMouseLeave={() => setHoveredId(null)}
-            onClick={() => handleSelect(item)}
-          >
-            <span style={styles.name}>
-              {loadingId === item.id ? 'Loading...' : deletingId === item.id ? 'Deleting...' : item.filename}
-            </span>
-            <div style={styles.actions}>
-              <span style={styles.badge}>{item.slide_count} slides</span>
+    <section className="deck-picker" aria-labelledby="deck-picker-title">
+      <h3 id="deck-picker-title" className="eyebrow deck-picker__title">Or choose a saved presentation</h3>
+      <ul className="deck-picker__list">
+        {items.map((item) => {
+          const busy = loadingId === item.id || deletingId === item.id;
+          const title = deckTitle(item.filename);
+          return (
+            <li key={item.id} className={['deck-picker__row', busy && 'is-busy'].filter(Boolean).join(' ')}>
               <button
-                style={{ ...styles.actionBtn, ...styles.shareBtn }}
-                onClick={(e) => handleShare(e, item)}
-                title="Share presentation"
+                type="button"
+                className="deck-picker__open"
+                onClick={() => handleSelect(item)}
+                title={item.filename}
+                aria-label={`Open ${title}`}
               >
-                🔗 Share
+                <span className="deck-picker__icon" aria-hidden>
+                  {busy ? <span className="spinner" /> : <DeckIcon />}
+                </span>
+                <span className="deck-picker__body">
+                  <span className="deck-picker__name">{title}</span>
+                  <span className="deck-picker__meta small muted tabular">
+                    {loadingId === item.id ? 'Loading…' : deletingId === item.id ? 'Deleting…' : pluralize(item.slide_count, 'slide')}
+                  </span>
+                </span>
               </button>
-              <button
-                style={{ ...styles.actionBtn, ...styles.deleteBtn }}
-                onClick={(e) => handleDelete(e, item)}
-                disabled={deletingId === item.id}
-                title="Delete presentation"
-              >
-                🗑️ Delete
-              </button>
-            </div>
-          </li>
-        ))}
+              <div className="deck-picker__actions">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  iconOnly
+                  icon={Share2}
+                  onClick={(e) => handleShare(e, item)}
+                  title="Share presentation"
+                  aria-label={`Share ${title}`}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  iconOnly
+                  icon={Trash2}
+                  className="deck-picker__delete"
+                  onClick={(e) => handleDelete(e, item)}
+                  disabled={deletingId === item.id}
+                  title="Delete presentation"
+                  aria-label={`Delete ${title}`}
+                />
+              </div>
+            </li>
+          );
+        })}
       </ul>
-    </div>
+    </section>
   );
 }
