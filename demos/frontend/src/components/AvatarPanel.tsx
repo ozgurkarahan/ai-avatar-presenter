@@ -246,14 +246,28 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
       }));
     }
 
+    // Relay-only: on corporate / NAT-heavy networks the host and srflx pairs
+    // never connect and ICE fails before it falls back to the TURN relay.
     const pc = new RTCPeerConnection({
       iceServers: servers,
       bundlePolicy: 'max-bundle',
+      iceTransportPolicy: 'relay',
     });
     peerConnectionRef.current = pc;
 
     pc.oniceconnectionstatechange = () => {
       console.log('[WebRTC] ICE state:', pc.iceConnectionState);
+    };
+
+    // Report the real media state: signalling success does not mean video flows.
+    pc.onconnectionstatechange = () => {
+      if (peerConnectionRef.current !== pc) return;
+      if (pc.connectionState === 'connected') {
+        setStatus((s) => (s.startsWith('Reconnected') ? s : 'Avatar connected — ready to present'));
+      } else if (pc.connectionState === 'failed') {
+        setConnected(false);
+        setStatus('Video connection failed — your network may block WebRTC. Press Stop and try again.');
+      }
     };
 
     // Helper: send the current local SDP offer to the backend (idempotent)
@@ -428,7 +442,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
           handleAnswer(msg);
           setConnected(true);
           retryCountRef.current = 0;
-          setStatus('Avatar connected — ready to present');
+          setStatus('Connecting video…');
         }
       } else if ((msg.server_sdp || msg.sdp || msg.answer) && (!msg.type || msg.type === 'session.avatar.connected')) {
         handleAnswer(msg);
@@ -439,7 +453,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
           setStatus('Reconnected — speaking in new language...');
           setTimeout(() => speakSlideRef.current(currentSlideRef.current), 1000);
         } else {
-          setStatus('Avatar connected — ready to present');
+          setStatus('Connecting video…');
         }
       } else if (msg.type === 'error') {
         const errMsg = msg.error?.message || 'Unknown error';
@@ -823,7 +837,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
                   disabled={speaking}
                   onClick={speak}
                 >
-                  🎙️ Speak this slide
+                  🎙️ Present this slide
                 </button>
                 {!presenting && (
                   <button

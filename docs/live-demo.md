@@ -20,7 +20,7 @@ hard, server-side cost and abuse guardrails. It is **off by default**.
    a *Try the live avatar demo →* link and a *Live demo* badge.
 4. The browser opens `wss://<host>/ws/voice/demo?deck_id=<uuid>` and negotiates
    WebRTC exactly like the admin flow. The visitor can only press
-   **Speak this slide**, **Present all** (auto-advances after each narration)
+   **Present this slide**, **Present all** (auto-advances after each narration)
    and **Stop** — no avatar/voice/language picker, no Q&A, no free text, no
    microphone, no uploads.
 
