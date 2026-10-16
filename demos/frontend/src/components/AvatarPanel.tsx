@@ -83,6 +83,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   useEffect(() => { demoSecondsRef.current = demoSessionSeconds; }, [demoSessionSeconds]);
   useEffect(() => {
     if (!demoEndsAt) return;
+    setDemoNow(Date.now());
     const t = setInterval(() => setDemoNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [demoEndsAt]);
@@ -738,8 +739,11 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   const statusText = status === 'Not connected' || (!connected && status === 'Disconnected') ? '' : status;
   const statusIsError = /^(Error|Connection (failed|closed)|Video connection|WebSocket connection failed|Could not)/.test(statusText);
   const connecting = !connected && (demoConnecting || /^(Connecting|Configuring|Setting up|Starting|Avatar busy)/.test(status));
-  const demoRemaining = isDemo && demoEndsAt && connected
-    ? formatClock(Math.max(0, Math.round((demoEndsAt - demoNow) / 1000)))
+  // The server's hard cap starts when the demo socket opens (connection setup
+  // included), so the countdown is shown from that moment — not only once the
+  // video connects — and rounds up so 0:00 coincides with the cutoff.
+  const demoRemaining = isDemo && demoEndsAt
+    ? formatClock(Math.max(0, Math.ceil((demoEndsAt - demoNow) / 1000)))
     : null;
   const idleLine = isDemo
     ? (demoConnecting ? 'Starting the avatar…' : 'Live avatar demo')
@@ -757,11 +761,16 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     >
       <div className="avatar-rail__head">
         <span className="eyebrow">{connected ? 'Now presenting' : 'Ready to present'}</span>
-        {connected && (
+        {connected ? (
           <span className="avatar-rail__live">
             <Waveform active={speaking} />
             <LivePill>{speaking ? 'Speaking' : 'Live'}</LivePill>
-            {demoRemaining && <span className="small muted tabular">{demoRemaining} left</span>}
+            {demoRemaining && <span className="small muted tabular" data-testid="demo-time-left" title="Demo time remaining">{demoRemaining} left</span>}
+          </span>
+        ) : demoRemaining && (
+          <span className="avatar-rail__live">
+            <LivePill idle>Connecting</LivePill>
+            <span className="small muted tabular" data-testid="demo-time-left" title="Demo time remaining">{demoRemaining} left</span>
           </span>
         )}
       </div>

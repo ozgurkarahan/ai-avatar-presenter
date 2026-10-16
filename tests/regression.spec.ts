@@ -209,6 +209,35 @@ test.describe('Regression — redesign behaviours', () => {
     await expect(trigger).toBeFocused();
   });
 
+  test('demo countdown starts at the full session length on socket open and ticks exactly', async ({ page }) => {
+    await page.clock.install();
+    // Stub only the demo socket: it opens and stays silent (avatar still connecting).
+    await page.addInitScript(() => {
+      const Native = window.WebSocket;
+      class FakeDemoSocket extends EventTarget {
+        readyState = 0; onopen: any = null; onmessage: any = null; onclose: any = null; onerror: any = null;
+        constructor(public url: string) {
+          super();
+          setTimeout(() => { this.readyState = 1; this.onopen?.(new Event('open')); }, 10);
+        }
+        send() {}
+        close() { this.readyState = 3; }
+      }
+      (window as any).WebSocket = function (url: string, protocols?: any) {
+        return String(url).includes('/ws/voice/demo') ? new FakeDemoSocket(url) : new Native(url, protocols);
+      };
+    });
+    await open(page, 'visitor', '/decks/deck-live/present');
+    await page.getByTestId('demo-start').click();
+    await page.clock.runFor(50);
+    const left = page.getByTestId('demo-time-left');
+    await expect(left).toHaveText('3:00 left');
+    await page.clock.runFor(1000);
+    await expect(left).toHaveText('2:59 left');
+    await page.clock.runFor(60_000);
+    await expect(left).toHaveText('1:59 left');
+  });
+
   test('host disc falls back to a monogram when the avatar image fails', async ({ page }) => {
     await mockApi(page, 'visitor');
     await page.route('**/static/avatars/photo_female.png', (r) => r.fulfill({ status: 404, body: '' }));
