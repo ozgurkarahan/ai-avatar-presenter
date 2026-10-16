@@ -84,3 +84,6 @@ demos/backend/static/avatars/
 azd-*.log
 .copilot/
 
+
+# Rolling Copilot session checkpoint (session-handoff skill)
+.copilot-handoff.md

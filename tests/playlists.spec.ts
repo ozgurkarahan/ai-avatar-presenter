@@ -5,9 +5,9 @@ const BASE_URL = process.env.AI_PRESENTER_BASE_URL ?? 'http://localhost:5173';
 test.describe('Playlists', () => {
   test('home shows tiles including Playlists', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
-    await expect(page.getByRole('button', { name: /Open Search/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Decks/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Playlists/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Search/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Decks/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Playlists/ })).toBeVisible();
   });
 
   test('playlists page renders with empty or populated state', async ({ page }) => {

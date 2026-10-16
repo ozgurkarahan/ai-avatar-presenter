@@ -110,6 +110,9 @@ param demoDailyMinutes string = '60'
 @description('Narrations per demo session; 0 = 2 x slide count (hard max 40)')
 param demoMaxSpeaks string = '0'
 
+@description('Comma-separated client IPs/CIDRs exempt from the demo daily quotas')
+param demoQuotaExemptIps string = ''
+
 @description('Tags to apply to every resource')
 param tags object = {}
 
@@ -212,6 +215,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'DEMO_DAILY_SESSIONS_PER_IP', value: demoDailySessionsPerIp }
             { name: 'DEMO_DAILY_MINUTES', value: demoDailyMinutes }
             { name: 'DEMO_MAX_SPEAKS', value: demoMaxSpeaks }
+            { name: 'DEMO_QUOTA_EXEMPT_IPS', value: demoQuotaExemptIps }
           ]
         }
       ]

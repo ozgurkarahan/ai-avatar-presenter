@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  ArrowLeft, BarChart3, Check, Clapperboard, Download, FileText, FlaskConical, GraduationCap,
+  Library, Play, Plus, RefreshCw, Save, ShoppingBag, Sparkles, type LucideIcon,
+} from 'lucide-react';
+import {
   DRAGONHD_LANGUAGES, DEFAULT_VOICE_BY_LANG,
   IngestResponse, ScriptStyle, SlideInfo, SlideNarration, VideoJob, VoiceOption,
   getJob, getScript, ingestFile, listVoices, patchScript,
@@ -8,40 +12,64 @@ import {
 } from '../services/videoApi';
 import { useAuth } from '../services/auth';
 import { GatedPanel } from '../components/AuthGate';
+import {
+  Alert, Button, Chip, Dropzone, Field, PageHeader, Progress, Select, Spinner, Steps, Textarea,
+  buttonClass, episodeNumber, pluralize,
+} from '../ui';
+import '../styles/pages/video-create.css';
 
-const theme = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc',
-  text: '#1a1a2e', muted: '#64748b',
-  card: '#ffffff', cardAlt: '#f8fafc', border: '#e2e8f0',
-  shadow: '0 4px 20px rgba(0, 51, 102, 0.08)',
-};
-
-const SAMPLE_PROMPTS = [
-  { emoji: '📊', title: 'Executive Summary', focus: 'Summarize each slide for a C-level audience, highlighting strategic value.' },
-  { emoji: '🧪', title: 'Technical Deep-Dive', focus: 'Explain each slide technically to an engineering audience.' },
-  { emoji: '🎓', title: 'Classroom Explainer', focus: 'Narrate each slide clearly for students. Use analogies.' },
-  { emoji: '🛒', title: 'Customer Pitch', focus: 'Narrate each slide as a persuasive customer-facing pitch.' },
+const SAMPLE_PROMPTS: { icon: LucideIcon; title: string; focus: string }[] = [
+  { icon: BarChart3, title: 'Executive Summary', focus: 'Summarize each slide for a C-level audience, highlighting strategic value.' },
+  { icon: FlaskConical, title: 'Technical Deep-Dive', focus: 'Explain each slide technically to an engineering audience.' },
+  { icon: GraduationCap, title: 'Classroom Explainer', focus: 'Narrate each slide clearly for students. Use analogies.' },
+  { icon: ShoppingBag, title: 'Customer Pitch', focus: 'Narrate each slide as a persuasive customer-facing pitch.' },
 ];
 
 type Phase = 'setup' | 'scripting' | 'review' | 'rendering' | 'done';
+
+const STEPS = ['Deck & settings', 'Narration script', 'Render', 'Result'];
+const PHASE_STEP: Record<Phase, number> = { setup: 0, scripting: 1, review: 1, rendering: 2, done: 3 };
+
+const EMOJI_RE = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u{FE0F}\u{200D}]/gu;
+/** Language labels from the service carry flag emoji; strip them for display. */
+function plainLabel(label: string): string {
+  return label.replace(EMOJI_RE, '').replace(/\s+/g, ' ').trim();
+}
+
+function VideoHeader({ step }: { step?: number }) {
+  return (
+    <PageHeader
+      className="video-create__header"
+      eyebrow="Create · Narrated video"
+      title="Narrated video"
+      lead="Turn any deck into a narrated video. Upload slides, review the narration slide by slide, pick a voice — the avatar renders the rest."
+    >
+      {step !== undefined && (
+        <div className="video-create__steps">
+          <Steps steps={STEPS} current={step} />
+        </div>
+      )}
+    </PageHeader>
+  );
+}
 
 export default function VideoPage() {
   const auth = useAuth();
   if (auth.loading || !auth.is_admin) {
     return (
-      <div style={{ background: theme.cardAlt, minHeight: 'calc(100vh - 60px)', padding: '32px 0' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
-          <Hero />
-          {!auth.loading && (
-            <GatedPanel
-              icon="🎬"
-              title="Video generation is limited to demo users"
-              description="Generating a video uploads a deck, writes narration with an LLM and renders an AI avatar. You can still watch every published video in the library."
-              action="generate your own avatar video"
-              links={[{ href: '/video/library', label: '🎞️ Browse the video library' }, { href: '/decks', label: '📚 Browse the decks' }]}
-            />
-          )}
-        </div>
+      <div className="container page video-create">
+        <VideoHeader />
+        {auth.loading ? (
+          <Spinner label="Loading…" />
+        ) : (
+          <GatedPanel
+            icon={Clapperboard}
+            title="Video generation is limited to demo users"
+            description="Generating a video uploads a deck, writes narration with an LLM and renders an AI avatar. You can still watch every published video in the library."
+            action="generate your own avatar video"
+            links={[{ href: '/video/library', label: 'Browse the video library' }, { href: '/decks', label: 'Browse the decks' }]}
+          />
+        )}
       </div>
     );
   }
@@ -214,74 +242,73 @@ function VideoGenerator() {
   const displayTitle = doc?.title ?? doc?.filename ?? '';
 
   return (
-    <div style={{ background: theme.cardAlt, minHeight: 'calc(100vh - 60px)', padding: '32px 0' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
-        <Hero />
-        <AnimatePresence mode="wait">
-          {phase === 'setup' && (
-            <motion.div key="setup" {...fade}>
-              <SetupPhase
-                doc={doc} uploadBusy={uploadBusy}
-                focus={focus} onFocusChange={setFocus}
-                style={style} onStyle={setStyle}
-                language={language} onLanguage={setLanguage}
-                voice={voice} onVoice={setVoice} voices={voices}
-                onFile={handleFile}
-                onApplyPrompt={(p) => setFocus(p.focus)}
-                onGenerate={startScript}
-              />
-            </motion.div>
-          )}
-          {phase === 'scripting' && (
-            <motion.div key="scripting" {...fade}>
-              <ScriptStreamingView narrations={narrations} error={scriptError} total={doc?.slides.length ?? 0} />
-            </motion.div>
-          )}
-          {phase === 'review' && doc && (
-            <motion.div key="review" {...fade}>
-              <ScriptReview
-                slides={doc.slides}
-                narrations={narrations}
-                selectedIdx={selectedIdx}
-                onSelect={setSelectedIdx}
-                voices={voices}
-                onNarrationChange={updateSlideNarration}
-                onVoiceChange={updateSlideVoice}
-                onSavePatch={saveSlidePatch}
-                onRegenerate={regenerateSlide}
-                savingPatch={savingPatch}
-                onRender={kickOffRender}
-                onBack={() => setPhase('setup')}
-              />
-            </motion.div>
-          )}
-          {phase === 'rendering' && job && (
-            <motion.div key="rendering" {...fade}>
-              <RenderingView job={job} slideCount={doc?.slides.length ?? 0} error={renderError} />
-            </motion.div>
-          )}
-          {phase === 'done' && (
-            <motion.div key="done" {...fade}>
-              <DoneView
-                jobId={jobId}
-                title={displayTitle}
-                onNew={() => {
-                  setPhase('setup'); setDoc(null); setJob(null); setJobId(null);
-                  setNarrations([]); setSelectedIdx(0);
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+    <div className="container page video-create">
+      <VideoHeader step={PHASE_STEP[phase]} />
+      <AnimatePresence mode="wait">
+        {phase === 'setup' && (
+          <motion.div key="setup" {...fade}>
+            <SetupPhase
+              doc={doc} uploadBusy={uploadBusy}
+              focus={focus} onFocusChange={setFocus}
+              style={style} onStyle={setStyle}
+              language={language} onLanguage={setLanguage}
+              voice={voice} onVoice={setVoice} voices={voices}
+              onFile={handleFile}
+              onApplyPrompt={(p) => setFocus(p.focus)}
+              onGenerate={startScript}
+            />
+          </motion.div>
+        )}
+        {phase === 'scripting' && (
+          <motion.div key="scripting" {...fade}>
+            <ScriptStreamingView narrations={narrations} error={scriptError} total={doc?.slides.length ?? 0} />
+          </motion.div>
+        )}
+        {phase === 'review' && doc && (
+          <motion.div key="review" {...fade}>
+            <ScriptReview
+              slides={doc.slides}
+              narrations={narrations}
+              selectedIdx={selectedIdx}
+              onSelect={setSelectedIdx}
+              voices={voices}
+              onNarrationChange={updateSlideNarration}
+              onVoiceChange={updateSlideVoice}
+              onSavePatch={saveSlidePatch}
+              onRegenerate={regenerateSlide}
+              savingPatch={savingPatch}
+              onRender={kickOffRender}
+              onBack={() => setPhase('setup')}
+            />
+          </motion.div>
+        )}
+        {phase === 'rendering' && job && (
+          <motion.div key="rendering" {...fade}>
+            <RenderingView job={job} slideCount={doc?.slides.length ?? 0} error={renderError} />
+          </motion.div>
+        )}
+        {phase === 'done' && (
+          <motion.div key="done" {...fade}>
+            <DoneView
+              jobId={jobId}
+              job={job}
+              title={displayTitle}
+              onNew={() => {
+                setPhase('setup'); setDoc(null); setJob(null); setJobId(null);
+                setNarrations([]); setSelectedIdx(0);
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 const fade = {
-  initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 }, transition: { duration: 0.25 },
+  initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 }, transition: { duration: 0.22 },
 };
 
 function makeQueuedJob(jobId: string, docId: string, total: number): VideoJob {
@@ -305,29 +332,6 @@ function makeQueuedJob(jobId: string, docId: string, total: number): VideoJob {
   };
 }
 
-function Hero() {
-  return (
-    <div style={{
-      background: `linear-gradient(135deg, ${theme.brand} 0%, ${theme.brandLight} 60%, ${theme.accent} 100%)`,
-      color: 'white', borderRadius: 20, padding: '40px 44px', marginBottom: 24,
-      boxShadow: theme.shadow, position: 'relative', overflow: 'hidden',
-    }}>
-      <div style={{ position: 'absolute', top: -50, right: -50, width: 240, height: 240,
-        borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-      <div style={{ fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', opacity: 0.7 }}>
-        DeckFM
-      </div>
-      <h1 style={{ fontSize: 36, margin: '8px 0', fontWeight: 800, letterSpacing: '-0.5px' }}>
-        AI Video Generator
-      </h1>
-      <p style={{ margin: 0, fontSize: 16, opacity: 0.9, maxWidth: 640 }}>
-        Turn any deck into a narrated video. Upload slides, review per-slide
-        narration, pick a voice — we render the rest.
-      </p>
-    </div>
-  );
-}
-
 // ---- Setup phase ----------------------------------------------------------
 interface SetupProps {
   doc: IngestResponse | null;
@@ -344,84 +348,87 @@ interface SetupProps {
 
 function SetupPhase(p: SetupProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 24 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <Card title="1. Slide deck">
-          <Uploader doc={p.doc} busy={p.uploadBusy} onFile={p.onFile} />
-        </Card>
-        <Card title="2. Narration focus (optional)">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>
-            {SAMPLE_PROMPTS.map((sp) => (
-              <button key={sp.title} onClick={() => p.onApplyPrompt(sp)}
-                style={{ textAlign: 'left', background: theme.cardAlt, border: `1px solid ${theme.border}`,
-                  borderRadius: 10, padding: '12px 14px', cursor: 'pointer', fontSize: 13, color: theme.text }}>
-                <div style={{ fontSize: 18, marginBottom: 2 }}>{sp.emoji}</div>
-                <div style={{ fontWeight: 700, marginBottom: 2 }}>{sp.title}</div>
-                <div style={{ color: theme.muted, fontSize: 11, lineHeight: 1.4 }}>{sp.focus}</div>
-              </button>
-            ))}
-          </div>
-          <textarea value={p.focus} onChange={(e) => p.onFocusChange(e.target.value)}
-            placeholder="Describe the angle — e.g. 'emphasise ROI for retrofit projects'"
-            style={{ width: '100%', minHeight: 60, border: `1px solid ${theme.border}`,
-              borderRadius: 8, padding: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
-        </Card>
-        <Card title="3. Narration settings">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            <Field label="Style">
-              <select value={p.style} onChange={(e) => p.onStyle(e.target.value as ScriptStyle)} style={selectStyle}>
-                <option value="explainer">Explainer</option>
-                <option value="formal">Formal</option>
-                <option value="casual">Casual</option>
-                <option value="marketing">Marketing</option>
-              </select>
-            </Field>
-            <Field label="Language">
-              <select value={p.language} onChange={(e) => p.onLanguage(e.target.value)} style={selectStyle}>
-                {DRAGONHD_LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code}>{l.label}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Voice">
-              <select value={p.voice} onChange={(e) => p.onVoice(e.target.value)} style={selectStyle}>
-                {p.voices.length === 0 ? (
-                  <option value={p.voice}>{p.voice}</option>
-                ) : (
-                  p.voices.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.display_name} · {v.gender}
-                    </option>
-                  ))
-                )}
-              </select>
-            </Field>
-          </div>
-        </Card>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <Card title="Preview">
-          {p.doc ? (
-            <SlidePreviewStrip slides={p.doc.slides} />
-          ) : (
-            <div style={{ color: theme.muted, fontSize: 13, padding: 24, textAlign: 'center' }}>
-              Upload a document to preview its slides here.
+    <div className="video-setup">
+      <section className="video-panel video-setup__deck" aria-labelledby="video-deck-title">
+        <div className="video-panel__head">
+          <span className="video-panel__num" aria-hidden>01</span>
+          <h2 id="video-deck-title" className="video-panel__title">Slide deck</h2>
+        </div>
+        <Uploader doc={p.doc} busy={p.uploadBusy} onFile={p.onFile} />
+        {p.doc && <SlidePreviewStrip slides={p.doc.slides} />}
+      </section>
+
+      <section className="video-panel video-setup__settings" aria-labelledby="video-settings-title">
+        <div className="video-panel__head">
+          <span className="video-panel__num" aria-hidden>02</span>
+          <h2 id="video-settings-title" className="video-panel__title">Narration</h2>
+        </div>
+        <div className="video-settings">
+          <Field label="Language">
+            <Select value={p.language} onChange={(e) => p.onLanguage(e.target.value)}>
+              {DRAGONHD_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>{plainLabel(l.label)}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Voice">
+            <Select value={p.voice} onChange={(e) => p.onVoice(e.target.value)}>
+              {p.voices.length === 0 ? (
+                <option value={p.voice}>{p.voice}</option>
+              ) : (
+                p.voices.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.display_name} · {v.gender}
+                  </option>
+                ))
+              )}
+            </Select>
+          </Field>
+          <Field label="Style">
+            <Select value={p.style} onChange={(e) => p.onStyle(e.target.value as ScriptStyle)}>
+              <option value="explainer">Explainer</option>
+              <option value="formal">Formal</option>
+              <option value="casual">Casual</option>
+              <option value="marketing">Marketing</option>
+            </Select>
+          </Field>
+          <div className="video-settings__full">
+            <span className="field__label" id="video-prompts-label">Starting points</span>
+            <div className="video-prompts" role="group" aria-labelledby="video-prompts-label">
+              {SAMPLE_PROMPTS.map((sp) => {
+                const Icon = sp.icon;
+                const active = p.focus === sp.focus;
+                return (
+                  <button
+                    key={sp.title}
+                    type="button"
+                    className={['video-prompts__item', active && 'is-active'].filter(Boolean).join(' ')}
+                    aria-pressed={active}
+                    onClick={() => p.onApplyPrompt(sp)}
+                  >
+                    <span className="video-prompts__title"><Icon aria-hidden />{sp.title}</span>
+                    <span className="video-prompts__text">{sp.focus}</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </Card>
-        <button disabled={!p.doc} onClick={p.onGenerate}
-          style={{
-            background: !p.doc ? theme.border : `linear-gradient(135deg, ${theme.brand}, ${theme.accent})`,
-            color: 'white', border: 'none', borderRadius: 12, padding: '16px 20px',
-            fontSize: 16, fontWeight: 700, cursor: p.doc ? 'pointer' : 'not-allowed',
-            boxShadow: p.doc ? theme.shadow : 'none',
-          }}>
-          ✨ Generate narration
-        </button>
-        {!p.doc && <div style={{ fontSize: 12, color: theme.muted, textAlign: 'center' }}>
-          Upload a document first
-        </div>}
-      </div>
+          </div>
+          <Field label="Narration focus (optional)" className="video-settings__full">
+            <Textarea
+              value={p.focus}
+              onChange={(e) => p.onFocusChange(e.target.value)}
+              rows={3}
+              placeholder="Describe the angle — e.g. 'emphasise ROI for retrofit projects'"
+            />
+          </Field>
+        </div>
+        <div className="video-setup__cta">
+          <Button variant="primary" size="lg" icon={Sparkles} disabled={!p.doc} onClick={p.onGenerate}>
+            Generate narration
+          </Button>
+          {!p.doc && <span className="small muted">Upload a document first</span>}
+        </div>
+      </section>
     </div>
   );
 }
@@ -429,71 +436,50 @@ function SetupPhase(p: SetupProps) {
 function Uploader({ doc, busy, onFile }: {
   doc: IngestResponse | null; busy: boolean; onFile: (f: File) => void;
 }) {
-  const [drag, setDrag] = useState(false);
   if (doc) {
     return (
-      <div style={{ background: theme.cardAlt, borderRadius: 10, padding: 14,
-        display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ fontSize: 28 }}>📊</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>{doc.title ?? doc.filename ?? 'Uploaded deck'}</div>
-          <div style={{ fontSize: 12, color: theme.muted }}>
-            {doc.slides.length} slide{doc.slides.length === 1 ? '' : 's'} detected
+      <div className="video-doc">
+        <span className="video-doc__icon" aria-hidden><FileText /></span>
+        <div className="video-doc__body">
+          <div className="video-doc__title serif">{doc.title ?? doc.filename ?? 'Uploaded deck'}</div>
+          <div className="small muted tabular">
+            {pluralize(doc.slides.length, 'slide')} detected
           </div>
         </div>
+        <Chip tone="sage" icon={Check}>Ready</Chip>
       </div>
     );
   }
   return (
-    <label
-      onDragEnter={(e) => { e.preventDefault(); setDrag(true); }}
-      onDragOver={(e) => { e.preventDefault(); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={(e) => { e.preventDefault(); setDrag(false);
-        const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        border: `2px dashed ${drag ? theme.accent : theme.border}`, borderRadius: 12,
-        padding: '28px 16px', cursor: 'pointer', background: drag ? '#eff6ff' : 'transparent',
-      }}>
-      <div style={{ fontSize: 32 }}>🎬</div>
-      <div style={{ fontWeight: 600 }}>Drag a PPTX / PDF / image here</div>
-      <div style={{ fontSize: 12, color: theme.muted }}>or click to browse</div>
-      <input type="file" accept=".pptx,.pdf,.png,.jpg,.jpeg"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
-        style={{ display: 'none' }} />
-      {busy && <div style={{ fontSize: 12, color: theme.muted, marginTop: 6 }}>⏳ Processing…</div>}
-    </label>
+    <Dropzone
+      onFile={onFile}
+      accept=".pptx,.pdf,.png,.jpg,.jpeg"
+      busy={busy}
+      icon={Clapperboard}
+      title="Drop a PPTX, PDF or image here"
+      busyTitle="Processing…"
+      hint="or click to browse"
+    />
   );
 }
 
 function SlidePreviewStrip({ slides }: { slides: SlideInfo[] }) {
   return (
-    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }}>
-      {slides.slice(0, 12).map((s) => (
-        <div key={s.index} style={{
-          minWidth: 120, aspectRatio: '16 / 9', borderRadius: 6,
-          background: theme.cardAlt, border: `1px solid ${theme.border}`,
-          overflow: 'hidden', position: 'relative', flexShrink: 0,
-        }}>
-          {s.image_ref ? (
-            <img src={s.image_ref} alt={s.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ padding: 8, fontSize: 10, color: theme.muted }}>
-              {s.title || `Slide ${s.index + 1}`}
-            </div>
-          )}
-          <div style={{ position: 'absolute', bottom: 2, left: 4, color: 'white',
-            textShadow: '0 1px 2px rgba(0,0,0,0.8)', fontSize: 10, fontWeight: 700 }}>
-            {s.index + 1}
-          </div>
-        </div>
-      ))}
+    <div className="video-strip" aria-label="Slide preview">
+      <ol className="video-strip__list">
+        {slides.slice(0, 12).map((s) => (
+          <li key={s.index} className="video-strip__item">
+            {s.image_ref ? (
+              <img src={s.image_ref} alt={s.title} loading="lazy" />
+            ) : (
+              <span className="video-strip__text">{s.title || `Slide ${s.index + 1}`}</span>
+            )}
+            <span className="video-strip__num tabular">{s.index + 1}</span>
+          </li>
+        ))}
+      </ol>
       {slides.length > 12 && (
-        <div style={{ alignSelf: 'center', color: theme.muted, fontSize: 12, padding: '0 8px' }}>
-          +{slides.length - 12} more
-        </div>
+        <span className="small muted video-strip__more">+{slides.length - 12} more</span>
       )}
     </div>
   );
@@ -504,34 +490,43 @@ function ScriptStreamingView({ narrations, error, total }: {
   narrations: SlideNarration[]; error: string | null; total: number;
 }) {
   return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 28, boxShadow: theme.shadow }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-          style={{ width: 20, height: 20, borderRadius: '50%',
-            border: `3px solid ${theme.border}`, borderTopColor: theme.accent }} />
-        <div style={{ fontWeight: 700, fontSize: 16 }}>Generating narration…</div>
-        <div style={{ fontSize: 12, color: theme.muted }}>
+    <section className="video-panel" aria-labelledby="video-stream-title" aria-busy={!error}>
+      <div className="video-panel__head">
+        {!error && <span className="spinner" aria-hidden />}
+        <h2 id="video-stream-title" className="video-panel__title">Writing the narration…</h2>
+        <span className="video-panel__aside small muted tabular">
           {narrations.length}{total ? ` / ${total}` : ''} slides
-        </div>
+        </span>
       </div>
+      {total > 0 && !error && <Progress value={narrations.length / total} label="Narration progress" />}
       {error ? (
-        <div style={{ color: '#dc2626', fontWeight: 600 }}>Error: {error}</div>
+        <Alert tone="error">Error: {error}</Alert>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {narrations.map((n) => (
-            <motion.div key={n.slide_index}
-              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-              style={{ background: theme.cardAlt, border: `1px solid ${theme.border}`,
-                borderRadius: 10, padding: '10px 14px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: theme.brand, marginBottom: 4 }}>
-                Slide {n.slide_index + 1} · {n.title || '—'}
-              </div>
-              <div style={{ fontSize: 13, lineHeight: 1.5 }}>{n.narration}</div>
-            </motion.div>
-          ))}
-        </div>
+        <>
+          {narrations.length === 0 && (
+            <p className="small muted">Narration appears here slide by slide as it is written.</p>
+          )}
+          <ol className="video-narrations" aria-live="polite">
+            {narrations.map((n) => (
+              <motion.li
+                key={n.slide_index}
+                className="video-narrations__row"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <span className="video-narrations__num tabular" aria-hidden>{episodeNumber(n.slide_index + 1)}</span>
+                <div className="video-narrations__body">
+                  <h3 className="video-narrations__title">
+                    <span className="sr-only">Slide {n.slide_index + 1}: </span>{n.title || '—'}
+                  </h3>
+                  <p className="video-narrations__text">{n.narration}</p>
+                </div>
+              </motion.li>
+            ))}
+          </ol>
+        </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -565,96 +560,77 @@ function ScriptReview({
   const dirty = (currentNar?.narration ?? '') !== draft;
 
   return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 28, boxShadow: theme.shadow }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 20 }}>📝 Review &amp; edit narration</div>
-        <div style={{ fontSize: 12, color: theme.muted }}>{narrations.length} slides narrated</div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
-          <button onClick={onBack} style={secondaryBtn}>← Back</button>
-          <button onClick={onRender} style={primaryBtn}>🎬 Render video</button>
+    <section className="video-panel" aria-labelledby="video-review-title">
+      <div className="video-review__bar">
+        <div className="video-review__heading">
+          <h2 id="video-review-title" className="video-panel__title">Review &amp; edit narration</h2>
+          <span className="small muted tabular">{narrations.length} slides narrated</span>
+        </div>
+        <div className="cluster">
+          <Button icon={ArrowLeft} onClick={onBack}>Back</Button>
+          <Button variant="primary" icon={Clapperboard} onClick={onRender}>Render video</Button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20 }}>
-        {/* Slide thumbnail list */}
-        <div style={{
-          maxHeight: 620, overflowY: 'auto', paddingRight: 6,
-          display: 'flex', flexDirection: 'column', gap: 8,
-        }}>
+      <div className="video-review">
+        <ol className="video-review__list" aria-label="Slides">
           {slides.map((s) => {
             const active = s.index === selectedIdx;
             const nar = narrations.find((n) => n.slide_index === s.index);
             return (
-              <button key={s.index} onClick={() => onSelect(s.index)}
-                style={{
-                  textAlign: 'left', padding: 8, borderRadius: 10,
-                  border: `2px solid ${active ? theme.accent : theme.border}`,
-                  background: active ? '#eff6ff' : theme.card,
-                  cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'center',
-                }}>
-                <div style={{
-                  width: 72, aspectRatio: '16 / 9', borderRadius: 4,
-                  background: theme.cardAlt, overflow: 'hidden', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, color: theme.muted,
-                }}>
-                  {s.image_ref ? (
-                    <img src={s.image_ref} alt=""
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span>{s.index + 1}</span>
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, color: theme.brand, fontWeight: 700 }}>
-                    Slide {s.index + 1}
-                  </div>
-                  <div style={{ fontSize: 12, fontWeight: 600,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.title || nar?.title || '—'}
-                  </div>
-                  <div style={{ fontSize: 10, color: nar ? '#15803d' : theme.muted, marginTop: 2 }}>
-                    {nar ? '✓ narrated' : '…pending'}
-                  </div>
-                </div>
-              </button>
+              <li key={s.index}>
+                <button
+                  type="button"
+                  className={['video-review__item', active && 'is-active'].filter(Boolean).join(' ')}
+                  aria-current={active ? 'true' : undefined}
+                  onClick={() => onSelect(s.index)}
+                >
+                  <span className="video-review__num tabular" aria-hidden>{episodeNumber(s.index + 1)}</span>
+                  <span className="video-review__thumb" aria-hidden>
+                    {s.image_ref ? <img src={s.image_ref} alt="" loading="lazy" /> : <FileText />}
+                  </span>
+                  <span className="video-review__meta">
+                    <span className="video-review__title">
+                      <span className="sr-only">Slide {s.index + 1}: </span>{s.title || nar?.title || '—'}
+                    </span>
+                    <span className={['video-review__state', nar && 'is-done'].filter(Boolean).join(' ')}>
+                      {nar ? <><Check aria-hidden />Narrated</> : 'Pending'}
+                    </span>
+                  </span>
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ol>
 
-        {/* Right pane: slide + editor */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="video-review__editor">
           {currentSlide && (
-            <div style={{
-              aspectRatio: '16 / 9', background: '#000', borderRadius: 10,
-              overflow: 'hidden', border: `1px solid ${theme.border}`,
-            }}>
-              {currentSlide.image_ref ? (
-                <img src={currentSlide.image_ref} alt={currentSlide.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-              ) : (
-                <div style={{ color: 'white', padding: 40, textAlign: 'center' }}>
-                  Slide {currentSlide.index + 1} — {currentSlide.title}
-                </div>
-              )}
+            <div className="media-frame">
+              <div className="media-frame__screen">
+                {currentSlide.image_ref ? (
+                  <img src={currentSlide.image_ref} alt={currentSlide.title} />
+                ) : (
+                  <div className="slide-text">
+                    <div className="slide-text__title">{currentSlide.title || `Slide ${currentSlide.index + 1}`}</div>
+                    <div className="slide-text__num">Slide {currentSlide.index + 1}</div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-          <div>
-            <div style={{ fontSize: 11, color: theme.muted, marginBottom: 4, fontWeight: 600 }}>
-              Narration — slide {selectedIdx + 1}
-            </div>
-            <textarea
-              value={draft}
-              onChange={(e) => { setDraft(e.target.value); onNarrationChange(selectedIdx, e.target.value); }}
-              placeholder="Narration text for this slide…"
-              style={{ width: '100%', minHeight: 140,
-                border: `1px solid ${theme.border}`, borderRadius: 8,
-                padding: 12, fontSize: 14, fontFamily: 'inherit', resize: 'vertical',
-                lineHeight: 1.5 }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-              <Field label="Voice">
-                <select
+          <div className="video-review__form">
+            <Field label={`Narration — slide ${selectedIdx + 1}`}>
+              <Textarea
+                className="video-review__textarea"
+                value={draft}
+                rows={6}
+                onChange={(e) => { setDraft(e.target.value); onNarrationChange(selectedIdx, e.target.value); }}
+                placeholder="Narration text for this slide…"
+              />
+            </Field>
+            <div className="video-review__actions">
+              <Field label="Voice" className="video-review__voice">
+                <Select
                   value={currentNar?.voice ?? ''}
                   onChange={async (e) => {
                     if (!currentNar) return;
@@ -666,7 +642,7 @@ function ScriptReview({
                       alert(`Voice update failed: ${err instanceof Error ? err.message : String(err)}`);
                     }
                   }}
-                  style={selectStyle}>
+                >
                   {voices.length === 0 ? (
                     <option value={currentNar?.voice ?? ''}>{currentNar?.voice ?? '—'}</option>
                   ) : (
@@ -674,31 +650,31 @@ function ScriptReview({
                       <option key={v.id} value={v.id}>{v.display_name} · {v.gender}</option>
                     ))
                   )}
-                </select>
+                </Select>
               </Field>
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                <button
+              <div className="cluster video-review__buttons">
+                <Button
+                  icon={RefreshCw}
                   onClick={() => onRegenerate(selectedIdx)}
                   disabled={savingPatch}
-                  style={{ ...secondaryBtn, cursor: savingPatch ? 'wait' : 'pointer' }}>
-                  ♻ Regenerate slide
-                </button>
-                <button
+                >
+                  Regenerate slide
+                </Button>
+                <Button
+                  variant="primary"
+                  icon={Save}
+                  busy={savingPatch}
                   onClick={() => onSavePatch(selectedIdx, draft)}
                   disabled={!dirty || savingPatch}
-                  style={{
-                    ...primaryBtn,
-                    opacity: (!dirty || savingPatch) ? 0.55 : 1,
-                    cursor: (!dirty || savingPatch) ? 'not-allowed' : 'pointer',
-                  }}>
-                  {savingPatch ? 'Saving…' : '💾 Save'}
-                </button>
+                >
+                  {savingPatch ? 'Saving…' : 'Save'}
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -711,102 +687,79 @@ function RenderingView({ job, slideCount, error }: {
   const done = job.state === 'done';
   const effectiveError = error ?? job.error ?? null;
   return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 32, boxShadow: theme.shadow }}>
-      <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 20 }}>
-        {done ? '✅ Video ready' : failed ? '❌ Render failed' : '🎬 Rendering your video…'}
+    <section className="video-panel video-render" aria-labelledby="video-render-title" aria-busy={!done && !failed}>
+      <div className="video-panel__head">
+        {!done && !failed && <span className="spinner" aria-hidden />}
+        <h2 id="video-render-title" className="video-panel__title">
+          {done ? 'Video ready' : failed ? 'Render failed' : 'Rendering your video…'}
+        </h2>
       </div>
-      <div style={{
-        padding: '18px 20px', borderRadius: 10,
-        background: failed ? '#fee2e2' : done ? '#dcfce7' : '#eff6ff',
-        border: `1px solid ${failed ? '#fca5a5' : done ? '#86efac' : theme.border}`,
-        marginBottom: 18,
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: theme.brand, textTransform: 'uppercase',
-          letterSpacing: 1, marginBottom: 4 }}>
-          {job.progress.stage || job.state}
-        </div>
-        <div style={{ fontSize: 14, color: theme.text }}>
+      <div className={['video-render__stage', failed && 'is-failed', done && 'is-done'].filter(Boolean).join(' ')} role="status">
+        <span className="eyebrow">{job.progress.stage || job.state}</span>
+        <span className="video-render__message">
           {job.progress.message || (done ? 'Complete.' : 'Working…')}
-        </div>
+        </span>
       </div>
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between',
-          fontSize: 12, color: theme.muted, marginBottom: 6 }}>
+      <div className="video-render__progress">
+        <div className="split small muted">
           <span>Progress</span>
-          <span>{pct}%</span>
+          <span className="tabular">{pct}%</span>
         </div>
-        <div style={{ height: 10, background: theme.cardAlt, borderRadius: 99, overflow: 'hidden' }}>
-          <motion.div animate={{ width: `${pct}%` }} transition={{ duration: 0.4 }}
-            style={{ height: '100%',
-              background: `linear-gradient(90deg, ${theme.brand}, ${theme.accent})` }} />
-        </div>
+        <Progress value={pct / 100} label="Render progress" />
       </div>
-      {effectiveError && (
-        <div style={{ color: '#dc2626', marginTop: 16, fontWeight: 600 }}>{effectiveError}</div>
-      )}
-      <div style={{ marginTop: 24, fontSize: 12, color: theme.muted }}>
+      {effectiveError && <Alert tone="error">{effectiveError}</Alert>}
+      <p className="small muted">
         {slideCount} slides · typical render takes 2–5 minutes.
-      </div>
-    </div>
+      </p>
+    </section>
   );
 }
 
-function DoneView({ jobId, title, onNew }: {
-  jobId: string | null; title: string; onNew: () => void;
+function DoneView({ jobId, job, title, onNew }: {
+  jobId: string | null; job: VideoJob | null; title: string; onNew: () => void;
 }) {
+  const outputs = job?.outputs ?? {};
   return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 32, boxShadow: theme.shadow,
-      textAlign: 'center' }}>
-      <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
-      <h2 style={{ margin: 0, color: theme.brand }}>Your video is ready</h2>
-      <div style={{ color: theme.muted, marginTop: 8 }}>
-        {title ? <>&ldquo;{title}&rdquo; has been saved to your library as a draft — publish it there to share it publicly.</> : 'Saved to the library as a draft.'}
+    <section className="video-panel video-done" aria-labelledby="video-done-title">
+      <div className="video-panel__head">
+        <span className="video-done__badge" aria-hidden><Check /></span>
+        <h2 id="video-done-title" className="video-panel__title">Your video is ready</h2>
       </div>
-      <div style={{ marginTop: 20, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <a href="/video/library" style={primaryBtn as any}>📚 View in Library</a>
+      <p className="video-done__lead">
+        {title ? <>&ldquo;{title}&rdquo; has been saved to your library as a draft — publish it there to share it publicly.</> : 'Saved to the library as a draft.'}
+      </p>
+      {outputs.video_url && (
+        <div className="stage video-done__stage">
+          <video
+            src={outputs.video_url}
+            poster={outputs.thumbnail_url ?? undefined}
+            controls
+            playsInline
+            preload="metadata"
+          />
+        </div>
+      )}
+      <div className="cluster video-done__actions">
+        <a href="/video/library" className={buttonClass({ variant: 'primary' })}>
+          <Library aria-hidden />View in library
+        </a>
         {jobId && (
-          <a href={`/video/library?job=${encodeURIComponent(jobId)}`} style={secondaryBtn as any}>
-            ▶ Play now
+          <a href={`/video/library?job=${encodeURIComponent(jobId)}`} className={buttonClass({})}>
+            <Play aria-hidden />Play now
           </a>
         )}
-        <button onClick={onNew} style={secondaryBtn}>+ New video</button>
+        {outputs.video_url && (
+          <a href={outputs.video_url} download className={buttonClass({})}>
+            <Download aria-hidden />Download video
+          </a>
+        )}
+        {outputs.srt_url && (
+          <a href={outputs.srt_url} download className={buttonClass({})}>
+            <Download aria-hidden />Subtitles (.srt)
+          </a>
+        )}
+        <Button icon={Plus} onClick={onNew}>New video</Button>
       </div>
-    </div>
+    </section>
   );
 }
-
-// ---- shared styles --------------------------------------------------------
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 20, boxShadow: theme.shadow }}>
-      <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase',
-        color: theme.brand, fontWeight: 700, marginBottom: 10 }}>{title}</div>
-      {children}
-    </div>
-  );
-}
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: theme.muted, marginBottom: 4, fontWeight: 600 }}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
-const selectStyle: React.CSSProperties = {
-  width: '100%', border: `1px solid ${theme.border}`, borderRadius: 8,
-  padding: '8px 10px', fontSize: 13, background: 'white',
-};
-const primaryBtn: React.CSSProperties = {
-  background: `linear-gradient(135deg, ${theme.brand}, ${theme.accent})`,
-  color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px',
-  fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none',
-  display: 'inline-block',
-};
-const secondaryBtn: React.CSSProperties = {
-  background: theme.cardAlt, color: theme.text,
-  border: `1px solid ${theme.border}`, borderRadius: 10, padding: '10px 18px',
-  fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'none',
-  display: 'inline-block',
-};

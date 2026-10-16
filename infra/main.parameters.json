@@ -68,6 +68,9 @@
     "demoMaxSpeaks": {
       "value": "${DEMO_MAX_SPEAKS=0}"
     },
+    "demoQuotaExemptIps": {
+      "value": "${DEMO_QUOTA_EXEMPT_IPS=}"
+    },
     "useExternalAiServices": {
       "value": "${USE_EXTERNAL_AI_SERVICES=false}"
     },

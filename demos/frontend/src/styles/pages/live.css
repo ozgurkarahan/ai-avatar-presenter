@@ -1,0 +1,155 @@
+/* Live — upload / pick a deck, then the presenter layout (slide + avatar rail). */
+.live-page {
+  display: flex;
+  flex-direction: column;
+}
+
+.live-page__status {
+  margin-bottom: var(--sp-5);
+}
+
+.live-page__status-row {
+  --cluster-gap: var(--sp-2);
+}
+
+/* ---------- Before a deck is loaded ---------- */
+.live-start {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: var(--sp-7);
+  align-items: start;
+}
+
+.live-start__upload {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+.live-start__title {
+  margin: 0;
+}
+
+.live-start__list {
+  min-width: 0;
+  padding-left: var(--sp-7);
+  border-left: var(--bw) solid var(--c-line);
+}
+
+/* No saved decks (PresentationList renders nothing): keep the upload at a readable width. */
+.live-start__list:empty {
+  display: none;
+}
+
+.live-start:has(> .live-start__list:empty) {
+  grid-template-columns: minmax(0, 760px);
+}
+
+/* PresentationList ships with a top margin meant for stacking under the upload. */
+.live-start__list .deck-picker {
+  margin-top: 0;
+}
+
+/* ---------- Presenter ---------- */
+.live-presenter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: var(--sp-7);
+  align-items: start;
+}
+
+.live-presenter__main {
+  min-width: 0;
+}
+
+.live-presenter__rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  min-width: 0;
+  padding-left: var(--sp-6);
+  border-left: var(--bw) solid var(--c-line);
+}
+
+.live-presenter__qa {
+  padding-top: var(--sp-5);
+  border-top: var(--bw) solid var(--c-line);
+}
+
+@media (max-width: 1180px) {
+  .live-presenter {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: var(--sp-6);
+  }
+
+  .live-presenter__rail {
+    padding-left: var(--sp-5);
+  }
+}
+
+@media (max-width: 960px) {
+  .live-start,
+  .live-presenter {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-6);
+  }
+
+  .live-start__list {
+    padding-left: 0;
+    padding-top: var(--sp-5);
+    border-left: 0;
+    border-top: var(--bw) solid var(--c-line);
+  }
+
+  .live-presenter__rail {
+    padding-left: 0;
+    padding-top: var(--sp-5);
+    border-left: 0;
+    border-top: var(--bw) solid var(--c-line);
+  }
+}
+
+/* ---------- Compact spacing inside Microsoft Teams ---------- */
+.live--teams.page {
+  padding-block: var(--sp-4) var(--sp-6);
+}
+
+.live--teams .page-header {
+  padding-bottom: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.live--teams .page-header__title {
+  font-size: var(--fs-h2);
+}
+
+.live--teams .live-page__status {
+  margin-bottom: var(--sp-3);
+}
+
+.live--teams .live-start,
+.live--teams .live-presenter {
+  gap: var(--sp-5);
+}
+
+.live--teams .live-start__list {
+  padding-left: var(--sp-5);
+}
+
+.live--teams .live-presenter__rail {
+  gap: var(--sp-4);
+  padding-left: var(--sp-4);
+}
+
+.live--teams .live-presenter__qa {
+  padding-top: var(--sp-4);
+}
+
+@media (max-width: 960px) {
+  .live--teams .live-start__list,
+  .live--teams .live-presenter__rail {
+    padding-left: 0;
+    padding-top: var(--sp-4);
+  }
+}

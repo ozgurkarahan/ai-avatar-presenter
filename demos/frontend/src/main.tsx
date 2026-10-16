@@ -1,3 +1,4 @@
+import './styles/index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
@@ -21,7 +22,11 @@ installAuthErrorInterceptor();
 
 function RoutedContent({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
-  return <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>;
+  return (
+    <main id="main" tabIndex={-1} style={{ flex: 1, display: 'flex', flexDirection: 'column', outline: 'none' }}>
+      <ErrorBoundary resetKey={pathname}>{children}</ErrorBoundary>
+    </main>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

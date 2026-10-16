@@ -2,7 +2,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { type Presentation } from '../services/api';
 import { useAuth } from '../services/auth';
 import { pickDefaultAvatar, useAvatars } from '../services/avatars';
+import { Mic, Pause, PhoneOff, Play, RotateCcw, Square } from 'lucide-react';
+import { Alert, Button, HostDisc, LivePill, Waveform, languageName } from '../ui';
 import { GateNotice } from './AuthGate';
+import '../styles/shared/avatar-panel.css';
 import { demoCloseMessage, formatMinutes } from '../services/demo';
 
 function formatClock(totalSeconds: number): string {
@@ -39,95 +42,6 @@ interface Props {
   /** Demo only: server-side session cap (from `GET /api/demo/config`). */
   demoSessionSeconds?: number;
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: { textAlign: 'center' as const },
-  title: {
-    fontSize: '14px',
-    fontWeight: 600,
-    marginBottom: '16px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    minHeight: '36px',
-  },
-  videoContainer: {
-    width: '100%',
-    aspectRatio: '16/9',
-    background: '#1a1a2e',
-    borderRadius: '10px',
-    overflow: 'hidden',
-    position: 'relative' as const,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoContainerPortrait: {
-    width: '100%',
-    aspectRatio: '1 / 1',
-    background: '#1a1a2e',
-    borderRadius: '14px',
-    overflow: 'hidden',
-    position: 'relative' as const,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 8px 28px rgba(0, 51, 102, 0.18)',
-  },
-  video: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover' as const,
-  },
-  videoPortrait: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'contain' as const,
-  },
-  placeholder: {
-    color: '#888',
-    fontSize: '14px',
-  },
-  controls: {
-    display: 'flex',
-    gap: '8px',
-    marginTop: '12px',
-    justifyContent: 'center',
-  },
-  btn: {
-    padding: '8px 18px',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '13px',
-    cursor: 'pointer',
-    fontWeight: 500,
-  },
-  btnPrimary: {
-    background: '#005599',
-    color: 'white',
-  },
-  btnDanger: {
-    background: '#c0392b',
-    color: 'white',
-  },
-  btnDisabled: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  },
-  btnSuccess: {
-    background: '#27ae60',
-    color: 'white',
-  },
-  btnWarning: {
-    background: '#e67e22',
-    color: 'white',
-  },
-  status: {
-    marginTop: '8px',
-    fontSize: '12px',
-    color: '#666',
-  },
-};
 
 export default function AvatarPanel({ presentation, currentSlide, language, onSlideChange, videoPlaying = false, onRequestVideoAutoPlay, selectedAvatar, selectedVoice, autoStart = false, mode = 'wide', access = 'admin', demoSessionSeconds = 180 }: Props) {
   const [connected, setConnected] = useState(false);
@@ -169,6 +83,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
   useEffect(() => { demoSecondsRef.current = demoSessionSeconds; }, [demoSessionSeconds]);
   useEffect(() => {
     if (!demoEndsAt) return;
+    setDemoNow(Date.now());
     const t = setInterval(() => setDemoNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [demoEndsAt]);
@@ -184,7 +99,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     if (speechTimeoutRef.current) { clearTimeout(speechTimeoutRef.current); speechTimeoutRef.current = null; }
     if (safetyTimeoutRef.current) { clearTimeout(safetyTimeoutRef.current); safetyTimeoutRef.current = null; }
     setSpeaking(false);
-    setStatus('⏸ Video playing — avatar paused');
+    setStatus('Video playing — avatar paused');
     // Tell Azure to stop the current response immediately
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'response.cancel' }));
@@ -657,7 +572,7 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     // If the slide has an embedded video, trigger auto-play and wait for it to finish
     if (slide?.video_url) {
       if (presentingRef.current) {
-        setStatus(`▶ Playing video for slide ${slideIndex + 1}...`);
+        setStatus(`Playing video for slide ${slideIndex + 1}...`);
         onRequestVideoAutoPlay?.();
       }
       return;
@@ -817,138 +732,158 @@ export default function AvatarPanel({ presentation, currentSlide, language, onSl
     }
   }, [autoStart, connected, presentation.id, canUseAvatar, authBlock]);
 
+  const host = (!isDemo && selectedAvatar ? avatars.find((a) => a.id === selectedAvatar) : undefined)
+    ?? pickDefaultAvatar(avatars) ?? null;
+  const hostName = host?.display_name?.trim() || 'AI host';
+  // The idle stage already says the avatar is offline; skip the redundant default statuses.
+  const statusText = status === 'Not connected' || (!connected && status === 'Disconnected') ? '' : status;
+  const statusIsError = /^(Error|Connection (failed|closed)|Video connection|WebSocket connection failed|Could not)/.test(statusText);
+  const connecting = !connected && (demoConnecting || /^(Connecting|Configuring|Setting up|Starting|Avatar busy)/.test(status));
+  // The server's hard cap starts when the demo socket opens (connection setup
+  // included), so the countdown is shown from that moment — not only once the
+  // video connects — and rounds up so 0:00 coincides with the cutoff.
+  const demoRemaining = isDemo && demoEndsAt
+    ? formatClock(Math.max(0, Math.ceil((demoEndsAt - demoNow) / 1000)))
+    : null;
+  const idleLine = isDemo
+    ? (demoConnecting ? 'Starting the avatar…' : 'Live avatar demo')
+    : canUseAvatar && !authBlock
+      ? (connecting ? 'Connecting…' : 'Connect to start the avatar')
+      : 'Live avatar preview';
+  const statusLine = statusText && (statusIsError
+    ? <Alert tone="error">{statusText}</Alert>
+    : <p className="avatar-rail__status" role="status">{statusText}</p>);
+
   return (
-    <div style={styles.container}>
-      <div style={styles.title}>🤖 AI Avatar</div>
-      <div style={mode === 'portrait' ? styles.videoContainerPortrait : styles.videoContainer}>
-        <video
-          ref={videoRef}
-          style={mode === 'portrait' ? styles.videoPortrait : styles.video}
-          autoPlay
-          playsInline
-        />
-        {!connected && <div style={{ ...styles.placeholder, position: 'absolute' as const }}>
-          {isDemo
-            ? (demoConnecting ? 'Starting the avatar…' : 'Live avatar demo')
-            : canUseAvatar && !authBlock ? 'Connect to start the avatar' : 'Live avatar preview'}
-        </div>}
+    <section
+      className={['avatar-rail', `avatar-rail--${mode}`, connected && 'is-live', speaking && 'is-speaking'].filter(Boolean).join(' ')}
+      aria-label="AI presenter"
+    >
+      <div className="avatar-rail__head">
+        <span className="eyebrow">{connected ? 'Now presenting' : 'Ready to present'}</span>
+        {connected ? (
+          <span className="avatar-rail__live">
+            <Waveform active={speaking} />
+            <LivePill>{speaking ? 'Speaking' : 'Live'}</LivePill>
+            {demoRemaining && <span className="small muted tabular" data-testid="demo-time-left" title="Demo time remaining">{demoRemaining} left</span>}
+          </span>
+        ) : demoRemaining && (
+          <span className="avatar-rail__live">
+            <LivePill idle>Connecting</LivePill>
+            <span className="small muted tabular" data-testid="demo-time-left" title="Demo time remaining">{demoRemaining} left</span>
+          </span>
+        )}
       </div>
+
+      <div className="stage avatar-rail__stage">
+        <video ref={videoRef} className="avatar-rail__video" autoPlay playsInline />
+        {!connected && (
+          <div className="avatar-rail__idle">
+            <HostDisc host={host} ring={connecting} label="" />
+            <span className="avatar-rail__idle-name">{hostName}</span>
+            <span className="avatar-rail__idle-line">{idleLine}</span>
+          </div>
+        )}
+      </div>
+
+      {connected && (
+        <div className="avatar-rail__host">
+          <span className="avatar-rail__name">{hostName}</span>
+          <span className="small muted">AI host · {languageName(language)}</span>
+        </div>
+      )}
+
       {isDemo ? (
-        <div data-testid="demo-avatar-controls">
-          <div style={styles.controls}>
+        <div data-testid="demo-avatar-controls" className="avatar-rail__panel">
+          <div className="avatar-rail__controls">
             {!connected ? (
-              <button
-                type="button"
+              <Button
                 data-testid="demo-start"
-                style={{ ...styles.btn, ...styles.btnPrimary, ...(demoConnecting ? styles.btnDisabled : {}) }}
-                disabled={demoConnecting}
+                variant="primary"
+                icon={Play}
+                busy={demoConnecting}
+                className="avatar-rail__start"
                 onClick={startSession}
               >
-                {demoConnecting ? '… Starting' : '▶ Try the live demo'}
-              </button>
+                {demoConnecting ? 'Starting…' : 'Try the live demo'}
+              </Button>
             ) : (
               <>
-                <button
-                  type="button"
-                  style={{ ...styles.btn, ...styles.btnPrimary, ...(speaking ? styles.btnDisabled : {}) }}
-                  disabled={speaking}
-                  onClick={speak}
-                >
-                  🎙️ Present this slide
-                </button>
+                <Button size="sm" icon={Mic} disabled={speaking} onClick={speak}>
+                  Present this slide
+                </Button>
                 {!presenting && (
-                  <button
-                    type="button"
-                    style={{ ...styles.btn, ...styles.btnSuccess, ...(speaking ? styles.btnDisabled : {}) }}
-                    disabled={speaking}
-                    onClick={startPresenting}
-                  >
-                    ▶️ Present all
-                  </button>
+                  <Button size="sm" variant="primary" icon={Play} disabled={speaking} onClick={startPresenting}>
+                    Present all
+                  </Button>
                 )}
               </>
             )}
             {(connected || demoConnecting) && (
-              <button type="button" style={{ ...styles.btn, ...styles.btnDanger }} onClick={stopSession}>
-                ⏹ Stop
-              </button>
+              <Button size={connected ? 'sm' : 'md'} variant="ghost" icon={Square} onClick={stopSession}>
+                Stop
+              </Button>
             )}
           </div>
-          <div style={{ ...styles.status, color: '#475569' }}>
+          <p className="avatar-rail__note">
             Narration-only demo · up to {formatMinutes(demoSessionSeconds)} · no uploads
-            {demoEndsAt && connected
-              ? ` · ⏱ ${formatClock(Math.max(0, Math.round((demoEndsAt - demoNow) / 1000)))} left`
-              : ''}
-          </div>
-          <div style={styles.status} role="status">{status === 'Not connected' ? '' : status}</div>
+          </p>
+          {statusIsError ? statusLine : <p className="avatar-rail__status" role="status">{statusText}</p>}
         </div>
       ) : !auth.loading && (!canUseAvatar || authBlock) ? (
-        <div style={{ marginTop: 12 }}>
+        <div className="avatar-rail__panel">
           <GateNotice action="try the live avatar" force={authBlock ?? undefined} />
           {authBlock && auth.is_admin && (
-            <button
-              type="button"
-              onClick={() => { setAuthBlock(null); setStatus('Not connected'); }}
-              style={{ ...styles.btn, marginTop: 8, background: 'transparent', color: '#005599' }}
-            >
-              ↻ Retry
-            </button>
+            <div className="avatar-rail__controls">
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={RotateCcw}
+                onClick={() => { setAuthBlock(null); setStatus('Not connected'); }}
+              >
+                Retry
+              </Button>
+            </div>
           )}
         </div>
       ) : (
-      <>
-      <div style={styles.controls}>
-        {!connected ? (
-          <button style={{ ...styles.btn, ...styles.btnPrimary }} onClick={startSession}>
-            ▶ Connect Avatar
-          </button>
-        ) : (
-          <>
-            <button
-              style={{ ...styles.btn, ...styles.btnPrimary, ...(speaking || paused ? styles.btnDisabled : {}) }}
-              disabled={speaking || paused}
-              onClick={speak}
-            >
-              🎙️ Speak Slide {currentSlide + 1}
-            </button>
-            {speaking && paused ? (
-              <button
-                style={{ ...styles.btn, ...styles.btnWarning, ...styles.btnDisabled }}
-                disabled
-              >
-                ⏸ Pausing...
-              </button>
-            ) : paused ? (
-              <button
-                style={{ ...styles.btn, ...styles.btnSuccess }}
-                onClick={resumeSpeech}
-              >
-                ▶ Resume
-              </button>
-            ) : speaking ? (
-              <button
-                style={{ ...styles.btn, ...styles.btnWarning }}
-                onClick={pauseSpeech}
-              >
-                ⏸ Pause
-              </button>
-            ) : !presenting ? (
-              <button
-                style={{ ...styles.btn, ...styles.btnSuccess }}
-                onClick={startPresenting}
-              >
-                ▶️ Present All
-              </button>
-            ) : null}
-            <button style={{ ...styles.btn, ...styles.btnDanger }} onClick={stopSession}>
-              ⏹ Disconnect
-            </button>
-          </>
-        )}
-      </div>
-      <div style={styles.status}>{status}</div>
-      </>
+        <div className="avatar-rail__panel">
+          <div className="avatar-rail__controls">
+            {!connected ? (
+              <Button variant="primary" icon={Play} className="avatar-rail__start" onClick={startSession}>
+                Connect avatar
+              </Button>
+            ) : (
+              <>
+                <Button size="sm" icon={Mic} disabled={speaking || paused} onClick={speak}>
+                  Speak slide {currentSlide + 1}
+                </Button>
+                {speaking && paused ? (
+                  <Button size="sm" icon={Pause} disabled>
+                    Pausing…
+                  </Button>
+                ) : paused ? (
+                  <Button size="sm" variant="primary" icon={Play} onClick={resumeSpeech}>
+                    Resume
+                  </Button>
+                ) : speaking ? (
+                  <Button size="sm" icon={Pause} onClick={pauseSpeech}>
+                    Pause
+                  </Button>
+                ) : !presenting ? (
+                  <Button size="sm" variant="primary" icon={Play} onClick={startPresenting}>
+                    Present all
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="ghost" icon={PhoneOff} onClick={stopSession}>
+                  Disconnect
+                </Button>
+              </>
+            )}
+          </div>
+          {statusLine}
+        </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -96,6 +96,15 @@ Only the concurrency slot is in-process (the app is capped at one replica).
   rightmost entry becomes that proxy's address and the per-IP quota degrades to
   a global one — revisit before doing so. The global daily cap and concurrency
   cap do not depend on the IP.
+- **Validating the chain:** set `LOG_FORWARDING_CHAIN=true` on a revision
+  (`az containerapp update --set-env-vars`), open a demo WebSocket with an
+  invalid `deck_id` (rejected before any session/quota logic), read the
+  `Forwarding chain:` log line, then remove the variable. It logs raw IPs, so
+  keep it off otherwise. Note that managed corporate devices may reach Azure
+  through Microsoft's secure-access edge, so ACA sees rotating Microsoft
+  egress IPs rather than the home line — `DEMO_QUOTA_EXEMPT_IPS` only matches
+  devices that connect directly (signed-in admins use the admin avatar and
+  are never subject to demo quotas).
 - A quota unit is consumed when a session is accepted, even if the visitor
   leaves immediately or Azure fails to connect (conservative).
 
@@ -123,6 +132,7 @@ Only the concurrency slot is in-process (the app is capped at one replica).
 | `DEMO_DAILY_SESSIONS_PER_IP` | `3` | Sessions per UTC day per client IP. |
 | `DEMO_DAILY_MINUTES` | `60` | Hard cap on total demo streaming minutes per UTC day (all visitors). |
 | `DEMO_MAX_SPEAKS` | `0` | Narrations per session; `0`/unset = 2 × slide count; never above 40. |
+| `DEMO_QUOTA_EXEMPT_IPS` | *(empty)* | Comma-separated client IPs/CIDRs (e.g. the owner's home IP) that skip the daily quotas. Matched on the same trusted client IP as the per-IP quota (not spoofable); exempt sessions don't consume the shared budget but still obey `DEMO_MAX_CONCURRENT` and `DEMO_SESSION_SECONDS`. Set it in the azd env, never commit it. |
 
 All are read per call, so a config change (new revision) takes effect
 immediately; flipping `PUBLIC_DEMO_ENABLED=false` blocks new sessions at once.

@@ -28,6 +28,9 @@ const DECKS = [
   { file: 'innovacion-industrial.pptx', title: 'innovacion-industrial', query: '' },
 ];
 
+// Titles are shown humanized ("climate-action" -> "Climate action"); match either form.
+const titleRe = (slug: string) => new RegExp(slug.replace(/-/g, '[- ]'), 'i');
+
 // Helper: auto-accept native confirm() dialogs so delete works headlessly.
 function acceptConfirms(page: Page) {
   page.on('dialog', (d) => d.accept());
@@ -42,10 +45,10 @@ test.describe.configure({ mode: 'serial' });
 test.describe('Decks — per-page smoke', () => {
   test('Home page renders heading + tiles', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
-    await expect(page.getByRole('heading', { name: /present, narrate and podcast your decks/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Search/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Decks/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Playlists/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Search/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Decks/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open Playlists/i })).toBeVisible();
   });
 
   test('Decks page renders upload zone and heading', async ({ page }) => {
@@ -75,7 +78,7 @@ test.describe('Decks — navigation links', () => {
     await page.goto(`${BASE_URL}/decks`);
     await page.getByRole('link', { name: /Home/ }).first().click();
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/?$`));
-    await expect(page.getByRole('heading', { name: /podcast your decks/i })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
   test('TopNav: Search pill navigates to /search', async ({ page }) => {
@@ -100,25 +103,27 @@ test.describe('Decks — navigation links', () => {
 
   test('TopNav: Video Create pill navigates to /video (non-regression)', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
+    await page.getByRole('button', { name: /^Create/ }).click();
     await page.locator('a[href="/video"]').first().click();
     await expect(page).toHaveURL(/\/video(\/)?$/);
   });
 
   test('TopNav: Podcast Create pill navigates to /podcast (non-regression)', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
+    await page.getByRole('button', { name: /^Create/ }).click();
     await page.locator('a[href="/podcast"]').first().click();
     await expect(page).toHaveURL(/\/podcast(\/)?$/);
   });
 
   test('Home tile → Search', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
-    await page.getByRole('button', { name: /Open Search/i }).click();
+    await page.getByRole('link', { name: /Open Search/i }).click();
     await expect(page).toHaveURL(/\/search$/);
   });
 
   test('Home tile → Decks', async ({ page }) => {
     await page.goto(`${BASE_URL}/`);
-    await page.getByRole('button', { name: /Open Decks/i }).click();
+    await page.getByRole('link', { name: /Open Decks/i }).click();
     await expect(page).toHaveURL(/\/decks$/);
   });
 });
@@ -136,12 +141,12 @@ test.describe('Decks — feature scenarios', () => {
       const input = page.locator('input[type="file"]');
       await input.setInputFiles(path.join(FIXTURE_DIR, d.file));
       // Wait for the deck card to render with its filename-derived title
-      await expect(page.getByText(d.title, { exact: false })).toBeVisible({ timeout: 5 * 60_000 });
+      await expect(page.getByText(titleRe(d.title)).first()).toBeVisible({ timeout: 5 * 60_000 });
     }
 
     // Final verification: all 6 present
     for (const d of DECKS) {
-      await expect(page.getByText(d.title, { exact: false })).toBeVisible();
+      await expect(page.getByText(titleRe(d.title)).first()).toBeVisible();
     }
   });
 
@@ -154,7 +159,7 @@ test.describe('Decks — feature scenarios', () => {
       await box.fill(d.query);
       await page.getByRole('button', { name: /^Search$/ }).click();
       // First result card's deck_title label should contain the expected title
-      const firstTitle = page.locator('div').filter({ hasText: new RegExp(`^${d.title}$`, 'i') }).first();
+      const firstTitle = page.getByTestId('search-result').first().getByText(titleRe(d.title)).first();
       await expect(firstTitle).toBeVisible({ timeout: 30_000 });
       // Clear for next
       await box.fill('');
@@ -166,7 +171,7 @@ test.describe('Decks — feature scenarios', () => {
     await page.goto(`${BASE_URL}/search`);
     await page.getByPlaceholder(/Ask anything/i).fill('zero trust identity cloud');
     await page.getByRole('button', { name: /^Search$/ }).click();
-    await expect(page.getByText(/cloud-security/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(titleRe('cloud-security')).first()).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: /Present this slide/i }).first().click();
     await expect(page).toHaveURL(/\/decks\/[0-9a-f-]+\/present/i);
     // Slide media should show up
@@ -178,17 +183,14 @@ test.describe('Decks — feature scenarios', () => {
     acceptConfirms(page);
     await page.goto(`${BASE_URL}/decks`);
 
-    // Grab the first deck card's title for the post-delete assertion
-    const firstTitle = await page.locator('div').filter({ has: page.getByRole('button', { name: /Present/ }) })
-      .first()
-      .locator('div')
-      .first()
-      .innerText();
+    // Count deck cards for the post-delete assertion
+    const cards = page.getByTestId('deck-card');
+    const before = await cards.count();
 
-    // Click the trash button on the first card
-    await page.getByRole('button', { name: '🗑' }).first().click();
+    // Click the delete button on the first card
+    await cards.first().getByRole('button', { name: /Delete deck/i }).click();
 
-    // Wait for the card with that title to disappear
-    await expect(page.getByText(firstTitle, { exact: true })).toHaveCount(0, { timeout: 30_000 });
+    // Wait for one card to disappear
+    await expect(cards).toHaveCount(before - 1, { timeout: 30_000 });
   });
 });

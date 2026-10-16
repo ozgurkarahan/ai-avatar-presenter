@@ -80,6 +80,9 @@ param demoDailyMinutes string = '60'
 @description('Narrations per demo session; 0 = 2 x slide count (hard max 40)')
 param demoMaxSpeaks string = '0'
 
+@description('Comma-separated client IPs/CIDRs exempt from the demo daily quotas (e.g. the owner\'s home IP). Empty = none.')
+param demoQuotaExemptIps string = ''
+
 // ---------------------------------------------------------------------------
 // External (pre-existing) AI Services / Speech resource, e.g. one hosting custom photo avatars
 // ---------------------------------------------------------------------------
@@ -289,6 +292,7 @@ module containerapp 'modules/containerapp.bicep' = {
     demoDailySessions: demoDailySessions
     demoDailySessionsPerIp: demoDailySessionsPerIp
     demoDailyMinutes: demoDailyMinutes
+    demoQuotaExemptIps: demoQuotaExemptIps
     demoMaxSpeaks: demoMaxSpeaks
     tags: tags
   }

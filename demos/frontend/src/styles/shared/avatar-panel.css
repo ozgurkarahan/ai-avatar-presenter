@@ -1,0 +1,177 @@
+/* AvatarPanel — the "Now presenting" rail: live stage, host identity, controls. */
+.avatar-rail {
+  container: avatar-panel / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+  text-align: left;
+}
+
+.avatar-rail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  min-height: 28px;
+}
+
+.avatar-rail__live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.avatar-rail__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  container-type: size;
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+  transition: outline-color var(--dur-slow) var(--ease);
+}
+
+.avatar-rail--portrait .avatar-rail__stage {
+  aspect-ratio: 1 / 1;
+  max-width: 460px;
+  margin-inline: auto;
+  border-radius: var(--r-lg);
+}
+
+.avatar-rail.is-speaking .avatar-rail__stage {
+  outline-color: var(--c-clay);
+}
+
+.avatar-rail__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-rail--portrait .avatar-rail__video {
+  object-fit: contain;
+}
+
+/* Calm idle state: host portrait on sand instead of an empty dark box. */
+.avatar-rail__idle {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 3cqh, var(--sp-3));
+  padding: var(--sp-3);
+  background: var(--c-sand);
+  color: var(--c-ink);
+  text-align: center;
+}
+
+.avatar-rail__idle .host-disc {
+  /* Scale the disc with the stage height (overrides HostDisc's inline size). */
+  --disc: clamp(40px, 46cqh, 148px) !important;
+}
+
+.avatar-rail__idle .host-disc__ring {
+  opacity: 0.8;
+  animation-duration: 6s;
+}
+
+.avatar-rail__idle-name {
+  margin-top: clamp(2px, 2cqh, var(--sp-2));
+  font-family: var(--font-display);
+  font-size: clamp(1.0625rem, 9cqh, 1.75rem);
+  line-height: 1.1;
+}
+
+.avatar-rail__idle-line {
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+}
+
+@container (max-height: 150px) {
+  .avatar-rail__idle-line {
+    display: none;
+  }
+}
+
+@container (max-height: 96px) {
+  .avatar-rail__idle-name {
+    display: none;
+  }
+}
+
+.avatar-rail__host {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px var(--sp-3);
+}
+
+.avatar-rail__name {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.avatar-rail__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.avatar-rail__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.avatar-rail__controls > .btn {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Keep controls aligned with the capped portrait stage when the rail is wide (stacked layout). */
+.avatar-rail--portrait .avatar-rail__controls,
+.avatar-rail--portrait .avatar-rail__note {
+  width: 100%;
+  max-width: 460px;
+  margin-inline: auto;
+}
+
+.avatar-rail__start {
+  flex: 1 1 auto;
+}
+
+/* Very narrow rails: let long labels wrap instead of overflowing. */
+@container avatar-panel (max-width: 260px) {
+  .avatar-rail__controls > .btn {
+    flex: 1 1 100%;
+    padding-block: 6px;
+    border-radius: var(--r-lg);
+    white-space: normal;
+    line-height: 1.2;
+    text-align: center;
+  }
+}
+
+.avatar-rail__note {
+  color: var(--c-muted);
+  font-size: var(--fs-sm);
+}
+
+.avatar-rail__status {
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+.avatar-rail__status:empty {
+  display: none;
+}

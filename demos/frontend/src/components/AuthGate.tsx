@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useId } from 'react';
+import {
+  ArrowRight, Ban, CircleCheck, CircleDashed, Clapperboard, Eye, EyeOff, Film, GraduationCap,
+  Headphones, ListVideo, Lock, LogIn, Mic, Presentation, Radio, type LucideIcon,
+} from 'lucide-react';
 import { signIn, useAuth } from '../services/auth';
-
-const palette = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc',
-  muted: '#64748b', border: '#e2e8f0', infoBg: '#eff6ff', warnBg: '#fff7ed', warnText: '#9a3412',
-};
+import { Button, ButtonLink, Chip, buttonClass } from '../ui';
+import '../styles/shared/auth-gate.css';
 
 export const NOT_ENABLED_MESSAGE = "Your account isn't enabled for this demo.";
 
@@ -13,49 +14,63 @@ export function useIsAdmin(): boolean {
   return useAuth().is_admin;
 }
 
+const EMOJI_RE = /[\p{Extended_Pictographic}\p{Regional_Indicator}\u{FE0F}\u{200D}\u{20E3}]/gu;
+
+/** Removes emoji (pages still pass legacy emoji labels) and tidies whitespace. */
+function stripEmoji(text: string): string {
+  return text.replace(EMOJI_RE, '').replace(/\s+/g, ' ').trim();
+}
+
+// Legacy emoji `icon` strings (keyed by code point, variation selectors removed) → lucide equivalents.
+const LEGACY_ICONS: Record<number, LucideIcon> = {
+  0x1F399: Mic, 0x1F3AC: Clapperboard, 0x1F3A7: Headphones, 0x1F6E4: ListVideo,
+  0x1F393: GraduationCap, 0x1F39E: Film, 0x1F4DA: Presentation,
+};
+
+function legacyIcon(icon: string): LucideIcon {
+  const cp = icon.replace(/\u{FE0F}/gu, '').trim().codePointAt(0);
+  return (cp !== undefined && LEGACY_ICONS[cp]) || Lock;
+}
+
+function linkIcon(href: string): LucideIcon {
+  if (href.startsWith('/decks')) return Presentation;
+  if (href.startsWith('/video')) return Film;
+  if (href.startsWith('/podcast')) return Headphones;
+  if (href.startsWith('/playlists')) return ListVideo;
+  return ArrowRight;
+}
+
 /**
  * Inline call-to-action shown in place of an admin-only control.
  * - anonymous → "Sign in to {action}" + Sign in button
  * - signed in but not allowlisted → "Your account isn't enabled for this demo."
  */
-export function GateNotice({ action, compact = false, style, force }: {
+export function GateNotice({ action, compact = false, style, force, className }: {
   action: string; compact?: boolean; style?: React.CSSProperties;
   /** Override the /api/me-derived state, e.g. after a 4401/4403 WebSocket close. */
   force?: 'signin' | 'forbidden';
+  className?: string;
 }) {
   const auth = useAuth();
   if (!force && (auth.loading || auth.is_admin)) return null;
   const forbidden = force ? force === 'forbidden' : auth.authenticated;
+  const Icon = forbidden ? Ban : Lock;
   return (
     <div
       role="note"
       data-testid="auth-gate"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        justifyContent: compact ? 'flex-start' : 'center',
-        background: forbidden ? palette.warnBg : palette.infoBg,
-        color: forbidden ? palette.warnText : palette.brand,
-        border: `1px solid ${palette.border}`, borderRadius: 10,
-        padding: compact ? '8px 12px' : '14px 18px', fontSize: compact ? 12.5 : 14,
-        ...style,
-      }}
+      className={['alert', 'gate-notice', forbidden && 'alert--error', compact && 'gate-notice--compact', className]
+        .filter(Boolean).join(' ')}
+      style={style}
     >
-      <span aria-hidden>{forbidden ? '⛔' : '🔒'}</span>
-      <span style={{ fontWeight: 600 }}>
+      <Icon aria-hidden className="gate-notice__icon" />
+      <span className="gate-notice__text">
         {forbidden ? NOT_ENABLED_MESSAGE : `Sign in to ${action}`}
       </span>
       {!forbidden && auth.auth_mode !== 'disabled' && (
-        <button
-          type="button"
-          onClick={signIn}
-          style={{
-            background: palette.brandLight, color: 'white', border: 'none', borderRadius: 6,
-            padding: compact ? '4px 10px' : '6px 14px', fontWeight: 600,
-            fontSize: compact ? 12 : 13, cursor: 'pointer',
-          }}
-        >
+        <Button size="sm" variant="primary" icon={LogIn} onClick={signIn} className="gate-notice__action">
           Sign in
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -79,39 +94,39 @@ export function AdminOnly({ children, action = 'use this feature', fallback, com
  * Friendly full-panel replacement for generation pages when the visitor is
  * not an admin. Links point to the public (published) parts of the app.
  */
-export function GatedPanel({ icon, title, description, action, links = [] }: {
-  icon: string; title: string; description: string; action: string;
+export function GatedPanel({ icon, title, description, action, links = [], eyebrow = 'Demo access' }: {
+  /** A lucide icon; legacy emoji strings are mapped to an icon (fallback: Lock). */
+  icon?: LucideIcon | string;
+  title: string; description: string; action: string;
   links?: { href: string; label: string }[];
+  /** Small caps line above the title. */
+  eyebrow?: string;
 }) {
+  const Icon: LucideIcon = typeof icon === 'string' ? legacyIcon(icon) : (icon ?? Lock);
+  const titleId = useId();
   return (
-    <div
-      data-testid="gated-panel"
-      style={{
-        background: 'white', borderRadius: 16, padding: '40px 32px', textAlign: 'center',
-        boxShadow: '0 4px 20px rgba(0, 51, 102, 0.08)', maxWidth: 720, margin: '0 auto',
-      }}
-    >
-      <div style={{ fontSize: 48, marginBottom: 12 }} aria-hidden>{icon}</div>
-      <h2 style={{ margin: '0 0 8px', color: palette.brand }}>{title}</h2>
-      <p style={{ color: palette.muted, margin: '0 auto 20px', maxWidth: 560, lineHeight: 1.55 }}>{description}</p>
-      <GateNotice action={action} />
+    <section data-testid="gated-panel" className="empty gated-panel" aria-labelledby={titleId}>
+      <span className="empty__icon"><Icon aria-hidden /></span>
+      {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+      <h2 id={titleId} className="empty__title gated-panel__title">{stripEmoji(title)}</h2>
+      <p className="empty__text gated-panel__text">{description}</p>
+      <GateNotice action={action} className="gated-panel__notice" />
       {links.length > 0 && (
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginTop: 20 }}>
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              style={{
-                background: '#f8fafc', color: palette.brand, border: `1px solid ${palette.border}`,
-                borderRadius: 8, padding: '8px 16px', textDecoration: 'none', fontWeight: 600, fontSize: 13,
-              }}
-            >
-              {l.label}
-            </a>
-          ))}
-        </div>
+        <nav className="gated-panel__links" aria-label="Browse public content">
+          {links.map((l) => {
+            const label = stripEmoji(l.label);
+            const LinkIcon = linkIcon(l.href);
+            return l.href.startsWith('/') ? (
+              <ButtonLink key={l.href} to={l.href} size="sm" icon={LinkIcon}>{label}</ButtonLink>
+            ) : (
+              <a key={l.href} href={l.href} className={buttonClass({ size: 'sm' })}>
+                <LinkIcon aria-hidden />{label}
+              </a>
+            );
+          })}
+        </nav>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -119,19 +134,9 @@ export function GatedPanel({ icon, title, description, action, links = [] }: {
 export function PublishBadge({ published }: { published: boolean | undefined }) {
   const on = !!published;
   return (
-    <span
-      data-testid="publish-badge"
-      style={{
-        fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
-        padding: '2px 8px', borderRadius: 999,
-        background: on ? '#dcfce7' : '#f1f5f9',
-        color: on ? '#15803d' : '#475569',
-        border: `1px solid ${on ? '#86efac' : '#cbd5e1'}`,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {on ? '● Published' : '○ Draft'}
-    </span>
+    <Chip data-testid="publish-badge" tone={on ? 'sage' : 'default'} icon={on ? CircleCheck : CircleDashed}>
+      {on ? 'Published' : 'Draft'}
+    </Chip>
   );
 }
 
@@ -141,22 +146,16 @@ export function PublishToggle({ published, busy, onToggle }: {
 }) {
   const on = !!published;
   return (
-    <button
-      type="button"
+    <Button
+      size="sm"
       data-testid="publish-toggle"
-      disabled={busy}
+      busy={busy}
+      icon={on ? EyeOff : Eye}
       onClick={(e) => { e.stopPropagation(); onToggle(!on); }}
       title={on ? 'Hide from anonymous visitors' : 'Make visible to anonymous visitors'}
-      style={{
-        background: on ? 'white' : palette.brandLight,
-        color: on ? palette.brand : 'white',
-        border: `1px solid ${on ? palette.border : palette.brandLight}`,
-        borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600,
-        cursor: busy ? 'progress' : 'pointer', opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap',
-      }}
     >
-      {busy ? '…' : on ? 'Unpublish' : 'Publish'}
-    </button>
+      {on ? 'Unpublish' : 'Publish'}
+    </Button>
   );
 }
 
@@ -164,18 +163,14 @@ export function PublishToggle({ published, busy, onToggle }: {
 export function LiveDemoBadge({ liveDemo }: { liveDemo: boolean | undefined }) {
   if (!liveDemo) return null;
   return (
-    <span
+    <Chip
       data-testid="live-demo-badge"
+      tone="clay"
+      icon={Radio}
       title="Visitors can try the live avatar narrating this deck"
-      style={{
-        fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
-        padding: '2px 8px', borderRadius: 999,
-        background: '#fff7ed', color: '#9a3412', border: '1px solid #fdba74',
-        whiteSpace: 'nowrap',
-      }}
     >
-      🎙️ Live demo
-    </span>
+      Live demo
+    </Chip>
   );
 }
 
@@ -186,25 +181,21 @@ export function LiveDemoToggle({ liveDemo, published, busy, onToggle }: {
   const on = !!liveDemo;
   const blocked = !on && !published;
   return (
-    <button
-      type="button"
+    <Button
+      size="sm"
       data-testid="live-demo-toggle"
-      disabled={busy || blocked}
+      className={['live-demo-toggle', on && 'is-on'].filter(Boolean).join(' ')}
+      busy={busy}
+      disabled={blocked}
+      aria-pressed={on}
+      icon={Radio}
       onClick={(e) => { e.stopPropagation(); onToggle(!on); }}
       title={blocked
         ? 'Publish the deck first'
         : on ? 'Stop anonymous visitors from running the live avatar on this deck'
           : 'Let anonymous visitors try the narration-only live avatar on this deck'}
-      style={{
-        background: on ? '#fff7ed' : 'white',
-        color: on ? '#9a3412' : palette.brand,
-        border: `1px solid ${on ? '#fdba74' : palette.border}`,
-        borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600,
-        cursor: busy ? 'progress' : blocked ? 'not-allowed' : 'pointer',
-        opacity: busy || blocked ? 0.55 : 1, whiteSpace: 'nowrap',
-      }}
     >
-      {busy ? '…' : on ? 'Live demo on' : 'Live demo off'}
-    </button>
+      {on ? 'Live demo on' : 'Live demo off'}
+    </Button>
   );
 }

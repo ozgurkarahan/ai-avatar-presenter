@@ -1,4 +1,5 @@
 import React from 'react';
+import { RotateCcw, TriangleAlert } from 'lucide-react';
 
 interface State { error: Error | null }
 
@@ -21,19 +22,15 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div role="alert" style={{ maxWidth: 640, margin: '60px auto', padding: 24, textAlign: 'center',
-        background: 'white', borderRadius: 12, boxShadow: '0 4px 20px rgba(0, 51, 102, 0.08)' }}>
-        <div style={{ fontSize: 40 }} aria-hidden>⚠️</div>
-        <h2 style={{ color: '#003366' }}>Something went wrong on this page</h2>
-        <p style={{ color: '#64748b' }}>Try reloading, or pick another section from the navigation bar.</p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          style={{ background: '#005599', color: 'white', border: 'none', borderRadius: 8,
-            padding: '8px 18px', fontWeight: 600, cursor: 'pointer' }}
-        >
-          Reload
-        </button>
+      <div role="alert" className="crash">
+        <div className="empty">
+          <span className="empty__icon"><TriangleAlert aria-hidden /></span>
+          <h2 className="empty__title">Something went wrong on this page</h2>
+          <p className="empty__text">Try reloading, or pick another section from the navigation bar.</p>
+          <button type="button" className="btn btn--primary" onClick={() => window.location.reload()}>
+            <RotateCcw aria-hidden /> Reload
+          </button>
+        </div>
       </div>
     );
   }

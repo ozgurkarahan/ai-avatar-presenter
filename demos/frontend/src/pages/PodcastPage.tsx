@@ -1,48 +1,64 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  ArrowLeft, BarChart3, CheckCircle2, Clapperboard, Clock, Download, FileText, FlaskConical, Globe,
+  GraduationCap, Headphones, Library, Plus, Presentation, Scale, Sparkles, Users, type LucideIcon,
+} from 'lucide-react';
+import {
   DialogueTurn, Document as PodDoc, JobState, Layout,
-  PodcastJob, RoleConfig, Script, Speaker, Style, VoiceOption,
+  PodcastJob, RoleConfig, Speaker, Style, VoiceOption,
   getJob, ingestFile, ingestUrl, listVoices,
   startRender, streamScript,
 } from '../services/podcast';
 import { type AvatarInfo, listAvatars, pickAvatarForGender } from '../services/avatars';
 import { useAuth } from '../services/auth';
 import { GatedPanel } from '../components/AuthGate';
+import {
+  Alert, Button, ButtonLink, Checkbox, Chip, Dropzone, Field, HostDisc, Input, LivePill, PageHeader,
+  Progress, SectionHead, Select, Spinner, Steps, Textarea, Waveform, buttonClass, languageName, pluralize,
+} from '../ui';
+import '../styles/pages/podcast-create.css';
 
-const theme = {
-  brand: '#003366', brandLight: '#005599', accent: '#009bdc',
-  text: '#1a1a2e', muted: '#64748b',
-  card: '#ffffff', cardAlt: '#f8fafc', border: '#e2e8f0',
-  shadow: '0 4px 20px rgba(0, 51, 102, 0.08)',
-};
-
-const SAMPLE_PROMPTS = [
-  { emoji: '📊', title: 'Executive Summary', focus: 'Summarize the key strategic points for a C-level audience.' },
-  { emoji: '🧪', title: 'Product Deep-Dive',  focus: 'Explain the technical mechanics clearly to an engineering audience.' },
-  { emoji: '⚖️',  title: 'Balanced Debate',    focus: 'Present the strongest arguments for and against the proposal.' },
-  { emoji: '🎓', title: 'Classroom Explainer', focus: 'Make this accessible to a motivated student. Use analogies.' },
+const SAMPLE_PROMPTS: { icon: LucideIcon; title: string; focus: string }[] = [
+  { icon: BarChart3, title: 'Executive Summary', focus: 'Summarize the key strategic points for a C-level audience.' },
+  { icon: FlaskConical, title: 'Product Deep-Dive', focus: 'Explain the technical mechanics clearly to an engineering audience.' },
+  { icon: Scale, title: 'Balanced Debate', focus: 'Present the strongest arguments for and against the proposal.' },
+  { icon: GraduationCap, title: 'Classroom Explainer', focus: 'Make this accessible to a motivated student. Use analogies.' },
 ];
 
+const LANGUAGES = ['en-US', 'fr-FR', 'es-ES', 'de-DE', 'it-IT', 'pt-BR', 'zh-CN', 'ja-JP'];
+
 type Phase = 'setup' | 'scripting' | 'review' | 'rendering' | 'done';
+
+const WIZARD_STEPS = ['Source', 'Script', 'Review & cast', 'Render', 'Listen'];
+const PHASE_STEP: Record<Phase, number> = { setup: 0, scripting: 1, review: 2, rendering: 3, done: 4 };
+
+function Header({ actions }: { actions?: React.ReactNode }) {
+  return (
+    <PageHeader
+      eyebrow="Create · Two-host podcast"
+      title={<>Two hosts, <em>one conversation.</em></>}
+      lead="Transform any document into a dual-host conversation, with two AI avatars walking through your slides — in any language, in minutes."
+      actions={actions}
+    />
+  );
+}
 
 export default function PodcastPage() {
   const auth = useAuth();
   if (auth.loading || !auth.is_admin) {
     return (
-      <div style={{ background: theme.cardAlt, minHeight: 'calc(100vh - 60px)', padding: '32px 0' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
-          <Hero />
-          {!auth.loading && (
-            <GatedPanel
-              icon="🎧"
-              title="Podcast creation is limited to demo users"
-              description="Generating a podcast uploads a document, writes a script with an LLM and renders two AI avatars. You can still watch every published podcast in the library."
-              action="create your own podcast"
-              links={[{ href: '/podcast/library', label: '📚 Browse the podcast library' }, { href: '/video/library', label: '🎞️ Browse the video library' }]}
-            />
-          )}
-        </div>
+      <div className="container page podcast-create">
+        <Header />
+        {!auth.loading && (
+          <GatedPanel
+            icon={Headphones}
+            title="Podcast creation is limited to demo users"
+            description="Generating a podcast uploads a document, writes a script with an LLM and renders two AI avatars. You can still watch every published podcast in the library."
+            action="create your own podcast"
+            links={[{ href: '/podcast/library', label: 'Browse the podcast library' }, { href: '/video/library', label: 'Browse the video library' }]}
+          />
+        )}
       </div>
     );
   }
@@ -152,55 +168,56 @@ function PodcastGenerator() {
     } catch (e) { alert(`Render failed to start: ${e}`); }
   }
 
+  const cast: Cast = { interviewer, expert, avatars };
+
   return (
-    <div style={{ background: theme.cardAlt, minHeight: 'calc(100vh - 60px)', padding: '32px 0' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 24px' }}>
-        <Hero />
-        <AnimatePresence mode="wait">
-          {phase === 'setup' && (
-            <motion.div key="setup" {...fade}>
-              <SetupPhase {...{
-                doc, uploadBusy, urlInput, focus, style, numTurns, language,
-                avatars, voices, interviewer, expert,
-              }}
-                onUrlInput={setUrlInput} onFile={handleFile} onUrl={handleUrl}
-                onFocusChange={setFocus} onApplyPrompt={(p) => setFocus(p.focus)}
-                onStyle={setStyle} onNumTurns={setNumTurns} onLanguage={setLanguage}
-                onInterviewer={setInterviewer} onExpert={setExpert}
-                onGenerate={startScript} />
-            </motion.div>
-          )}
-          {phase === 'scripting' && (
-            <motion.div key="scripting" {...fade}>
-              <ScriptStreamingView turns={streamingTurns} error={scriptError} />
-            </motion.div>
-          )}
-          {phase === 'review' && (
-            <motion.div key="review" {...fade}>
-              <ScriptReview
-                turns={streamingTurns} interviewer={interviewer} expert={expert}
-                music={music} intro={intro}
-                onMusic={setMusic} onIntro={setIntro}
-                onRender={kickOffRender} onBack={() => setPhase('setup')} />
-            </motion.div>
-          )}
-          {phase === 'rendering' && job && (
-            <motion.div key="rendering" {...fade}>
-              <RenderingView job={job} turns={streamingTurns} />
-            </motion.div>
-          )}
-          {phase === 'done' && job && (
-            <motion.div key="done" {...fade}>
-              <ResultView job={job} turns={streamingTurns}
-                interviewer={interviewer} expert={expert}
-                onNew={() => {
-                  setPhase('setup'); setDoc(null); setJob(null);
-                  setStreamingTurns([]); setScriptId(null);
-                }} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+    <div className="container page podcast-create">
+      <Header actions={<ButtonLink to="/podcast/library" icon={Library}>Podcast library</ButtonLink>} />
+      <div className="pc-steps">
+        <Steps steps={WIZARD_STEPS} current={PHASE_STEP[phase]} />
       </div>
+      <AnimatePresence mode="wait">
+        {phase === 'setup' && (
+          <motion.div key="setup" {...fade}>
+            <SetupPhase {...{
+              doc, uploadBusy, urlInput, focus, style, numTurns, language,
+            }}
+              onUrlInput={setUrlInput} onFile={handleFile} onUrl={handleUrl}
+              onFocusChange={setFocus} onApplyPrompt={(p) => setFocus(p.focus)}
+              onStyle={setStyle} onNumTurns={setNumTurns} onLanguage={setLanguage}
+              onGenerate={startScript} />
+          </motion.div>
+        )}
+        {phase === 'scripting' && (
+          <motion.div key="scripting" {...fade}>
+            <ScriptStreamingView turns={streamingTurns} error={scriptError} cast={cast} />
+          </motion.div>
+        )}
+        {phase === 'review' && (
+          <motion.div key="review" {...fade}>
+            <ScriptReview
+              turns={streamingTurns} cast={cast} voices={voices}
+              onInterviewer={setInterviewer} onExpert={setExpert}
+              music={music} intro={intro}
+              onMusic={setMusic} onIntro={setIntro}
+              onRender={kickOffRender} onBack={() => setPhase('setup')} />
+          </motion.div>
+        )}
+        {phase === 'rendering' && job && (
+          <motion.div key="rendering" {...fade}>
+            <RenderingView job={job} turns={streamingTurns} />
+          </motion.div>
+        )}
+        {phase === 'done' && job && (
+          <motion.div key="done" {...fade}>
+            <ResultView job={job} turns={streamingTurns} cast={cast}
+              onNew={() => {
+                setPhase('setup'); setDoc(null); setJob(null);
+                setStreamingTurns([]); setScriptId(null);
+              }} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -210,27 +227,14 @@ const fade = {
   exit: { opacity: 0, y: -10 }, transition: { duration: 0.25 },
 };
 
-function Hero() {
-  return (
-    <div style={{
-      background: `linear-gradient(135deg, ${theme.brand} 0%, ${theme.brandLight} 60%, ${theme.accent} 100%)`,
-      color: 'white', borderRadius: 20, padding: '40px 44px', marginBottom: 24,
-      boxShadow: theme.shadow, position: 'relative', overflow: 'hidden',
-    }}>
-      <div style={{ position: 'absolute', top: -50, right: -50, width: 240, height: 240,
-        borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
-      <div style={{ fontSize: 12, letterSpacing: 3, textTransform: 'uppercase', opacity: 0.7 }}>
-        DeckFM
-      </div>
-      <h1 style={{ fontSize: 36, margin: '8px 0', fontWeight: 800, letterSpacing: '-0.5px' }}>
-        AI Podcast Generator
-      </h1>
-      <p style={{ margin: 0, fontSize: 16, opacity: 0.9, maxWidth: 640 }}>
-        Transform any document into a dual-host conversation, with two AI avatars
-        walking through your slides — in any language, in minutes.
-      </p>
-    </div>
-  );
+interface Cast { interviewer: RoleConfig; expert: RoleConfig; avatars: AvatarInfo[] }
+
+const ROLE_LABEL: Record<Speaker, string> = { interviewer: 'Interviewer', expert: 'Expert' };
+
+function hostFor(cast: Cast, speaker: Speaker) {
+  const role = speaker === 'interviewer' ? cast.interviewer : cast.expert;
+  const avatar = cast.avatars.find((a) => a.id === role.avatar);
+  return { display_name: role.display_name || ROLE_LABEL[speaker], thumbnail_url: avatar?.thumbnail_url ?? null };
 }
 
 interface SetupProps {
@@ -242,416 +246,371 @@ interface SetupProps {
   style: Style; onStyle: (s: Style) => void;
   numTurns: number; onNumTurns: (n: number) => void;
   language: string; onLanguage: (l: string) => void;
-  avatars: AvatarInfo[]; voices: VoiceOption[];
-  interviewer: RoleConfig; expert: RoleConfig;
-  onInterviewer: (r: RoleConfig) => void; onExpert: (r: RoleConfig) => void;
   onGenerate: () => void;
 }
 function SetupPhase(p: SetupProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 24 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <Card title="1. Source material">
+    <div className="pc-setup">
+      <div className="pc-setup__main">
+        <section className="pc-section">
+          <SectionHead title="Source material" aside="Required" />
           <Uploader doc={p.doc} busy={p.uploadBusy}
             urlInput={p.urlInput} onUrlInput={p.onUrlInput}
             onFile={p.onFile} onUrl={p.onUrl} />
-        </Card>
-        <Card title="2. Conversation focus (optional)">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 12 }}>
+        </section>
+        <section className="pc-section">
+          <SectionHead title="Conversation angle" aside="Optional" />
+          <div className="pc-prompts">
             {SAMPLE_PROMPTS.map((sp) => (
-              <button key={sp.title} onClick={() => p.onApplyPrompt(sp)}
-                style={{ textAlign: 'left', background: theme.cardAlt, border: `1px solid ${theme.border}`,
-                  borderRadius: 10, padding: '12px 14px', cursor: 'pointer', fontSize: 13, color: theme.text,
-                  transition: 'all 0.15s' }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = theme.accent)}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = theme.border)}>
-                <div style={{ fontSize: 18, marginBottom: 2 }}>{sp.emoji}</div>
-                <div style={{ fontWeight: 700, marginBottom: 2 }}>{sp.title}</div>
-                <div style={{ color: theme.muted, fontSize: 11, lineHeight: 1.4 }}>{sp.focus}</div>
+              <button
+                key={sp.title}
+                type="button"
+                className="pc-prompt"
+                aria-pressed={p.focus === sp.focus}
+                onClick={() => p.onApplyPrompt(sp)}
+              >
+                <span className="pc-prompt__title"><sp.icon aria-hidden />{sp.title}</span>
+                <span className="pc-prompt__text">{sp.focus}</span>
               </button>
             ))}
           </div>
-          <textarea value={p.focus} onChange={(e) => p.onFocusChange(e.target.value)}
-            placeholder="Or describe your own angle — e.g. 'focus on ROI for retrofit customers'"
-            style={{ width: '100%', minHeight: 60, border: `1px solid ${theme.border}`,
-              borderRadius: 8, padding: 10, fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
-        </Card>
-        <Card title="3. Conversation settings">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            <Field label="Style">
-              <select value={p.style} onChange={(e) => p.onStyle(e.target.value as Style)} style={selectStyle}>
-                <option value="casual">Casual</option>
-                <option value="formal">Formal</option>
-                <option value="debate">Debate</option>
-                <option value="explainer">Explainer</option>
-              </select>
-            </Field>
-            <Field label={`Turns: ${p.numTurns}`}>
-              <input type="range" min={4} max={16} value={p.numTurns}
-                onChange={(e) => p.onNumTurns(Number(e.target.value))} style={{ width: '100%' }} />
-            </Field>
-            <Field label="Language">
-              <select value={p.language} onChange={(e) => p.onLanguage(e.target.value)} style={selectStyle}>
-                <option value="en-US">🇬🇧 English (US)</option>
-                <option value="fr-FR">🇫🇷 Français</option>
-                <option value="es-ES">🇪🇸 Español</option>
-                <option value="de-DE">🇩🇪 Deutsch</option>
-                <option value="it-IT">🇮🇹 Italiano</option>
-                <option value="pt-BR">🇧🇷 Português (Brasil)</option>
-                <option value="zh-CN">🇨🇳 中文 (简体)</option>
-                <option value="ja-JP">🇯🇵 日本語</option>
-              </select>
-            </Field>
-          </div>
-        </Card>
+          <Field label="Your own angle" hint="Pick a preset above or describe the angle the hosts should take.">
+            <Textarea
+              value={p.focus}
+              onChange={(e) => p.onFocusChange(e.target.value)}
+              rows={3}
+              placeholder="e.g. focus on ROI for retrofit customers"
+            />
+          </Field>
+        </section>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <Card title="4. Cast">
-          <RolePicker label="Interviewer 🎙️" role={p.interviewer} onChange={p.onInterviewer}
-            avatars={p.avatars} voices={p.voices} />
-          <div style={{ height: 16 }} />
-          <RolePicker label="Expert 🧑‍🏫" role={p.expert} onChange={p.onExpert}
-            avatars={p.avatars} voices={p.voices} />
-        </Card>
-        <button disabled={!p.doc} onClick={p.onGenerate}
-          style={{
-            background: !p.doc ? theme.border : `linear-gradient(135deg, ${theme.brand}, ${theme.accent})`,
-            color: 'white', border: 'none', borderRadius: 12, padding: '16px 20px',
-            fontSize: 16, fontWeight: 700, cursor: p.doc ? 'pointer' : 'not-allowed',
-            boxShadow: p.doc ? theme.shadow : 'none',
-          }}>
-          ✨ Generate podcast script
-        </button>
-        {!p.doc && <div style={{ fontSize: 12, color: theme.muted, textAlign: 'center' }}>
-          Upload a document first
-        </div>}
-      </div>
+      <aside className="pc-setup__side">
+        <div className="card pc-settings">
+          <h2 className="pc-card-title">Conversation settings</h2>
+          <Field label="Style">
+            <Select value={p.style} onChange={(e) => p.onStyle(e.target.value as Style)}>
+              <option value="casual">Casual</option>
+              <option value="formal">Formal</option>
+              <option value="debate">Debate</option>
+              <option value="explainer">Explainer</option>
+            </Select>
+          </Field>
+          <Field label={<>Turns <span className="pc-range-value tabular">{p.numTurns}</span></>} hint="Between 4 and 16 exchanges.">
+            <input
+              type="range" min={4} max={16} value={p.numTurns}
+              className="pc-range"
+              onChange={(e) => p.onNumTurns(Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Language">
+            <Select value={p.language} onChange={(e) => p.onLanguage(e.target.value)}>
+              {LANGUAGES.map((code) => <option key={code} value={code}>{languageName(code)}</option>)}
+            </Select>
+          </Field>
+          <Button variant="primary" size="lg" block icon={Sparkles} disabled={!p.doc} onClick={p.onGenerate}>
+            Generate podcast script
+          </Button>
+          {!p.doc && <p className="pc-settings__hint">Upload a document first</p>}
+        </div>
+      </aside>
     </div>
   );
 }
 
-const selectStyle: React.CSSProperties = {
-  width: '100%', border: `1px solid ${theme.border}`, borderRadius: 8,
-  padding: '8px 10px', fontSize: 13, background: 'white',
-};
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 20, boxShadow: theme.shadow }}>
-      <div style={{ fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase',
-        color: theme.brand, fontWeight: 700, marginBottom: 10 }}>{title}</div>
-      {children}
-    </div>
-  );
-}
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: theme.muted, marginBottom: 4, fontWeight: 600 }}>{label}</div>
-      {children}
-    </div>
-  );
-}
+const KIND_ICON: Record<string, LucideIcon> = { pptx: Presentation, url: Globe };
 
 function Uploader({ doc, busy, urlInput, onUrlInput, onFile, onUrl }: {
   doc: PodDoc | null; busy: boolean;
   urlInput: string; onUrlInput: (v: string) => void;
   onFile: (f: File) => void; onUrl: () => void;
 }) {
-  const [drag, setDrag] = useState(false);
   if (doc) {
+    const Icon = KIND_ICON[doc.source_kind] ?? FileText;
     return (
-      <div style={{ background: theme.cardAlt, borderRadius: 10, padding: 14,
-        display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ fontSize: 28 }}>{kindEmoji(doc.source_kind)}</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700 }}>{doc.title}</div>
-          <div style={{ fontSize: 12, color: theme.muted }}>
-            {doc.sections.length} sections
-            {doc.slide_images.length > 0 && ` · ${doc.slide_images.length} slides`}
+      <div className="pc-doc">
+        <span className="pc-doc__icon" aria-hidden><Icon /></span>
+        <div className="pc-doc__body">
+          <div className="pc-doc__title">{doc.title}</div>
+          <div className="pc-doc__meta">
+            {pluralize(doc.sections.length, 'section')}
+            {doc.slide_images.length > 0 && ` · ${pluralize(doc.slide_images.length, 'slide')}`}
           </div>
         </div>
+        <Chip tone="sage" icon={CheckCircle2}>Ready</Chip>
       </div>
     );
   }
   return (
-    <>
-      <label
-        onDragEnter={(e) => { e.preventDefault(); setDrag(true); }}
-        onDragOver={(e) => { e.preventDefault(); }}
-        onDragLeave={() => setDrag(false)}
-        onDrop={(e) => { e.preventDefault(); setDrag(false);
-          const f = e.dataTransfer.files?.[0]; if (f) onFile(f); }}
-        style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-          border: `2px dashed ${drag ? theme.accent : theme.border}`, borderRadius: 12,
-          padding: '28px 16px', cursor: 'pointer', background: drag ? '#eff6ff' : 'transparent',
-        }}>
-        <div style={{ fontSize: 32 }}>📄</div>
-        <div style={{ fontWeight: 600 }}>Drag a PPTX / PDF / DOCX here</div>
-        <div style={{ fontSize: 12, color: theme.muted }}>or click to browse</div>
-        <input type="file" accept=".pptx,.pdf,.docx,.txt,.md"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
-          style={{ display: 'none' }} />
-      </label>
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <input value={urlInput} onChange={(e) => onUrlInput(e.target.value)}
-          placeholder="…or paste a URL (article, research page, etc.)"
-          style={{ flex: 1, border: `1px solid ${theme.border}`, borderRadius: 8,
-            padding: '8px 10px', fontSize: 13 }} />
-        <button onClick={onUrl} disabled={busy || !urlInput.trim()}
-          style={{ background: theme.brand, color: 'white', border: 'none', borderRadius: 8,
-            padding: '8px 14px', fontSize: 13, fontWeight: 600,
-            cursor: urlInput.trim() ? 'pointer' : 'not-allowed', opacity: urlInput.trim() ? 1 : 0.5 }}>
-          Fetch
-        </button>
+    <div className="pc-uploader">
+      <Dropzone
+        onFile={onFile}
+        accept=".pptx,.pdf,.docx,.txt,.md"
+        busy={busy}
+        busyTitle="Processing…"
+        title="Drop a PPTX, PDF or DOCX"
+        hint="or click to browse · TXT and Markdown work too"
+      />
+      <div className="pc-url">
+        <Field label="Or fetch a web page" className="pc-url__field">
+          <Input
+            type="url"
+            value={urlInput}
+            onChange={(e) => onUrlInput(e.target.value)}
+            placeholder="https://… article, research page, etc."
+          />
+        </Field>
+        <Button icon={Globe} onClick={onUrl} disabled={busy || !urlInput.trim()}>Fetch</Button>
       </div>
-      {busy && <div style={{ fontSize: 12, color: theme.muted, marginTop: 8 }}>⏳ Processing…</div>}
-    </>
+      {busy && <Spinner label="Processing…" />}
+    </div>
   );
 }
-function kindEmoji(k: string) {
-  return ({ pptx: '📊', pdf: '📕', docx: '📝', url: '🌐', txt: '📄', md: '📄' } as Record<string, string>)[k] ?? '📄';
-}
 
-function RolePicker({ label, role, onChange, avatars, voices }: {
-  label: string; role: RoleConfig; onChange: (r: RoleConfig) => void;
+function RoleCard({ speaker, role, onChange, avatars, voices }: {
+  speaker: Speaker; role: RoleConfig; onChange: (r: RoleConfig) => void;
   avatars: AvatarInfo[]; voices: VoiceOption[];
 }) {
+  const avatar = avatars.find((a) => a.id === role.avatar);
+  const voice = voices.find((v) => v.id === role.voice);
+  const lead = speaker === 'interviewer';
   return (
-    <div>
-      <div style={{ fontSize: 11, color: theme.muted, marginBottom: 8, fontWeight: 600 }}>{label}</div>
-      <input value={role.display_name} onChange={(e) => onChange({ ...role, display_name: e.target.value })}
-        style={{ width: '100%', border: `1px solid ${theme.border}`, borderRadius: 8,
-          padding: '8px 10px', fontSize: 13, marginBottom: 8 }}
-        placeholder="Display name" />
-      <div style={{ display: 'flex', gap: 8 }}>
-        {avatars.map((a) => (
-          <button key={a.id} onClick={() => onChange({ ...role, avatar: a.id })}
-            style={{
-              flex: 1, border: `2px solid ${role.avatar === a.id ? theme.accent : theme.border}`,
-              borderRadius: 10, padding: 8, background: 'white', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-            }}>
-            {a.thumbnail_url ? (
-              <img src={a.thumbnail_url} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ fontSize: 20 }}>{a.gender === 'male' ? '👨' : a.gender === 'female' ? '👩' : '🧑'}</div>
-            )}
-            <div style={{ fontSize: 11, fontWeight: 600 }}>{a.display_name}</div>
-          </button>
-        ))}
+    <article className={`pc-host pc-host--${speaker}`} aria-label={ROLE_LABEL[speaker]}>
+      <div className="pc-host__portrait">
+        <HostDisc
+          host={{ display_name: role.display_name || ROLE_LABEL[speaker], thumbnail_url: avatar?.thumbnail_url ?? null }}
+          size={120}
+          speaking={lead}
+          tone={lead ? 'sage' : 'sand'}
+          label=""
+        />
+        <div className="pc-host__id">
+          {lead ? <LivePill>Interviewer · leads</LivePill> : <span className="eyebrow">Expert</span>}
+          <span className="pc-host__name">{role.display_name || ROLE_LABEL[speaker]}</span>
+          <span className="pc-host__meta">
+            {[avatar?.display_name, voice?.display_name].filter(Boolean).join(' · ') || 'Choose an avatar and a voice'}
+          </span>
+        </div>
       </div>
-      <select value={role.voice} onChange={(e) => onChange({ ...role, voice: e.target.value })}
-        style={{ ...selectStyle, marginTop: 8 }}>
-        {voices.map((v) => (
-          <option key={v.id} value={v.id}>
-            {v.display_name}{v.hd ? ' · HD' : ''} ({v.language})
-          </option>
-        ))}
-      </select>
-    </div>
+      <div className="pc-host__fields">
+        <Field label="Display name">
+          <Input
+            value={role.display_name}
+            onChange={(e) => onChange({ ...role, display_name: e.target.value })}
+            placeholder="Display name"
+          />
+        </Field>
+        <Field label="Avatar">
+          <Select value={role.avatar} onChange={(e) => onChange({ ...role, avatar: e.target.value })}>
+            {!role.avatar && <option value="">Choose an avatar</option>}
+            {avatars.map((a) => <option key={a.id} value={a.id}>{a.display_name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Voice">
+          <Select value={role.voice} onChange={(e) => onChange({ ...role, voice: e.target.value })}>
+            {voices.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.display_name}{v.hd ? ' · HD' : ''} ({v.language})
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+    </article>
   );
 }
 
-function ScriptStreamingView({ turns, error }: { turns: DialogueTurn[]; error: string | null }) {
+function ScriptStreamingView({ turns, error, cast }: { turns: DialogueTurn[]; error: string | null; cast: Cast }) {
   return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 28, boxShadow: theme.shadow }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-          style={{ width: 20, height: 20, borderRadius: '50%',
-            border: `3px solid ${theme.border}`, borderTopColor: theme.accent }} />
-        <div style={{ fontWeight: 700, fontSize: 16 }}>Generating script…</div>
-        <div style={{ fontSize: 12, color: theme.muted }}>{turns.length} turns so far</div>
+    <section className="pc-panel" aria-live="polite">
+      <div className="pc-panel__head">
+        {error ? <span className="eyebrow">Script</span> : <Waveform />}
+        <h2 className="pc-panel__title">{error ? 'The script could not be written' : 'Writing the script…'}</h2>
+        <span className="eyebrow tabular">{pluralize(turns.length, 'turn')} so far</span>
       </div>
-      {error ? (<div style={{ color: '#dc2626', fontWeight: 600 }}>Error: {error}</div>)
-             : (<TurnsList turns={turns} />)}
-    </div>
+      {error
+        ? <Alert tone="error" title="Script generation failed">{error}</Alert>
+        : (
+          <>
+            {turns.length === 0 && <Spinner label="The hosts are reading your document…" />}
+            <TurnsList turns={turns} cast={cast} />
+          </>
+        )}
+    </section>
   );
 }
 
-function ScriptReview({ turns, interviewer, expert, music, intro, onMusic, onIntro, onRender, onBack }: {
-  turns: DialogueTurn[]; interviewer: RoleConfig; expert: RoleConfig;
+function ScriptReview({
+  turns, cast, voices, onInterviewer, onExpert, music, intro, onMusic, onIntro, onRender, onBack,
+}: {
+  turns: DialogueTurn[]; cast: Cast; voices: VoiceOption[];
+  onInterviewer: (r: RoleConfig) => void; onExpert: (r: RoleConfig) => void;
   music: boolean; intro: boolean;
   onMusic: (b: boolean) => void; onIntro: (b: boolean) => void;
   onRender: () => void; onBack: () => void;
 }) {
   return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 28, boxShadow: theme.shadow }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ fontWeight: 700, fontSize: 20 }}>📜 Script ready — review &amp; render</div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
-          <label style={toggleLabel}><input type="checkbox" checked={intro} onChange={(e) => onIntro(e.target.checked)} /> Intro card</label>
-          <label style={toggleLabel}><input type="checkbox" checked={music} onChange={(e) => onMusic(e.target.checked)} /> Background music</label>
+    <div className="pc-review">
+      <section className="pc-section">
+        <SectionHead title="The script" aside={pluralize(turns.length, 'turn')} />
+        <TurnsList turns={turns} cast={cast} />
+      </section>
+      <section className="pc-section">
+        <SectionHead title="Cast your hosts" aside="Avatars & voices" />
+        <div className="pc-cast">
+          <RoleCard speaker="interviewer" role={cast.interviewer} onChange={onInterviewer}
+            avatars={cast.avatars} voices={voices} />
+          <RoleCard speaker="expert" role={cast.expert} onChange={onExpert}
+            avatars={cast.avatars} voices={voices} />
         </div>
-      </div>
-      <TurnsList turns={turns} interviewer={interviewer} expert={expert} />
-      <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-        <button onClick={onBack} style={secondaryBtn}>← Back to setup</button>
-        <button onClick={onRender} style={primaryBtn}>🎬 Render podcast</button>
-      </div>
+      </section>
+      <section className="pc-bar" aria-label="Production">
+        <div className="pc-bar__options">
+          <span className="eyebrow">Production</span>
+          <Checkbox label="Intro card" checked={intro} onChange={(e) => onIntro(e.target.checked)} />
+          <Checkbox label="Background music" checked={music} onChange={(e) => onMusic(e.target.checked)} />
+        </div>
+        <div className="pc-bar__actions">
+          <Button icon={ArrowLeft} onClick={onBack}>Back to setup</Button>
+          <Button variant="primary" icon={Clapperboard} onClick={onRender}>Render podcast</Button>
+        </div>
+      </section>
     </div>
   );
 }
 
-function TurnsList({ turns, interviewer, expert }: {
-  turns: DialogueTurn[]; interviewer?: RoleConfig; expert?: RoleConfig;
-}) {
+function TurnsList({ turns, cast }: { turns: DialogueTurn[]; cast: Cast }) {
+  if (turns.length === 0) return null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {turns.map((t) => (
-        <motion.div key={t.idx} initial={{ opacity: 0, x: t.speaker === 'interviewer' ? -10 : 10 }}
-          animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}
-          style={{ display: 'flex', gap: 12,
-            justifyContent: t.speaker === 'interviewer' ? 'flex-start' : 'flex-end' }}>
-          <div style={{
-            maxWidth: '72%', background: t.speaker === 'interviewer' ? theme.cardAlt : '#eff6ff',
-            border: `1px solid ${theme.border}`, borderRadius: 12, padding: '10px 14px',
-            fontSize: 14, lineHeight: 1.5,
-          }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: theme.muted,
-              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>
-              {t.speaker === 'interviewer' ? '🎙️ ' : '🧑‍🏫 '}
-              {t.speaker === 'interviewer'
-                ? (interviewer?.display_name ?? 'Interviewer')
-                : (expert?.display_name ?? 'Expert')}
-              {t.slide_idx !== null && t.slide_idx !== undefined && (
-                <span style={{ marginLeft: 8, background: theme.accent, color: 'white',
-                  padding: '1px 6px', borderRadius: 6, fontSize: 9 }}>
-                  slide {t.slide_idx + 1}
-                </span>
-              )}
+    <ol className="pc-transcript">
+      {turns.map((t) => {
+        const host = hostFor(cast, t.speaker);
+        return (
+          <motion.li
+            key={t.idx}
+            className={`pc-turn pc-turn--${t.speaker}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <HostDisc host={host} size={36} tone={t.speaker === 'expert' ? 'sand' : 'sage'} label="" />
+            <div className="pc-turn__body">
+              <div className="pc-turn__who">
+                <span className="pc-turn__name">{host.display_name}</span>
+                {t.slide_idx !== null && t.slide_idx !== undefined && (
+                  <Chip className="pc-turn__slide">Slide {t.slide_idx + 1}</Chip>
+                )}
+              </div>
+              <p className="pc-turn__text">{t.text}</p>
             </div>
-            {t.text}
-          </div>
-        </motion.div>
-      ))}
-    </div>
+          </motion.li>
+        );
+      })}
+    </ol>
   );
 }
 
-const STAGES: Array<{ key: JobState | 'queued'; label: string; emoji: string }> = [
-  { key: 'queued', label: 'Queued', emoji: '⏳' },
-  { key: 'rendering', label: 'Rendering avatars', emoji: '🎭' },
-  { key: 'composing', label: 'Composing video', emoji: '🎬' },
-  { key: 'done', label: 'Ready', emoji: '✅' },
+const STAGES: Array<{ key: JobState | 'queued'; label: string; icon: LucideIcon }> = [
+  { key: 'queued', label: 'Queued', icon: Clock },
+  { key: 'rendering', label: 'Rendering avatars', icon: Users },
+  { key: 'composing', label: 'Composing video', icon: Clapperboard },
+  { key: 'done', label: 'Ready', icon: CheckCircle2 },
 ];
 
 function RenderingView({ job, turns }: { job: PodcastJob; turns: DialogueTurn[] }) {
   const stageIdx = Math.max(0, STAGES.findIndex((s) => s.key === job.state));
   const pct = job.progress.total ? Math.round(100 * job.progress.completed / job.progress.total) : 0;
   return (
-    <div style={{ background: theme.card, borderRadius: 14, padding: 32, boxShadow: theme.shadow }}>
-      <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 20 }}>🎬 Building your podcast…</div>
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+    <section className="pc-panel" aria-live="polite">
+      <div className="pc-panel__head">
+        {job.state === 'failed' ? <span className="eyebrow">Render</span> : <Spinner />}
+        <h2 className="pc-panel__title">Building your podcast…</h2>
+      </div>
+      <ol className="pc-stages">
         {STAGES.map((s, i) => {
           const active = i === stageIdx;
           const done = i < stageIdx;
           return (
-            <div key={s.key} style={{
-              flex: 1, padding: '14px 16px', borderRadius: 10,
-              background: done ? '#dcfce7' : active ? '#dbeafe' : theme.cardAlt,
-              border: `2px solid ${done ? '#22c55e' : active ? theme.accent : theme.border}`,
-              transition: 'all 0.3s',
-            }}>
-              <div style={{ fontSize: 22 }}>{s.emoji}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 4 }}>{s.label}</div>
-              {active && (
-                <motion.div animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ repeat: Infinity, duration: 1.4 }}
-                  style={{ fontSize: 11, color: theme.muted, marginTop: 2 }}>
-                  {job.progress.message || 'working…'}
-                </motion.div>
-              )}
-            </div>
+            <li
+              key={s.key}
+              className={['pc-stage', active && 'is-active', done && 'is-done'].filter(Boolean).join(' ')}
+              aria-current={active ? 'step' : undefined}
+            >
+              <span className="pc-stage__icon" aria-hidden><s.icon /></span>
+              <span className="pc-stage__label">{s.label}</span>
+              {active && <LivePill className="pc-stage__msg">{job.progress.message || 'working…'}</LivePill>}
+            </li>
           );
         })}
-      </div>
+      </ol>
       {job.state === 'rendering' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between',
-            fontSize: 12, color: theme.muted, marginBottom: 6 }}>
+        <div className="pc-progress">
+          <div className="pc-progress__row">
             <span>Avatar clips rendered</span>
-            <span>{job.progress.completed} / {job.progress.total}</span>
+            <span className="tabular">{job.progress.completed} / {job.progress.total}</span>
           </div>
-          <div style={{ height: 8, background: theme.cardAlt, borderRadius: 99, overflow: 'hidden' }}>
-            <motion.div animate={{ width: `${pct}%` }} transition={{ duration: 0.4 }}
-              style={{ height: '100%',
-                background: `linear-gradient(90deg, ${theme.brand}, ${theme.accent})` }} />
-          </div>
+          <Progress value={pct / 100} label="Avatar clips rendered" />
         </div>
       )}
       {job.state === 'failed' && (
-        <div style={{ color: '#dc2626', marginTop: 16, fontWeight: 600 }}>❌ {job.error}</div>
+        <Alert tone="error" title="Render failed">{job.error}</Alert>
       )}
-      <div style={{ marginTop: 24, fontSize: 12, color: theme.muted }}>
-        Script has {turns.length} turns. This usually takes 2–4 minutes.
-      </div>
-    </div>
+      <p className="pc-panel__foot">
+        Script has {pluralize(turns.length, 'turn')}. This usually takes 2–4 minutes.
+      </p>
+    </section>
   );
 }
 
-function ResultView({ job, turns, interviewer, expert, onNew }: {
-  job: PodcastJob; turns: DialogueTurn[];
-  interviewer: RoleConfig; expert: RoleConfig;
+function ResultView({ job, turns, cast, onNew }: {
+  job: PodcastJob; turns: DialogueTurn[]; cast: Cast;
   onNew: () => void;
 }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 24, maxWidth: 1100, margin: '0 auto' }}>
-      <Card title="🎧 Your podcast">
-        {job.outputs.mp4_url ? (
-          <video controls autoPlay src={job.outputs.mp4_url}
-            style={{ width: '100%', borderRadius: 10, background: 'black', aspectRatio: '16 / 9' }} />
-        ) : (
-          <div style={{ color: theme.muted }}>Video unavailable.</div>
-        )}
-        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+    <div className="pc-result">
+      <section className="pc-result__main">
+        <SectionHead title="Your podcast" aside="Ready" />
+        <div className="stage pc-result__stage">
+          {job.outputs.mp4_url ? (
+            <video controls autoPlay src={job.outputs.mp4_url} className="pc-result__video" />
+          ) : (
+            <div className="pc-result__video pc-result__video--empty">Video unavailable.</div>
+          )}
+        </div>
+        <div className="pc-result__actions">
           {job.outputs.mp3_url && (
-            <a href={job.outputs.mp3_url} download style={primaryBtn as any}>⬇ Audio (MP3)</a>
+            <a href={job.outputs.mp3_url} download className={buttonClass({ variant: 'primary' })}>
+              <Download aria-hidden />Audio (MP3)
+            </a>
           )}
           {job.outputs.srt_url && (
-            <a href={job.outputs.srt_url} download style={secondaryBtn as any}>⬇ Transcript (SRT)</a>
+            <a href={job.outputs.srt_url} download className={buttonClass({})}>
+              <Download aria-hidden />Transcript (SRT)
+            </a>
           )}
-          <a href="/podcast/library" style={{ ...secondaryBtn, marginLeft: 'auto' } as any}>📚 Library</a>
-          <button onClick={onNew} style={secondaryBtn}>+ New podcast</button>
+          <span className="pc-result__spacer" />
+          <a href="/podcast/library" className={buttonClass({ variant: 'ghost' })}>
+            <Library aria-hidden />Library
+          </a>
+          <Button icon={Plus} onClick={onNew}>New podcast</Button>
         </div>
         {job.archive_state === 'archiving' && (
-          <div style={{ marginTop: 10, fontSize: 12, color: theme.muted }}>
-            💾 Saving to library…
-          </div>
+          <Spinner label="Saving to library…" />
         )}
         {job.archive_state === 'published' && (
-          <div style={{ marginTop: 10, fontSize: 12, color: '#15803d' }}>
-            ✓ Saved to library as a draft (publish it there to share it publicly) — <a href="/podcast/library" style={{ color: theme.brand, fontWeight: 600 }}>view all podcasts</a>
-          </div>
+          <Alert tone="success">
+            Saved to library as a draft (publish it there to share it publicly) — <a href="/podcast/library">view all podcasts</a>
+          </Alert>
         )}
         {job.archive_state === 'failed' && (
-          <div style={{ marginTop: 10, fontSize: 12, color: '#b45309' }}>
-            ⚠ Could not save to library (video still downloadable above).
-          </div>
+          <Alert tone="clay">Could not save to library (video still downloadable above).</Alert>
         )}
-      </Card>
-      <Card title="Transcript">
-        <div style={{ maxHeight: 520, overflow: 'auto', paddingRight: 6 }}>
-          <TurnsList turns={turns} interviewer={interviewer} expert={expert} />
+      </section>
+      <section className="pc-result__side">
+        <SectionHead title="Transcript" aside={pluralize(turns.length, 'turn')} />
+        <div className="pc-result__transcript">
+          <TurnsList turns={turns} cast={cast} />
         </div>
-      </Card>
+      </section>
     </div>
   );
 }
-
-const primaryBtn: React.CSSProperties = {
-  background: `linear-gradient(135deg, ${theme.brand}, ${theme.accent})`,
-  color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px',
-  fontSize: 14, fontWeight: 700, cursor: 'pointer', textDecoration: 'none',
-  display: 'inline-block',
-};
-const secondaryBtn: React.CSSProperties = {
-  background: theme.cardAlt, color: theme.text,
-  border: `1px solid ${theme.border}`, borderRadius: 10, padding: '10px 18px',
-  fontSize: 14, fontWeight: 600, cursor: 'pointer', textDecoration: 'none',
-  display: 'inline-block',
-};
-const toggleLabel: React.CSSProperties = {
-  fontSize: 12, color: theme.muted, display: 'flex', alignItems: 'center', gap: 6,
-};

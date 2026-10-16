@@ -6,15 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:contrast": "node scripts/check-contrast.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@fontsource-variable/hanken-grotesk": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
     "@microsoft/teams-js": "^2.31.0",
     "framer-motion": "^12.38.0",
+    "lucide-react": "^1.53.0",
     "microsoft-cognitiveservices-speech-sdk": "^1.48.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

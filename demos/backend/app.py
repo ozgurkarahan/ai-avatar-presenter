@@ -37,6 +37,7 @@ from security import (
     client_ip,
     consume_quota,
     demo_max_speaks,
+    demo_quota_exempt,
     demo_session_seconds,
     is_valid,
     max_voice_session_seconds,
@@ -289,7 +290,8 @@ async def avatar_thumbnail(name: str):
     path = safe_join(AVATAR_THUMBS_DIR, name)
     if not path or not path.is_file():
         raise HTTPException(status_code=404, detail="Not found")
-    return FileResponse(path, media_type=MEDIA_TYPES[path.suffix.lower()])
+    # Revalidate (cheap 304 via ETag) so replaced thumbnails show up immediately.
+    return FileResponse(path, media_type=MEDIA_TYPES[path.suffix.lower()], headers={"Cache-Control": "no-cache"})
 
 
 # --- Upload & Parse ---
@@ -974,6 +976,17 @@ async def demo_voice_websocket(ws: WebSocket):
     4429 daily quota (global or per IP), 4408 at the session time cap.
     """
     deck_id = ws.query_params.get("deck_id") or ""
+    if (os.environ.get("LOG_FORWARDING_CHAIN") or "").strip().lower() in {"1", "true", "yes", "on"}:
+        # Temporary operator diagnostic (off by default): validates which hop
+        # of the proxy chain carries the real client IP.
+        logger.info(
+            "Forwarding chain: peer=%s xff=%s x-original-forwarded-for=%s x-real-ip=%s "
+            "x-envoy-external-address=%s x-azure-clientip=%s forwarded=%s",
+            ws.client.host if ws.client else None,
+            ws.headers.get("x-forwarded-for"), ws.headers.get("x-original-forwarded-for"),
+            ws.headers.get("x-real-ip"), ws.headers.get("x-envoy-external-address"),
+            ws.headers.get("x-azure-clientip"), ws.headers.get("forwarded"),
+        )
     if not public_demo_enabled():
         await ws.close(code=4403, reason="Demo not available")
         return
@@ -997,7 +1010,12 @@ async def demo_voice_websocket(ws: WebSocket):
 
     try:
         ip = client_ip(ws.headers, ws.client.host if ws.client else None)
-        exhausted = await asyncio.to_thread(DEMO_QUOTA.try_consume, ip)
+        exempt = demo_quota_exempt(ip)
+        if exempt:
+            logger.info("Demo session quota-exempt (allowlisted client IP)")
+            exhausted = None
+        else:
+            exhausted = await asyncio.to_thread(DEMO_QUOTA.try_consume, ip)
         if exhausted:
             logger.info("Demo session refused: %s", exhausted)
             await ws.accept()
@@ -1042,7 +1060,8 @@ async def demo_voice_websocket(ws: WebSocket):
             except Exception:
                 pass
         finally:
-            await asyncio.to_thread(DEMO_QUOTA.add_seconds, time.monotonic() - started)
+            if not exempt:
+                await asyncio.to_thread(DEMO_QUOTA.add_seconds, time.monotonic() - started)
     finally:
         DEMO_SESSIONS.release()
 
