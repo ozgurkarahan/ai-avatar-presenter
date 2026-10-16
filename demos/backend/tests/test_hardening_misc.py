@@ -92,6 +92,7 @@ def test_avatar_thumbnail_route(client, tmp_path, monkeypatch, app_module):
     monkeypatch.setattr(app_module, "AVATAR_THUMBS_DIR", tmp_path)
     r = client.get("/static/avatars/photo_female.png")
     assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert r.headers["cache-control"] == "no-cache" and r.headers.get("etag")
     assert client.get("/static/avatars/..%2F..%2Fapp.py").status_code == 404
     assert client.get("/static/avatars/x.html").status_code == 404
 

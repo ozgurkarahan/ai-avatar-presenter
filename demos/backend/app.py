@@ -290,7 +290,8 @@ async def avatar_thumbnail(name: str):
     path = safe_join(AVATAR_THUMBS_DIR, name)
     if not path or not path.is_file():
         raise HTTPException(status_code=404, detail="Not found")
-    return FileResponse(path, media_type=MEDIA_TYPES[path.suffix.lower()])
+    # Revalidate (cheap 304 via ETag) so replaced thumbnails show up immediately.
+    return FileResponse(path, media_type=MEDIA_TYPES[path.suffix.lower()], headers={"Cache-Control": "no-cache"})
 
 
 # --- Upload & Parse ---
