@@ -166,12 +166,39 @@ async def ingest_document(
         raise HTTPException(500, "Ingestion failed")
 
     DOCUMENTS[doc.doc_id] = doc
+    # image_ref is a server-local path (used by the renderer); the browser gets a URL.
     return IngestResponse(
         doc_id=doc.doc_id,
         title=doc.title,
         source_kind=doc.source_kind,
-        slides=doc.slides,
+        slides=[
+            s.model_copy(update={"image_ref": _slide_image_url(doc.doc_id, s.index) if s.image_ref else ""})
+            for s in doc.slides
+        ],
     )
+
+
+_UPLOAD_ROOT = Path("data/uploads/video")
+_IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+
+
+def _slide_image_url(doc_id: str, index: int) -> str:
+    return f"/api/video/documents/{doc_id}/slides/{index}/image"
+
+
+@router.get("/documents/{doc_id}/slides/{index}/image")
+def get_slide_image(doc_id: str, index: int) -> FileResponse:
+    """Slide preview image of an ingested document (wizard thumbnails)."""
+    require_id(doc_id, UUID_RE, "Document")
+    doc = DOCUMENTS.get(doc_id)
+    ref = next((s for s in doc.slides if s.index == index), None) if doc else None
+    if not ref or not ref.image_ref:
+        raise HTTPException(404, "Slide image not found")
+    path = Path(ref.image_ref).resolve()
+    media_type = _IMAGE_TYPES.get(path.suffix.lower())
+    if not media_type or _UPLOAD_ROOT.resolve() not in path.parents or not path.is_file():
+        raise HTTPException(404, "Slide image not found")
+    return FileResponse(path, media_type=media_type)
 
 
 # ---------------------------------------------------------------------------
