@@ -1,4 +1,4 @@
-"""DeckFM — FastAPI Backend Application."""
+"""Oz Radio — FastAPI Backend Application."""
 
 from __future__ import annotations
 
@@ -10,6 +10,10 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
+
+# Configure logging before importing first-party modules: some of them log at
+# import time (e.g. the avatar registry summary), which would otherwise be lost.
+logging.basicConfig(level=logging.INFO)
 
 from fastapi import APIRouter, Depends, FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,8 +41,10 @@ from security import (
     client_ip,
     consume_quota,
     demo_max_speaks,
+    demo_qa_enabled,
+    demo_qa_max_questions,
     demo_quota_exempt,
-    demo_session_seconds,
+    effective_demo_session_seconds,
     is_valid,
     max_voice_session_seconds,
     origin_allowed,
@@ -52,7 +58,8 @@ from services import avatar_registry
 from services.pptx_parser import parse_pptx, PresentationData
 from services.translation import get_openai_client, translate_text, detect_language
 from services.avatar import submit_batch_synthesis, get_batch_synthesis_status
-from services.voice_proxy import handle_demo_proxy, handle_voice_proxy
+from services.voice_proxy import demo_narration_chars, handle_demo_proxy, handle_voice_proxy
+from services.voice_questions import ADMIN_MAX_QUESTIONS, MAX_AUDIO_SECONDS, QaOptions
 from services.qa import index_presentation, answer_question
 from services.storage import PresentationStore
 
@@ -62,7 +69,6 @@ SUPPORTED_LANGUAGES = [
     "it-IT", "pt-BR", "ko-KR", "ar-SA",
 ]
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Directory to store rendered slide images
@@ -81,7 +87,7 @@ async def lifespan(app: FastAPI):
     store = PresentationStore(config)
     DEMO_QUOTA.set_store(store)  # durable demo budget (survives restarts / scale-to-zero)
     auth.log_startup_warnings()
-    logger.info("DeckFM backend started. Region: %s", config.speech_region)
+    logger.info("Oz Radio backend started. Region: %s", config.speech_region)
     if store.available:
         logger.info("Persistence enabled (Cosmos DB + Blob Storage)")
     elif store.cosmos_available:
@@ -95,7 +101,7 @@ async def lifespan(app: FastAPI):
 _docs_enabled = auth.auth_mode() == "disabled"
 
 app = FastAPI(
-    title="DeckFM",
+    title="Oz Radio",
     description="AI-powered avatar presentation assistant with multilingual TTS",
     version="0.1.0",
     lifespan=lifespan,
@@ -270,7 +276,7 @@ class TranslateNotesResponse(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "deckfm"}
+    return {"status": "ok", "service": "oz-radio"}
 
 
 @app.get("/api/avatars")
@@ -864,7 +870,7 @@ async def voice_websocket(ws: WebSocket):
         logger.info("Voice WebSocket client connected")
         try:
             async with asyncio.timeout(max_voice_session_seconds()):
-                await _run_voice_session(ws)
+                await _run_voice_session(ws, principal)
         except TimeoutError:
             logger.info("Voice WebSocket session reached the time cap")
             try:
@@ -883,10 +889,54 @@ async def voice_websocket(ws: WebSocket):
         VOICE_SESSIONS.release()
 
 
-async def _run_voice_session(ws: WebSocket) -> None:
+def _qa_slides_from_doc(doc: dict) -> Optional[list[dict]]:
+    slides = []
+    for i, s in enumerate(doc.get("slides") or []):
+        if not isinstance(s, dict):
+            continue
+        idx = s.get("index", i)
+        slides.append({
+            "index": idx if isinstance(idx, int) and not isinstance(idx, bool) else i,
+            "title": s.get("title") or "", "body": s.get("body") or "", "notes": s.get("notes") or "",
+        })
+    return slides or None
+
+
+def _load_qa_slides(deck_id: Optional[str] = None, presentation_id: Optional[str] = None) -> Optional[list[dict]]:
+    """Server-side slides (title / body / notes) for voice Q&A: a catalog deck
+    (``deck_id``) or a legacy Live upload (``presentation_id``, in-memory
+    first, then Cosmos). ``None`` when unknown."""
+    try:
+        if deck_id:
+            if not is_valid(deck_id, UUID_RE) or not (store and store.cosmos_available):
+                return None
+            doc = store.get_presentation(deck_id)
+            if not isinstance(doc, dict) or doc.get("source") != "deck":
+                return None
+            return _qa_slides_from_doc(doc)
+        if presentation_id:
+            if not is_valid(presentation_id, UUID_RE):
+                return None
+            p = presentations.get(presentation_id)
+            if p is not None:
+                return [
+                    {"index": s.index, "title": s.title or "", "body": s.body or "", "notes": s.notes or ""}
+                    for s in p.slides
+                ] or None
+            if store and store.cosmos_available:
+                doc = store.get_presentation(presentation_id)
+                if isinstance(doc, dict):
+                    return _qa_slides_from_doc(doc)
+    except Exception:
+        logger.exception("Voice Q&A deck lookup failed")
+    return None
+
+
+async def _run_voice_session(ws: WebSocket, principal: Optional[Principal] = None) -> None:
     # Wait for the initial session.update from the client. Only avatar id,
     # language and voice are honoured (each resolved against an allowlist);
-    # client-supplied instructions / system prompts are ignored.
+    # client-supplied instructions / system prompts are ignored. An optional
+    # deck_id / presentation_id binds the deck used for raise-hand Q&A.
     first_msg = await ws.receive_text()
     if len(first_msg) > 16_384:
         await ws.close(code=1009, reason="Message too large")
@@ -899,6 +949,8 @@ async def _run_voice_session(ws: WebSocket) -> None:
     avatar_id = ""
     language = "en-US"
     voice_name = None
+    deck_id: Optional[str] = None
+    presentation_id: Optional[str] = None
 
     if isinstance(msg, dict) and msg.get("type") == "session.update":
         session = msg.get("session") or {}
@@ -915,13 +967,42 @@ async def _run_voice_session(ws: WebSocket) -> None:
                 candidate = voice.get("name")
                 if isinstance(candidate, str) and candidate.strip():
                     voice_name = candidate.strip()[:100]
+            if isinstance(session.get("deck_id"), str):
+                deck_id = session["deck_id"][:64]
+            elif isinstance(session.get("presentation_id"), str):
+                presentation_id = session["presentation_id"][:64]
 
+    slides = None
+    if deck_id or presentation_id:
+        slides = await asyncio.to_thread(_load_qa_slides, deck_id, presentation_id)
+    user_id = principal.user_id if principal is not None else "local-dev"
+
+    async def reserve_daily() -> Optional[str]:
+        try:
+            DAILY_QUOTA.consume(user_id)
+        except HTTPException:
+            return "quota"
+        return None
+
+    async def deck_loader(new_deck_id: str) -> Optional[list]:
+        return await asyncio.to_thread(_load_qa_slides, new_deck_id, None)
+
+    qa = QaOptions(
+        access="admin",
+        enabled=True,
+        max_questions=ADMIN_MAX_QUESTIONS,
+        slides=slides,
+        deck_id=deck_id if slides else None,
+        deck_loader=deck_loader,
+        reserve_daily=reserve_daily,
+    )
     await handle_voice_proxy(
         client_ws=ws,
         config=config,
         avatar_character=avatar_id if avatar_registry.is_known(avatar_id) else "",
         language=language,
         voice_name=voice_name,
+        qa=qa,
     )
 
 
@@ -943,9 +1024,18 @@ async def admin_client_ip(request: Request):
 
 @app.get("/api/demo/config")
 async def demo_config():
-    """Anonymous: whether the narration-only live avatar demo is available."""
+    """Anonymous: whether the narration-only live avatar demo is available,
+    the effective session cap and the raise-hand Q&A settings."""
     enabled = public_demo_enabled()
-    out: dict = {"enabled": enabled, "session_seconds": demo_session_seconds()}
+    out: dict = {
+        "enabled": enabled,
+        "session_seconds": effective_demo_session_seconds(),
+        "qa": {
+            "enabled": enabled and demo_qa_enabled(),
+            "max_questions": demo_qa_max_questions(),
+            "max_audio_seconds": MAX_AUDIO_SECONDS,
+        },
+    }
     if enabled:
         out["remaining_today"] = await asyncio.to_thread(DEMO_QUOTA.remaining_today)
     return out
@@ -1028,11 +1118,32 @@ async def demo_voice_websocket(ws: WebSocket):
         slides = [s for s in (deck.get("slides") or []) if isinstance(s, dict)]
         language = deck.get("language") if isinstance(deck.get("language"), str) else "en-US"
         avatar_q = ws.query_params.get("avatar")
+        session_cap = effective_demo_session_seconds()
         await ws.accept()
         logger.info("Demo voice session started (deck=%s)", deck_id)
         started = time.monotonic()
+        deadline = started + session_cap
+
+        async def reserve_question() -> Optional[str]:
+            if exempt:
+                return None
+            return await asyncio.to_thread(DEMO_QUOTA.try_reserve_question, ip)
+
+        qa = QaOptions(
+            access="demo",
+            enabled=demo_qa_enabled(),
+            max_questions=demo_qa_max_questions(),
+            slides=slides,
+            deck_id=deck_id,
+            reserve_daily=reserve_question,
+            deadline=deadline,
+            language=language or "en-US",
+        )
         try:
-            async with asyncio.timeout(demo_session_seconds()):
+            await ws.send_json({"type": "demo.started", "session_seconds": session_cap,
+                                "remaining_ms": session_cap * 1000,
+                                "narration_chars": demo_narration_chars(slides)})
+            async with asyncio.timeout(session_cap):
                 await handle_demo_proxy(
                     ws,
                     config,
@@ -1040,6 +1151,8 @@ async def demo_voice_websocket(ws: WebSocket):
                     slides=slides,
                     max_speaks=demo_max_speaks(len(slides)),
                     avatar_id=avatar_q[:64] if avatar_q else None,
+                    deadline=deadline,
+                    qa=qa,
                 )
             try:
                 await ws.close(code=1000)
@@ -1222,7 +1335,7 @@ AGENT_TOOLS_SCHEMA = [
 ]
 
 AGENT_SYSTEM_PROMPT = """\
-You are the DeckFM Assistant — an AI-powered avatar presentation helper.
+You are the Oz Radio Assistant — an AI-powered avatar presentation helper.
 
 ## Your Capabilities (via tools)
 - **translate_slide_notes**: Translate text (e.g., speaker notes) to French, Spanish, or English.
@@ -1368,20 +1481,20 @@ async def teams_config():
     return HTMLResponse(content="""<!DOCTYPE html>
 <html>
 <head>
-    <title>DeckFM — Tab Configuration</title>
+    <title>Oz Radio — Tab Configuration</title>
     <script src="https://res.cdn.office.net/teams-js/2.7.1/js/MicrosoftTeams.min.js"></script>
 </head>
 <body style="font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;">
     <div style="text-align:center;">
-        <h2>DeckFM</h2>
-        <p>Click Save to add DeckFM to this meeting.</p>
+        <h2>Oz Radio</h2>
+        <p>Click Save to add Oz Radio to this meeting.</p>
     </div>
     <script>
         (async () => {
             await microsoftTeams.app.initialize();
             microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
                 microsoftTeams.pages.config.setConfig({
-                    suggestedDisplayName: "DeckFM",
+                    suggestedDisplayName: "Oz Radio",
                     entityId: "presenter-meeting",
                     contentUrl: window.location.origin,
                     websiteUrl: window.location.origin

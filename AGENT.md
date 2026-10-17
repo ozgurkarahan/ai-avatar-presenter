@@ -1,10 +1,10 @@
-# 🎙️ DeckFM
+# 🎙️ Oz Radio
 
 > AI avatars that present, narrate and podcast your decks
 
 ## Overview
 
-DeckFM: AI-powered avatar presentation assistant that reads PowerPoint speaker notes with multilingual text-to-speech. Upload a PowerPoint deck and an AI avatar autonomously presents it — translating speaker notes into the target language and delivering them via a realistic TTS avatar, without needing a live presenter.
+Oz Radio: AI-powered avatar presentation assistant that reads PowerPoint speaker notes with multilingual text-to-speech. Upload a PowerPoint deck and an AI avatar autonomously presents it — translating speaker notes into the target language and delivering them via a realistic TTS avatar, without needing a live presenter.
 
 The repo covers complementary avatar features in a single app:
 - **Home** at `/` — landing page
@@ -23,7 +23,7 @@ The repo covers complementary avatar features in a single app:
 4. **Multilingual**: Avatar speaks in a chosen language regardless of the source language of the speaker notes (translation + TTS)
 
 ### Teams
-5. **Teams embedding**: Embed DeckFM in Microsoft Teams as a static tab
+5. **Teams embedding**: Embed Oz Radio in Microsoft Teams as a static tab
 
 ### Decks, Search & Playlists (`/decks`, `/search`, `/playlists`)
 6. **Multi-deck corpus**: Decks ingested into Azure AI Search (index `decks`, Free SKU), hybrid vector + keyword retrieval across languages
@@ -38,6 +38,9 @@ The repo covers complementary avatar features in a single app:
 
 Hybrid exposure: anonymous visitors may load the SPA and view **published** videos, podcasts and decks (slide images + titles only), and — only when `PUBLIC_DEMO_ENABLED=true` — watch the narration-only live demo on decks marked *Live demo*. Everything else requires a Microsoft Entra ID sign-in (Container Apps Easy Auth) whose object ID is in `ALLOWED_OBJECT_IDS` — default deny. Local dev uses `AUTH_MODE=disabled` (every caller is admin); never deploy that setting. See `README.md` → *Security model*, `SECURITY.md` and `docs/live-demo.md`.
 
+## Deployment
+
+To provision or deploy to Azure, follow [`BOOTSTRAP.md`](BOOTSTRAP.md). It gives ordered gates and the points where you must stop and ask the human. The human runbook is [`docs/provisioning.md`](docs/provisioning.md). VS Code prompt: `.github/prompts/deploy.prompt.md`.
 ## Key Technologies
 
 | Service | Purpose |
@@ -67,12 +70,17 @@ Hybrid exposure: anonymous visitors may load the SPA and view **published** vide
 | `demos/backend/services/deck_search.py` | Azure AI Search client for the deck catalog (hybrid vector + keyword) |
 | `demos/backend/services/pptx_parser.py` | PPT parsing + LibreOffice → PDF → PNG image rendering |
 | `demos/backend/services/voice_proxy.py` | WebSocket proxy for VoiceLive avatar API (admin `/ws/voice` + narration-only demo) |
+| `demos/backend/services/voice_questions.py` | Raise-hand voice Q&A over both voice WebSockets (`qa.*` protocol, audio validation, Speech STT, admin/demo limits) |
+| `demos/backend/services/deck_qa.py` | Deck-grounded answer to an audience question (GPT-4.1 JSON mode, no tools/history) |
+| `demos/backend/services/avatar_registry.py` | Avatar catalog: stock avatars, `CUSTOM_AVATARS_JSON`, `HIDE_STOCK_AVATARS`, podcast crops |
+| `demos/backend/security.py` | Quotas and guardrails (`DAILY_GENERATION_QUOTA`, `DEMO_*`, `DEMO_QA_*`; durable demo quota in Cosmos) |
 | `demos/backend/services/qa.py` | In-memory numpy vector search for slide Q&A (Live page) |
 | `demos/backend/services/storage.py` | PresentationStore (Cosmos containers `presentations` + `playlist_progress`) |
 | `demos/frontend/` | React frontend |
 | `demos/frontend/src/main.tsx` | Router — `/`, `/live`, `/decks*`, `/search`, `/playlists*`, `/video*`, `/podcast*` |
 | `demos/frontend/src/pages/` | `HomePage`, `LivePage`, `DecksPage`, `DeckPresentPage`, `SearchPage`, `PlaylistsPage`, `PlaylistPlayerPage`, `Video*`, `Podcast*` |
 | `demos/frontend/src/components/AvatarPanel.tsx` | WebRTC avatar panel — supports `autoStart` prop for playlist player zero-click between decks |
+| `demos/frontend/src/components/RaiseHandPanel.tsx` | Raise-hand Q&A controls (rendered in `AvatarPanel`); mic capture in `src/services/voiceCapture.ts` |
 | `demos/frontend/src/components/LanguageSelector.tsx` | Language picker with `variant: 'dark' \| 'light'` (dark = gradient banners, light = white cards) |
 | `demos/frontend/src/services/decksApi.ts` | Decks API client (decks, search, playlists, recommend) |
 | `demos/frontend/src/services/demo.ts` | Public live demo config + close-code messages |
@@ -80,10 +88,12 @@ Hybrid exposure: anonymous visitors may load the SPA and view **published** vide
 | `demos/backend/auth.py` | Hybrid exposure model — Easy Auth principal parsing, `AUTH_MODE`, object-ID allowlist, `GET /api/me` |
 | `tests/e2e_full.py` | End-to-end runner — reset DB + upload 9 sample fixtures + decks / video / podcast smoke (30 checks); targets local dev (`AUTH_MODE=disabled`) via `AI_PRESENTER_BASE_URL` |
 | `tests/e2e_render.py` | Full render E2E for video (MP4) + podcast (MP3), with `--languages` flag for multi-locale sweep (30 checks in 3-lang mode) |
-| `tests/fixtures/samples/` | 9 coherent fixture decks in 3 thematic groups (Safety FR, Sustainability EN, AI ES) |
+| `tests/fixtures/samples/` | 9 coherent fixture decks in 3 thematic groups (Safety FR, Generative AI EN, AI in industry ES) |
 | `tests/test_playlists_api.py` | pytest for the playlists API incl. AI recommend |
 | `tests/playlists.spec.ts` | Playwright UI regressions for playlists |
 | `scripts/package-teams-app.ps1` | Package Teams app for sideloading |
+| `content/ai-enablement/` | AI enablement deck series (3 levels + live-demo cut) and seeding steps; regenerate with `scripts/generate_ai_enablement_pptx.py` |
+| `docs/provisioning.md` · `BOOTSTRAP.md` · `.github/prompts/deploy.prompt.md` | Azure provisioning runbook (humans) · ordered deployment steps (coding agents) · deploy prompt |
 | `docs/` | Architecture docs, decks/search/playlists, video, podcast, live demo, Teams integration |
 | `run-local.ps1` | One-command local dev startup (backend + frontend, `AUTH_MODE=disabled`) |
 | `SECURITY.md` | Security policy, hybrid exposure model, operator checklist |

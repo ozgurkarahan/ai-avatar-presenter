@@ -141,6 +141,7 @@ def test_pptx_allowed_media_extracted(ext):
 # ---------------------------------------------------------------------------
 def test_security_headers(client):
     r = client.get("/api/health")
+    assert r.json() == {"status": "ok", "service": "oz-radio"}
     assert r.headers["x-content-type-options"] == "nosniff"
     assert r.headers["referrer-policy"] == "strict-origin-when-cross-origin"
     csp = r.headers["content-security-policy"]

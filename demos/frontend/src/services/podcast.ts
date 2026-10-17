@@ -4,6 +4,18 @@ export type SourceKind = 'pptx' | 'pdf' | 'docx' | 'txt' | 'md' | 'url';
 export type Speaker = 'interviewer' | 'expert';
 export type Style = 'casual' | 'formal' | 'debate' | 'explainer';
 export type Length = 'short' | 'medium' | 'long';
+/** Target audience expertise for script generation; null = generic (default) prompt. */
+export type AudienceLevel = 'beginner' | 'practitioner' | 'expert';
+export const AUDIENCE_LEVEL_LABELS: Record<AudienceLevel, string> = {
+  beginner: 'Beginner',
+  practitioner: 'Practitioner',
+  expert: 'Expert',
+};
+export const AUDIENCE_LEVELS = Object.keys(AUDIENCE_LEVEL_LABELS) as AudienceLevel[];
+/** Narrow an untrusted value (select value / API field) to an AudienceLevel or null. */
+export function toAudienceLevel(v: unknown): AudienceLevel | null {
+  return typeof v === 'string' && (AUDIENCE_LEVELS as string[]).includes(v) ? (v as AudienceLevel) : null;
+}
 export type Layout = 'split_screen_with_slides' | 'split_screen_only';
 export type JobState = 'queued' | 'rendering' | 'composing' | 'done' | 'failed' | 'cancelled';
 
@@ -34,6 +46,7 @@ export interface Script {
   language: string;
   style: Style;
   length: Length;
+  audience_level?: AudienceLevel | null;
   turns: DialogueTurn[];
 }
 
@@ -78,6 +91,8 @@ export interface LibrarySummary {
   duration_sec: number | null;
   language: string;
   style?: string | null;
+  /** Admins only (absent from the anonymous public DTO). */
+  audience_level?: AudienceLevel | null;
   speaker_names?: string[] | null;
   turn_count?: number | null;
   thumbnail_url: string | null;
@@ -123,6 +138,7 @@ export async function ingestUrl(url: string): Promise<Document> {
 export interface ScriptRequest {
   document_id: string; language?: string; style?: Style; length?: Length;
   num_turns?: number; focus?: string;
+  audience_level?: AudienceLevel | null;
 }
 
 export async function streamScript(req: ScriptRequest,

@@ -71,16 +71,16 @@ class DeckSpec:
 
 DECKS: list[DeckSpec] = [
     DeckSpec(
-        pptx=FIXTURE_DIR / "circular-economy.pptx",
+        pptx=FIXTURE_DIR / "ai-agents-mcp.pptx",
         language="en-US",
         voice="en-US-Ava:DragonHDLatestNeural",
-        label="circular-economy (EN, female voice Ava)",
+        label="ai-agents-mcp (EN, female voice Ava)",
     ),
     DeckSpec(
-        pptx=FIXTURE_DIR / "low-carbon-materials.pptx",
+        pptx=FIXTURE_DIR / "context-engineering-rag.pptx",
         language="en-US",
         voice="en-US-Andrew:DragonHDLatestNeural",
-        label="low-carbon-materials (EN, male voice Andrew)",
+        label="context-engineering-rag (EN, male voice Andrew)",
     ),
     DeckSpec(
         pptx=FIXTURE_DIR / "ia-en-produccion.pptx",

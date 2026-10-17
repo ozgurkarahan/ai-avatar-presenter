@@ -36,37 +36,37 @@
     "slide_count": 5
   },
   {
-    "group": "B_sustainability_en",
-    "file": "decarbonization-intro.pptx",
-    "title": "Decarbonization: Introduction for industry",
+    "group": "B_genai_en",
+    "file": "ai-models-intro.pptx",
+    "title": "AI models: An introduction for teams",
     "language": "en-US",
     "tags": [
-      "sustainability",
-      "climate",
+      "ai",
+      "models",
       "en"
     ],
     "slide_count": 5
   },
   {
-    "group": "B_sustainability_en",
-    "file": "low-carbon-materials.pptx",
-    "title": "Low-carbon materials in construction",
+    "group": "B_genai_en",
+    "file": "context-engineering-rag.pptx",
+    "title": "Context engineering and RAG in practice",
     "language": "en-US",
     "tags": [
-      "sustainability",
-      "materials",
+      "ai",
+      "rag",
       "en"
     ],
     "slide_count": 5
   },
   {
-    "group": "B_sustainability_en",
-    "file": "circular-economy.pptx",
-    "title": "Circular economy in practice",
+    "group": "B_genai_en",
+    "file": "ai-agents-mcp.pptx",
+    "title": "AI agents and MCP in practice",
     "language": "en-US",
     "tags": [
-      "sustainability",
-      "circular",
+      "ai",
+      "agents",
       "en"
     ],
     "slide_count": 5

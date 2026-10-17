@@ -1,12 +1,14 @@
-# 🎙️ DeckFM
+# 🎙️ Oz Radio
 
 > **AI avatars that present, narrate and podcast your decks**
 
+*Formerly DeckFM.*
+
 **Turn PowerPoint decks into AI-presented training** — a photorealistic avatar presents your slides live, renders narrated videos, or hosts a two-avatar podcast, in multiple languages. Built on Azure AI Speech (Voice Live + Batch Avatar), Azure OpenAI and Azure Container Apps.
 
-**▶ [Try the live avatar demo](https://ozgurkarahan.com/deckfm/)** — no sign-in needed (narration-only, time-boxed, capped daily) · [More of my work](https://ozgurkarahan.com/)
+**▶ [Try the live avatar demo](https://ozgurkarahan.com/deckfm/)** — no sign-in needed (narration with voice questions, time-boxed, capped daily) · [More of my work](https://ozgurkarahan.com/)
 
-[![GitHub](https://img.shields.io/badge/GitHub-ozgurkarahan%2Fdeckfm-181717.svg?logo=github)](https://github.com/ozgurkarahan/deckfm)
+[![GitHub](https://img.shields.io/badge/GitHub-ozgurkarahan%2Foz--radio-181717.svg?logo=github)](https://github.com/ozgurkarahan/oz-radio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white)](https://react.dev/)
@@ -16,15 +18,15 @@
 
 ## 🧭 What's inside
 
-DeckFM bundles complementary features, each exposed as its own entry in the top nav
-(`DeckFM | Home · Live · Decks · Search · Playlists | Video: Create · Library | Podcast: Create · Library`):
+Oz Radio bundles complementary features, each exposed as its own entry in the top nav
+(`Oz Radio | Home · Live · Decks · Search · Playlists | Video: Create · Library | Podcast: Create · Library`):
 
 | Feature | Route | What it does |
 |---|---|---|
 | 🏠 **Home** | `/` | Landing page with entry points into every feature (and the public live demo when enabled) |
 | 🎙️ **Live** | `/live` | Upload a single `.pptx`; a photorealistic avatar presents each slide in real time via WebRTC with multilingual TTS and slide-level Q&A |
 | 📚 **Decks** | `/decks`, `/decks/:deckId/present` | Multi-deck catalog: upload, publish, mark as *Live demo*, and let the avatar present any deck. [Design →](docs/decks-search-playlists.md) |
-| 🔎 **Search** | `/search` | Hybrid vector + keyword search (Azure AI Search) across every deck; the avatar presents the matching slide |
+| 🔎 **Search** | `/search` | Hybrid vector + keyword search across every deck (Azure AI Search when configured, otherwise the built-in local search used by the default deployment); the avatar presents the matching slide |
 | 📻 **Playlists** | `/playlists`, `/playlists/:playlistId` | Ordered multi-deck sequences with per-user progress, plus **AI playlist recommendation** (GPT-4.1 picks a coherent deck sequence for any topic) |
 | 🎬 **Video** | `/video` + `/video/library` | Automated pre-rendered narrated MP4 from a `.pptx` (slide-first pipeline + Batch Avatar). Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/video.md) |
 | 🎧 **Podcast** | `/podcast` + `/podcast/library` | Turn any document into a two-host podcast conversation with distinct AI avatars. Outputs MP4 / MP3 / SRT / SCORM. [Design →](docs/podcast.md) |
@@ -53,15 +55,15 @@ Every nav link has a hover tooltip; links that require sign-in show a 🔒 for a
 
 **Live avatar demo** — anyone can try it on the decks marked *Live demo* (narration-only, time-boxed, no sign-in):
 
-![Live avatar demo: a photo avatar presents the current slide, with Speak, Present all and Stop controls and a countdown](docs/screenshots/live-demo.png)
+![Live avatar demo: Sofia, a photo avatar, presents the current slide, with a demo countdown, Present this slide and Stop controls](docs/screenshots/live-demo.png)
 
 | Home | Narrated slide video | Two-avatar podcast |
 |---|---|---|
-| ![DeckFM home page with the tagline and a "Try the live avatar demo" button](docs/screenshots/home.png) | ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: slide above two photo-avatar hosts with subtitles](docs/screenshots/podcast-frame.png) |
+| ![Oz Radio home page with the tagline, the hosts Sofia and Lucas and a "Watch the live demo" button](docs/screenshots/home.png) | ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: two photo-avatar hosts and subtitles in a top band above the slide](docs/screenshots/podcast-frame.png) |
 
 | Published video library | Decks | Slide viewer |
 |---|---|---|
-| ![Video library with published videos](docs/screenshots/video-library.png) | ![Decks catalog with Live demo badges](docs/screenshots/decks.png) | ![Read-only slide viewer](docs/screenshots/slide-viewer.png) |
+| ![Video library with published videos](docs/screenshots/video-library.png) | ![Decks catalog with the live avatar demo banner and the published AI decks](docs/screenshots/decks.png) | ![Read-only slide viewer](docs/screenshots/slide-viewer.png) |
 
 The avatars shown are custom **photo avatars** (one portrait each, animated by Azure AI Speech). Out of the box the app uses the stock Azure avatars (Lisa, Harry, …); see [Custom photo avatars](#custom-photo-avatars-optional).
 
@@ -137,7 +139,7 @@ See [SECURITY.md](SECURITY.md) for vulnerability reporting and the operator chec
 | **Backend**      | Python 3.12, FastAPI, Uvicorn, Gunicorn                     |
 | **AI / Speech**  | Azure AI Speech (VoiceLive Avatar API, DragonHD TTS, Batch Synthesis) |
 | **AI / LLM**     | Azure OpenAI — GPT-4.1 (chat, translation, scripts, playlist recommend JSON mode), text-embedding-3-small |
-| **AI / Search**  | Azure AI Search — hybrid vector + keyword for the deck catalog (`decks` index, Free SKU) |
+| **AI / Search**  | Azure AI Search (optional, not provisioned by `infra/`) — hybrid vector + keyword for the deck catalog (`decks` index); default deployment uses local search (`USE_LOCAL_SEARCH=true`) |
 | **AI / Agent**   | Function-calling agent (translate, Q&A, SSML generation)    |
 | **Slide Render** | LibreOffice Impress (headless) → PDF → pdf2image (Poppler)  |
 | **Video/Audio**  | ffmpeg + ffprobe — video slide compose, podcast compose, SRT generation |
@@ -172,8 +174,8 @@ The included PowerShell script starts both backend and frontend with a single co
 
 ```powershell
 # 1. Clone the repository
-git clone https://github.com/ozgurkarahan/deckfm.git
-cd deckfm
+git clone https://github.com/ozgurkarahan/oz-radio.git
+cd oz-radio
 
 # 2. Copy and configure environment variables
 cp demos/backend/.env.example demos/backend/.env
@@ -249,6 +251,7 @@ Create a `.env` file in `demos/backend/` (see `.env.example`):
 | `FRAME_ANCESTORS` | `'self'` + Teams / Office hosts | CSP `frame-ancestors` list (Teams tab embedding) |
 | `ENABLE_URL_INGEST` | `false` | Allow URL ingestion for podcasts |
 | `CUSTOM_AVATARS_JSON` | empty ⇒ stock avatars only | JSON array of custom photo avatars (see below) |
+| `HIDE_STOCK_AVATARS` | `false` | `true` + at least one custom avatar ⇒ only custom avatars are offered; stock ids map to a same-gender custom avatar |
 | `MAX_VOICE_SESSIONS` | `2` | Global concurrent live-avatar (`/ws/voice`) sessions |
 | `MAX_VOICE_SESSION_SECONDS` | `900` | Hard cap per live-avatar session |
 | `DAILY_GENERATION_QUOTA` | `50` | Renders + uploads + chats per signed-in user per UTC day |
@@ -261,10 +264,15 @@ Create a `.env` file in `demos/backend/` (see `.env.example`):
 | `DEMO_DAILY_SESSIONS_PER_IP` | `3` | Demo sessions per UTC day per client IP |
 | `DEMO_DAILY_MINUTES` | `60` | Hard cap on total demo streaming minutes per UTC day |
 | `DEMO_MAX_SPEAKS` | `0` | Narrations per demo session; `0` = 2 × slide count (never above 40) |
+| `DEMO_QUOTA_EXEMPT_IPS` | empty | Client IPs/CIDRs exempt from the demo daily quotas (keep out of git) |
+| `DEMO_QA_ENABLED` | `false` | Raise-hand voice Q&A in the public demo (also needs `PUBLIC_DEMO_ENABLED=true`; admins always have it) — see [docs/provisioning.md §6.3](docs/provisioning.md#63-voice-qa-in-the-public-demo-demo_qa_enabled) |
+| `DEMO_QA_MAX_QUESTIONS` | `2` | Questions per demo session |
+| `DEMO_QA_SESSION_SECONDS` | `300` | Demo session cap used instead of `DEMO_SESSION_SECONDS` when demo Q&A is on |
+| `DEMO_QA_DAILY_MAX` / `DEMO_QA_DAILY_PER_IP` | `40` / `6` | Demo questions per UTC day, global / per client IP |
 
 ### Custom photo avatars (optional)
 
-Stock avatars (`lisa`, `harry`, `max`, `meg`, …) are always available. To add custom photo avatars, set `CUSTOM_AVATARS_JSON` and drop the thumbnails in `demos/backend/static/avatars/` (that folder is git-ignored — avatar photos are never committed):
+Stock avatars (`lisa`, `harry`, `max`, `meg`, …) are available unless `HIDE_STOCK_AVATARS=true` and at least one custom avatar is configured. To add custom photo avatars, set `CUSTOM_AVATARS_JSON` and drop the thumbnails in `demos/backend/static/avatars/` (that folder is git-ignored — avatar photos are never committed). In `azd env set`, escape every `"` as `\"` — see [docs/provisioning.md §4.1](docs/provisioning.md#41-custom-photo-avatars-optional):
 
 ```json
 [
@@ -283,7 +291,7 @@ The project uses a multi-stage Dockerfile: Node.js builds the frontend, Python s
 
 ```bash
 # Build the image
-docker build -t deckfm .
+docker build -t oz-radio .
 
 # Run the container locally (AUTH_MODE=disabled = local only, never expose it)
 docker run -p 127.0.0.1:8000:8000 \
@@ -296,7 +304,7 @@ docker run -p 127.0.0.1:8000:8000 \
   -e AZURE_OPENAI_KEY=<your-key> \
   -e AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4.1 \
   -e AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small \
-  deckfm
+  oz-radio
 ```
 
 The container includes LibreOffice and Poppler for full slide rendering support. The app runs on port **8000** with Gunicorn (4 workers).
@@ -306,6 +314,9 @@ The container includes LibreOffice and Poppler for full slide rendering support.
 ## ☁️ Azure Deployment
 
 Deploy to Azure Container Apps using the [Azure Developer CLI](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/):
+
+> 📘 **Full provisioning runbook:** [docs/provisioning.md](docs/provisioning.md) covers the components, prerequisites (permissions, providers, region, quota and policy), the Entra app registration, every azd variable, troubleshooting and teardown.
+> 🤖 **Coding agents:** follow [BOOTSTRAP.md](BOOTSTRAP.md), or run the `/deploy` prompt (`.github/prompts/deploy.prompt.md`).
 
 Before the first deployment, create a **Microsoft Entra ID app registration** for sign-in (web platform, redirect URI `https://<your-app-fqdn>/.auth/login/aad/callback`, ID tokens enabled) and a client secret, then:
 
@@ -334,7 +345,7 @@ azd up
 Find your object ID with `az ad signed-in-user show --query id -o tsv`. After the first `azd up`, add the app's FQDN redirect URI to the app registration if you did not know it up front.
 
 The Bicep templates in `infra/` provision:
-- **Azure Container App** with managed identity + **Container Registry**
+- **Azure Container App** with managed identity + **Container Registry** (`azd deploy` pushes the image to the `oz-radio/backend-<env>` repository)
 - **Azure Cosmos DB** (Serverless) for presentation persistence
 - **Azure Blob Storage** for slide images and PPTX files
 - **Azure AI Services** (Speech/Avatar) and **Azure OpenAI** with model deployments
@@ -349,7 +360,7 @@ The Container App Bicep modules default to `minReplicas: 0` so the demo scales t
 
 Keep `AUTH_MODE=easyauth` (the default) in Azure — never deploy with `AUTH_MODE=disabled`.
 
-For parallel deployments (e.g., copilot instance), see [docs/deploy-copilot.md](docs/deploy-copilot.md).
+For parallel deployments (a second azd environment), see [docs/deploy-copilot.md](docs/deploy-copilot.md).
 
 ---
 
@@ -365,7 +376,7 @@ The app can be embedded in Microsoft Teams as a **Static Tab**:
 Then sideload `teams-app-package.zip` in Teams:
 1. Open **Teams → Apps → Manage your apps → Upload an app**
 2. Select **Upload a custom app** and choose the generated `.zip`
-3. The app appears as a personal tab — "DeckFM"
+3. The app appears as a personal tab — "Oz Radio"
 
 **Teams features:**
 - Automatic theme adaptation (light, dark, high-contrast)
@@ -390,7 +401,7 @@ Unless marked 🌐 (anonymous), endpoints require a signed-in, allowlisted calle
 | `POST` | `/api/podcast/library/{job_id}/publish` | Publish / unpublish a podcast |
 | `POST` | `/api/decks/{deck_id}/publish` | Publish / unpublish a deck |
 | `POST` | `/api/decks/{deck_id}/live-demo` | Allow / stop the anonymous live demo on a published deck — body `{"enabled": true\|false}` |
-| `GET`  | `/api/demo/config` 🌐 | `{"enabled", "session_seconds", "remaining_today"?}` |
+| `GET`  | `/api/demo/config` 🌐 | `{"enabled", "session_seconds", "remaining_today"?, "qa": {"enabled", "max_questions", "max_audio_seconds"}}` |
 
 ### Live — single-deck presenter
 
@@ -405,8 +416,8 @@ Unless marked 🌐 (anonymous), endpoints require a signed-in, allowlisted calle
 | `POST` | `/api/translate`               | Translate text to a target language       |
 | `POST` | `/api/avatar/batch`            | Start batch avatar video synthesis       |
 | `POST` | `/api/qa`                      | Ask a question about slide content (RAG) |
-| `WS`   | `/ws/voice`                    | WebSocket proxy for VoiceLive avatar     |
-| `WS`   | `/ws/voice/demo?deck_id=<uuid>` 🌐 | Narration-only public demo (only when `PUBLIC_DEMO_ENABLED=true`, live-demo decks only) |
+| `WS`   | `/ws/voice`                    | WebSocket proxy for VoiceLive avatar (+ raise-hand `qa.*` voice Q&A when a deck is bound) |
+| `WS`   | `/ws/voice/demo?deck_id=<uuid>` 🌐 | Narration-only public demo (only when `PUBLIC_DEMO_ENABLED=true`, live-demo decks only); raise-hand Q&A when `DEMO_QA_ENABLED=true` |
 
 ### Decks, Search & Playlists
 
@@ -474,7 +485,7 @@ python tests/e2e_render.py --base-url http://localhost:8000 --languages fr-FR,en
 python tests/fixtures/samples/_generate.py
 ```
 
-Fixtures live in `tests/fixtures/samples/` — 3 coherent thematic groups (Safety FR, Sustainability EN, AI ES), 3 decks each, 5 slides each with 2-sentence speaker notes. See `tests/fixtures/samples/README.md`. The 6 single-topic decks in `tests/fixtures/decks/` are generated by `python scripts/make_multideck_test.py`.
+Fixtures live in `tests/fixtures/samples/` — 3 coherent thematic groups (Safety FR, Generative AI EN, AI in industry ES), 3 decks each, 5 slides each with 2-sentence speaker notes. See `tests/fixtures/samples/README.md`. The 6 single-topic decks in `tests/fixtures/decks/` are generated by `python scripts/make_multideck_test.py`.
 
 ### Seeding a deployed showcase library
 
@@ -505,12 +516,35 @@ $env:AI_PRESENTER_BASE_URL = "http://localhost:5173"
 npx playwright test tests/decks.spec.ts tests/playlists.spec.ts --project=chromium
 ```
 
+### Live browser E2E (real Azure, real avatar)
+
+`tests/e2e-live.spec.ts` drives real Chromium against a local backend wired to real Speech / Voice Live / OpenAI: deck upload → avatar (WebRTC video + audio) → "Present all" with playback-driven advance, raise hand (fake-mic voice question, Ask now, typed), French narration, the anonymous public demo (countdown, 2-question cap) and a short podcast render + frame checks. It is **skipped unless `OZ_RADIO_LIVE_E2E=1`**, so CI and the mocked suites never touch Azure. Needs `az login` with data-plane access to the Speech/AI Services and OpenAI resources in `demos/backend/.env`, LibreOffice, and ffmpeg/ffprobe (`OZ_RADIO_E2E_TOOL_DIRS` when not on `PATH`).
+
+- `tests/e2e_live_server.py` runs the real app with an in-memory Cosmos stand-in (no Cosmos/Blob locally) and `AUTH_MODE=easyauth`.
+- `demos/frontend/vite.e2e-live.config.ts` plays the Container Apps Easy Auth front door: the admin instance injects the signed-in principal headers on `/api` and `/ws`, the anonymous instance injects none.
+- `tests/e2e_live_audio.py` creates the fake-microphone question WAV (Azure TTS, Entra ID).
+
+```powershell
+$ev = "$PWD\test-results\e2e-live"
+python tests/e2e_live_audio.py $ev
+python tests/e2e_live_server.py --port 8000                                  # shell 1
+cd demos/frontend
+$env:OZ_RADIO_E2E_PRINCIPAL = python ../../tests/e2e_live_server.py --print-principal
+npx vite --config vite.e2e-live.config.ts --port 5199 --strictPort            # shell 2 (admin)
+npx vite --config vite.e2e-live.config.ts --port 5198 --strictPort            # shell 3 (anonymous, no OZ_RADIO_E2E_PRINCIPAL)
+$env:OZ_RADIO_LIVE_E2E = "1"; $env:OZ_RADIO_E2E_EVIDENCE = $ev
+$env:AI_PRESENTER_BASE_URL = "http://localhost:5199"; $env:OZ_RADIO_E2E_ANON_URL = "http://localhost:5198"
+npx playwright test tests/e2e-live.spec.ts --project=chromium --workers=1    # --grep "@admin|@demo|@podcast"
+```
+
+Evidence (screenshots, WebSocket / data-channel / analyser timelines as JSON, podcast frames) is written to `OZ_RADIO_E2E_EVIDENCE`.
+
 ---
 
 ## 📁 Project Structure
 
 ```
-deckfm/
+oz-radio/
 ├── demos/
 │   ├── backend/                  # FastAPI backend (Python 3.12)
 │   │   ├── app.py                # Live routes (/api/upload, /api/slides, /api/qa, /ws/voice, /ws/voice/demo) + agent chat
@@ -589,7 +623,7 @@ deckfm/
 │   ├── decks.spec.ts             # Playwright — home / decks / search UI
 │   ├── conftest.py
 │   └── fixtures/
-│       ├── samples/              # 9 coherent decks in 3 thematic groups (Safety FR, Sustainability EN, AI ES)
+│       ├── samples/              # 9 coherent decks in 3 thematic groups (Safety FR, Generative AI EN, AI in industry ES)
 │       └── decks/                # 6 single-topic decks for multi-deck search tests
 ├── docs/
 │   ├── index.md                  # Docs navigation map
@@ -600,7 +634,7 @@ deckfm/
 │   ├── podcast.md                # Two-avatar podcast design
 │   ├── deep-dive-azure.md        # Full Azure deep-dive (Bicep, RBAC, security, CI/CD)
 │   ├── teams-integration.md      # Teams embedding feasibility & options
-│   ├── deploy-copilot.md         # Parallel "copilot" instance deployment
+│   ├── deploy-copilot.md         # Parallel instance (pointer to provisioning.md)
 │   └── diagrams/                 # Mermaid + draw.io diagrams
 ├── Dockerfile                    # Multi-stage build (Node frontend + Python backend + ffmpeg + LibreOffice)
 ├── azure.yaml                    # Azure Developer CLI config
@@ -627,9 +661,11 @@ Detailed technical documentation is available in the [`docs/`](docs/) directory 
 | [Public live demo](docs/live-demo.md) | Anonymous narration-only live avatar: guardrails, threat model, cost ceiling |
 | [Video](docs/video.md) | Slide-first pipeline, voice→avatar matching, Blob-backed media/SCORM library, deployment, storage-network gotchas on policy-managed enterprise subscriptions |
 | [Podcast](docs/podcast.md) | Two-avatar podcast generator with Blob-backed media/SCORM library |
+| [Provisioning runbook](docs/provisioning.md) | Components, prerequisites, Entra app registration, azd variables, deploy, smoke test, troubleshooting, teardown |
+| [BOOTSTRAP.md](BOOTSTRAP.md) | Ordered deployment steps for coding agents, with human checkpoints |
 | [Deep Dive: Azure Deployment](docs/deep-dive-azure.md) | Full technical walkthrough — infrastructure, Bicep modules, security, CI/CD |
 | [Teams Integration](docs/teams-integration.md) | Feasibility analysis and architecture options for Teams embedding |
-| [Deploy Copilot Instance](docs/deploy-copilot.md) | Guide for deploying a parallel "copilot" instance to Azure |
+| [Parallel instance](docs/deploy-copilot.md) | Deploying a second instance (pointer to the provisioning runbook) |
 
 ---
 

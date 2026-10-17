@@ -57,6 +57,7 @@ from services.video_models import (
     VideoScript,
     VoiceOption,
 )
+from services.podcast_models import audience_level_or_none
 
 log = logging.getLogger(__name__)
 # Everything on `router` is admin-only (default deny). Anonymous library
@@ -165,12 +166,39 @@ async def ingest_document(
         raise HTTPException(500, "Ingestion failed")
 
     DOCUMENTS[doc.doc_id] = doc
+    # image_ref is a server-local path (used by the renderer); the browser gets a URL.
     return IngestResponse(
         doc_id=doc.doc_id,
         title=doc.title,
         source_kind=doc.source_kind,
-        slides=doc.slides,
+        slides=[
+            s.model_copy(update={"image_ref": _slide_image_url(doc.doc_id, s.index) if s.image_ref else ""})
+            for s in doc.slides
+        ],
     )
+
+
+_UPLOAD_ROOT = Path("data/uploads/video")
+_IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+
+
+def _slide_image_url(doc_id: str, index: int) -> str:
+    return f"/api/video/documents/{doc_id}/slides/{index}/image"
+
+
+@router.get("/documents/{doc_id}/slides/{index}/image")
+def get_slide_image(doc_id: str, index: int) -> FileResponse:
+    """Slide preview image of an ingested document (wizard thumbnails)."""
+    require_id(doc_id, UUID_RE, "Document")
+    doc = DOCUMENTS.get(doc_id)
+    ref = next((s for s in doc.slides if s.index == index), None) if doc else None
+    if not ref or not ref.image_ref:
+        raise HTTPException(404, "Slide image not found")
+    path = Path(ref.image_ref).resolve()
+    media_type = _IMAGE_TYPES.get(path.suffix.lower())
+    if not media_type or _UPLOAD_ROOT.resolve() not in path.parents or not path.is_file():
+        raise HTTPException(404, "Slide image not found")
+    return FileResponse(path, media_type=media_type)
 
 
 # ---------------------------------------------------------------------------
@@ -205,6 +233,7 @@ async def generate_script(
                 language=req.language,
                 style=req.style,
                 focus=req.focus,
+                audience_level=req.audience_level,
                 voice=req.voice,
                 narrations=sorted(narrations, key=lambda n: n.slide_index),
             )
@@ -392,6 +421,7 @@ def _full_item(item: dict) -> dict:
         "duration_sec": item.get("duration_sec"),
         "language": item.get("language") or "en-US",
         "voice": item.get("voice") or "",
+        "audience_level": audience_level_or_none(item.get("audience_level")),
         "slide_count": item.get("slide_count") or 0,
         "thumbnail_url": item.get("thumbnail_url"),
         "published": bool(item.get("published")),
@@ -415,7 +445,9 @@ def list_library(
         return [LibrarySummary(**{**item, "title": item.get("title") or "",
                                   "document_title": item.get("document_title") or "",
                                   "created_at": item.get("created_at") or "",
-                                  "language": item.get("language") or "en-US"}).model_dump()
+                                  "language": item.get("language") or "en-US",
+                                  "audience_level": audience_level_or_none(item.get("audience_level"))
+                                  }).model_dump()
                 for item in lib.list()]
     return [_public_item(item) for item in lib.list(published_only=True)]
 
@@ -562,6 +594,7 @@ async def _render_job_body(job_id: str, cfg: AzureConfig) -> None:
                     slide_count=len(script.narrations),
                     duration_sec=result.duration_sec,
                     created_at=job.created_at,
+                    audience_level=script.audience_level,
                 )
                 job.archive_state = "published" if manifest else "failed"
             else:

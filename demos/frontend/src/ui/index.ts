@@ -1,4 +1,4 @@
-// Public surface of the DeckFM UI kit ("Radio Editorial"). Import from '../ui'.
+// Public surface of the Oz Radio UI kit ("Radio Editorial"). Import from '../ui'.
 export { Button, ButtonLink, buttonClass, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
 export { Chip, LivePill, Waveform, Spinner, Alert, EmptyState, Segments, Progress, Steps, type Tone } from './primitives';
 export { PageHeader, SectionHead } from './PageHeader';

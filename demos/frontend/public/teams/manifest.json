@@ -1,21 +1,21 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
   "manifestVersion": "1.17",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "id": "169e6c8a-a4ec-4795-a945-4b1f3e0aa525",
   "developer": {
-    "name": "DeckFM (sample)",
+    "name": "Oz Radio (sample)",
     "websiteUrl": "https://{{TEAMS_APP_HOSTNAME}}",
     "privacyUrl": "https://{{TEAMS_APP_HOSTNAME}}",
     "termsOfUseUrl": "https://{{TEAMS_APP_HOSTNAME}}"
   },
   "name": {
-    "short": "DeckFM",
-    "full": "DeckFM — AI avatars that present, narrate and podcast your decks"
+    "short": "Oz Radio",
+    "full": "Oz Radio — AI avatars that present, narrate and podcast your decks"
   },
   "description": {
     "short": "AI avatars that present, narrate and podcast your decks",
-    "full": "DeckFM: AI avatars that present, narrate and podcast your decks. Upload PowerPoint presentations and deliver them through an AI avatar with multilingual text-to-speech narration, guided slide playback, and slide-specific Q&A for presenters and meeting participants."
+    "full": "Oz Radio: AI avatars that present, narrate and podcast your decks. Upload PowerPoint presentations and deliver them through an AI avatar with multilingual text-to-speech narration, guided slide playback, and slide-specific Q&A for presenters and meeting participants."
   },
   "icons": {
     "color": "color.png",

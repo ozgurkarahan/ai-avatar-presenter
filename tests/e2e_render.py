@@ -6,7 +6,7 @@ Full happy-path: ingest -> script (streaming) -> render -> poll until done
 
 Runs per language using the matching sample fixture (tests/fixtures/samples):
   fr-FR -> securite-bases.pptx           (Group A - Safety)
-  en-US -> decarbonization-intro.pptx    (Group B - Sustainability)
+  en-US -> ai-models-intro.pptx          (Group B - Generative AI)
   es-ES -> ia-industrial-intro.pptx      (Group C - AI)
 
 Target a local dev backend started with ``run-local.ps1`` (``AUTH_MODE=disabled``).
@@ -65,7 +65,7 @@ PLANS: dict[str, LangPlan] = {
     ),
     "en-US": LangPlan(
         language="en-US",
-        fixture="decarbonization-intro.pptx",
+        fixture="ai-models-intro.pptx",
         voice_male="en-US-Andrew:DragonHDLatestNeural",
         voice_female="en-US-Ava:DragonHDLatestNeural",
     ),

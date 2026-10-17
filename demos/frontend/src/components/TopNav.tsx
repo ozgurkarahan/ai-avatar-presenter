@@ -60,7 +60,7 @@ export default function TopNav() {
     <header className="masthead">
       <a className="skip-link" href="#main">Skip to content</a>
       <div className="container masthead__inner">
-        <Link to="/" className="masthead__brand" aria-label="DeckFM home">Deck<em>FM</em></Link>
+        <Link to="/" className="masthead__brand" aria-label="Oz Radio home">Oz <em>Radio</em></Link>
 
         <nav className="masthead__nav" aria-label="Main">
           {PRIMARY.map((it) => (

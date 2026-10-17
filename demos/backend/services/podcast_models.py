@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal, Optional, get_args
 
 from pydantic import BaseModel, Field
 
@@ -43,6 +43,13 @@ class IngestResponse(BaseModel):
 Speaker = Literal["interviewer", "expert"]
 Style = Literal["casual", "formal", "debate", "explainer"]
 Length = Literal["short", "medium", "long"]  # ~3 / ~6 / ~10 min
+# Target listener expertise; None keeps the generic (pre-existing) prompt.
+AudienceLevel = Literal["beginner", "practitioner", "expert"]
+
+
+def audience_level_or_none(value: object) -> Optional[str]:
+    """Known audience level (e.g. from a stored manifest), else None."""
+    return value if isinstance(value, str) and value in get_args(AudienceLevel) else None
 
 
 class WordTiming(BaseModel):
@@ -68,6 +75,7 @@ class Script(BaseModel):
     language: str = "en-US"
     style: Style = "casual"
     length: Length = "medium"
+    audience_level: Optional[AudienceLevel] = None
     turns: list[DialogueTurn]
 
 
@@ -78,6 +86,9 @@ class ScriptRequest(BaseModel):
     length: Length = "medium"
     num_turns: int = Field(8, ge=4, le=16)
     focus: Optional[str] = Field(None, max_length=500, description="Optional topic focus or angle")
+    audience_level: Optional[AudienceLevel] = Field(
+        None, description="Target audience expertise; null keeps the generic prompt"
+    )
 
 
 class ScriptPatch(BaseModel):
@@ -169,6 +180,7 @@ class LibrarySummary(BaseModel):
     duration_sec: Optional[float] = None
     language: str = "en-US"
     style: str = "casual"
+    audience_level: Optional[AudienceLevel] = None
     speaker_names: list[str] = Field(default_factory=list)
     turn_count: int = 0
     thumbnail_url: Optional[str] = None

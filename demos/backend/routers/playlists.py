@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field
 from auth import Principal, require_admin
 from config import AzureConfig, load_config
 from security import DAILY_QUOTA, PLAYLIST_ID_RE, UUID_RE, is_valid, require_id
-from services.storage import PresentationStore
+from services.storage import PresentationStore, deck_title
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/playlists", tags=["playlists"], dependencies=[Depends(require_admin)])
@@ -150,7 +150,7 @@ def _hydrate_steps(store: PresentationStore, steps: list[PlaylistStepIn]) -> lis
         deck = store.get_presentation(s.deck_id)
         if not deck or deck.get("source") != "deck":
             raise HTTPException(status_code=400, detail="Unknown deck")
-        title = (deck.get("filename") or s.deck_id).rsplit(".", 1)[0]
+        title = deck_title({"id": s.deck_id, **deck})
         out.append({
             "deck_id": s.deck_id,
             "order": s.order,
@@ -415,7 +415,7 @@ def recommend_playlist(
     DAILY_QUOTA.consume(principal.user_id)
 
     def _title(d: dict) -> str:
-        return (d.get("filename") or d.get("id") or "deck").rsplit(".", 1)[0]
+        return deck_title({"id": "deck", **d})
 
     catalog_lines = [
         f'- deck_id="{d["id"]}" title="{_title(d)}" language={d.get("language", "?")} slides={d.get("slide_count", 0)}'

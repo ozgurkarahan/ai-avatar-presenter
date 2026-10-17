@@ -15,6 +15,8 @@ export interface Presentation {
   filename: string;
   slide_count: number;
   pptx_url?: string;
+  /** Source language of the notes (catalog decks); used to tell "untranslated" from "already in this language". */
+  language?: string;
   slides: Slide[];
 }
 
@@ -27,6 +29,51 @@ export interface QaResponse {
   answer: string;
   source_slides: number[];
 }
+
+// ── Raise-hand voice Q&A over the voice WebSocket (contract v1) ────────────
+
+export type QaMode = 'after_slide' | 'now';
+
+export type QaErrorCode =
+  | 'no_speech' | 'too_long' | 'limit' | 'rate' | 'stt_failed' | 'answer_failed'
+  | 'bad_state' | 'disabled' | 'time_low' | 'bad_deck';
+
+export type QaClientMessage =
+  | { type: 'qa.begin'; request_id: string; slide: number; mode: QaMode }
+  | { type: 'qa.audio'; request_id: string; seq: number; audio: string }
+  | { type: 'qa.commit'; request_id: string }
+  | { type: 'qa.text'; request_id: string; text: string }
+  | { type: 'qa.cancel'; request_id: string }
+  | { type: 'qa.resume'; request_id: string }
+  | { type: 'context.switch'; deck_id: string };
+
+export interface QaReadyMessage {
+  type: 'qa.ready';
+  request_id: string;
+  max_audio_ms?: number;
+  max_audio_bytes?: number;
+  remaining_questions?: number;
+  remaining_ms?: number;
+}
+
+export interface QaTranscriptMessage { type: 'qa.transcript'; request_id: string; text: string; remaining_ms?: number }
+
+export interface QaAnswerMessage {
+  type: 'qa.answer';
+  request_id: string;
+  text: string;
+  source_slides: number[];
+  grounded: boolean;
+  remaining_ms?: number;
+}
+
+export interface QaErrorMessage { type: 'qa.error'; request_id?: string; code: QaErrorCode | string; message?: string; remaining_ms?: number }
+export interface QaUnavailableMessage { type: 'qa.unavailable'; reason?: string }
+export interface ContextSwitchedMessage { type: 'context.switched'; deck_id: string; slide_count: number }
+export interface DemoStartedMessage { type: 'demo.started'; session_seconds: number; remaining_ms: number; narration_chars?: number[] }
+
+export type QaServerMessage =
+  | QaReadyMessage | QaTranscriptMessage | QaAnswerMessage | QaErrorMessage | QaUnavailableMessage | ContextSwitchedMessage;
 
 export async function uploadPresentation(file: File): Promise<Presentation> {
   const form = new FormData();

@@ -40,6 +40,33 @@ STYLE_DIRECTIVES = {
     "marketing": "Energetic, benefit-forward. Lead with the outcome the viewer gets. End with a subtle call-to-action.",
 }
 
+# Appended only when ScriptRequest.audience_level is set; None keeps the
+# original prompt byte-for-byte. Depth/vocabulary only — never slide rules.
+AUDIENCE_DIRECTIVES = {
+    "beginner": (
+        "Beginner viewers with no prior AI or technical knowledge. Define every term in plain words "
+        "the first time it appears, use everyday analogies, avoid jargon and acronyms (expand any "
+        "acronym that is unavoidable), and introduce one idea at a time."
+    ),
+    "practitioner": (
+        "Practitioners who build or operate solutions. Favor concrete how-to guidance, trade-offs, "
+        "practical tips and common pitfalls; standard industry terminology is fine without definitions."
+    ),
+    "expert": (
+        "Deep technical experts. Discuss architecture, internals, limits, failure modes and evaluation "
+        "with precise vocabulary. Stay strictly within the source material — do NOT invent numbers, "
+        "benchmarks or details that are not in the source."
+    ),
+}
+AUDIENCE_SCOPE_NOTE = (
+    " This adjusts depth and vocabulary only; still write exactly one narration per slide, in slide order."
+)
+
+
+def _audience_line(level: Optional[str]) -> str:
+    directive = AUDIENCE_DIRECTIVES.get(level or "")
+    return f"Audience: {directive}{AUDIENCE_SCOPE_NOTE}\n" if directive else ""
+
 
 def _build_slide_outline(doc: VideoDocument, max_chars: int = 8000) -> str:
     parts: list[str] = []
@@ -64,6 +91,7 @@ def _build_system_prompt(req: ScriptRequest, doc: VideoDocument) -> str:
         f"contractions and elisions that sound spoken rather than literally translated. Do NOT mix in English "
         f"words unless they are true borrowings. Proper nouns may stay as-is.\n\n"
         f"Style: {style}\n"
+        f"{_audience_line(req.audience_level)}"
         f"Flow: each narration should feel like it continues naturally from the previous slide — use occasional "
         f"bridge phrases (\"Building on that...\", \"So what does this mean in practice?\"). The first slide "
         f"opens the talk; the last slide closes it.\n"

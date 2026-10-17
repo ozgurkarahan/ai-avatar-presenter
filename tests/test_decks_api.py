@@ -115,25 +115,25 @@ def test_search_topic_returns_correct_deck(
 def test_search_french_filter_returns_french_deck(client: httpx.Client, uploaded_decks) -> None:
     r = client.post(
         "/api/search",
-        json={"query": "énergie hydrogène nucléaire", "top_k": 5, "language": "fr-FR"},
+        json={"query": "IA générative contexte récupération", "top_k": 5, "language": "fr-FR"},
     )
     assert r.status_code == 200
     results = r.json()["results"]
     assert results
     for hit in results:
-        assert "transition-energetique" in hit["deck_title"]
+        assert "ia-generative-fr" in hit["deck_title"]
 
 
 def test_search_spanish_filter_returns_spanish_deck(client: httpx.Client, uploaded_decks) -> None:
     r = client.post(
         "/api/search",
-        json={"query": "innovación gemelos digitales robótica", "top_k": 5, "language": "es-ES"},
+        json={"query": "agentes herramientas evaluación", "top_k": 5, "language": "es-ES"},
     )
     assert r.status_code == 200
     results = r.json()["results"]
     assert results
     for hit in results:
-        assert "innovacion-industrial" in hit["deck_title"]
+        assert "agentes-ia-produccion" in hit["deck_title"]
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ def test_search_empty_query_400(client: httpx.Client) -> None:
 
 
 def test_search_top_k_respected(client: httpx.Client, uploaded_decks) -> None:
-    r = client.post("/api/search", json={"query": "carbon emissions", "top_k": 2})
+    r = client.post("/api/search", json={"query": "language models", "top_k": 2})
     assert r.status_code == 200
     results = r.json()["results"]
     assert len(results) <= 2
@@ -158,7 +158,7 @@ def test_delete_deck_removes_from_list_and_search(client: httpx.Client) -> None:
     """Upload a dedicated throw-away deck, delete it, verify it's gone."""
     import time
 
-    path = FIXTURE_DIR / "climate-action.pptx"
+    path = FIXTURE_DIR / "ai-fundamentals.pptx"
     with path.open("rb") as fh:
         r = client.post(
             "/api/decks/upload",
@@ -186,7 +186,7 @@ def test_delete_deck_removes_from_list_and_search(client: httpx.Client) -> None:
 
     # AI Search deletion is near-real-time but not strictly immediate. Retry a few times.
     for _ in range(20):
-        r_search = client.post("/api/search", json={"query": "net zero emissions", "top_k": 10})
+        r_search = client.post("/api/search", json={"query": "small language models", "top_k": 10})
         assert r_search.status_code == 200
         if deck_id not in {h["deck_id"] for h in r_search.json()["results"]}:
             return

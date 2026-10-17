@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type Presentation } from '../services/api';
+import { narrationFor } from '../services/narration';
 import { Button, Chip, Segments, languageName } from '../ui';
 import '../styles/shared/slide-viewer.css';
 
@@ -43,11 +44,10 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
 
   if (!slide) return <p className="muted">No slides found.</p>;
 
-  const translated = language === 'en-US' ? undefined : slide.translated_notes?.[language];
-  const displayNotes = language === 'en-US'
-    ? slide.notes
-    : (translated || slide.notes);
-  const notesLanguage = translated ? language : 'en-US';
+  // Same selection as the avatar's speech, so what is shown is what is read aloud.
+  const narration = narrationFor(slide, language, presentation.language);
+  const showNotes = narration.source === 'notes' || narration.source === 'translated_notes';
+  const notesLanguage = narration.source === 'translated_notes' ? language : (presentation.language || 'en-US');
 
   // Build Office Online embed URL when pptx_url is available from Blob Storage
   // wdSlidePage (1-based) navigates the viewer to the current slide
@@ -133,13 +133,18 @@ export default function SlideViewer({ presentation, currentSlide, onSlideChange,
         </span>
       </div>
 
-      {displayNotes && (
-        <section className="slide-viewer__notes" aria-label="Speaker notes">
+      {showNotes && (
+        <section className="slide-viewer__notes" aria-label="Speaker notes" data-testid="slide-notes">
           <div className="slide-viewer__notes-head">
-            <span className="eyebrow">Speaker notes</span>
+            <span className="eyebrow" data-testid="slide-notes-label">Speaker notes — read aloud</span>
             <Chip>{languageName(notesLanguage)}</Chip>
           </div>
-          <p className="slide-viewer__notes-text">{displayNotes}</p>
+          {narration.fallbackOriginal && (
+            <p className="small muted" data-testid="slide-notes-fallback">
+              Original language — translation not available yet
+            </p>
+          )}
+          <p className="slide-viewer__notes-text" data-testid="slide-notes-text" lang={notesLanguage}>{narration.text}</p>
         </section>
       )}
     </div>

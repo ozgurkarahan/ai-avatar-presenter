@@ -44,6 +44,9 @@ param allowedOrigins string = ''
 @description('JSON array of custom photo avatars (see contract: id, display_name, character, gender, thumbnail, default)')
 param customAvatarsJson string = ''
 
+@description('Hide the stock avatars when at least one custom avatar is configured (true/false); stock ids become aliases to a same-gender custom avatar')
+param hideStockAvatars string = 'false'
+
 @description('Allow URL ingestion for podcasts (true/false)')
 param enableUrlIngest string = 'false'
 
@@ -82,6 +85,21 @@ param demoMaxSpeaks string = '0'
 
 @description('Comma-separated client IPs/CIDRs exempt from the demo daily quotas (e.g. the owner\'s home IP). Empty = none.')
 param demoQuotaExemptIps string = ''
+
+@description('Raise-hand voice Q&A in the public demo (true/false, default off)')
+param demoQaEnabled string = 'false'
+
+@description('Questions per anonymous demo session when demo Q&A is enabled')
+param demoQaMaxQuestions string = '2'
+
+@description('Demo session cap in seconds when demo Q&A is enabled (replaces demoSessionSeconds)')
+param demoQaSessionSeconds string = '300'
+
+@description('Demo Q&A questions per UTC day (global, durable)')
+param demoQaDailyMax string = '40'
+
+@description('Demo Q&A questions per client IP per UTC day (durable)')
+param demoQaDailyPerIp string = '6'
 
 // ---------------------------------------------------------------------------
 // External (pre-existing) AI Services / Speech resource, e.g. one hosting custom photo avatars
@@ -281,6 +299,7 @@ module containerapp 'modules/containerapp.bicep' = {
     allowedObjectIds: allowedObjectIds
     allowedOrigins: allowedOrigins
     customAvatarsJson: customAvatarsJson
+    hideStockAvatars: hideStockAvatars
     enableUrlIngest: enableUrlIngest
     maxVoiceSessions: maxVoiceSessions
     maxVoiceSessionSeconds: maxVoiceSessionSeconds
@@ -294,6 +313,11 @@ module containerapp 'modules/containerapp.bicep' = {
     demoDailyMinutes: demoDailyMinutes
     demoQuotaExemptIps: demoQuotaExemptIps
     demoMaxSpeaks: demoMaxSpeaks
+    demoQaEnabled: demoQaEnabled
+    demoQaMaxQuestions: demoQaMaxQuestions
+    demoQaSessionSeconds: demoQaSessionSeconds
+    demoQaDailyMax: demoQaDailyMax
+    demoQaDailyPerIp: demoQaDailyPerIp
     tags: tags
   }
 }

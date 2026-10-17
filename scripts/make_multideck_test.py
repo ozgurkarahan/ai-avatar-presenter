@@ -18,25 +18,25 @@ from pptx.util import Inches, Pt
 
 DECKS = [
     {
-        "filename": "climate-action.pptx",
+        "filename": "ai-fundamentals.pptx",
         "language": "en-US",
-        "title": "Climate Action & Sustainability",
+        "title": "AI Fundamentals: Models and Language Models",
         "slides": [
-            ("Carbon Neutrality Goals",
-             "Reaching net-zero emissions by 2050 requires decarbonising the power grid, electrifying transport, and restoring forests.",
-             "Emphasise the organisation's own science-based target and the ACT methodology we follow."),
-            ("Renewable Energy Transition",
-             "Solar photovoltaics and offshore wind are the fastest-growing sources of renewable electricity worldwide.",
-             "Mention the cost curves: solar PV LCOE dropped 89% in a decade."),
-            ("Circular Economy for Buildings",
-             "Glass, gypsum and insulation materials can be recycled into new products, reducing raw material extraction.",
-             "Cite closed-loop take-back programmes and recycled-content insulation as examples."),
-            ("Carbon Accounting & Scope 3",
-             "Scope 3 emissions from purchased goods often dominate a manufacturer's footprint and require supplier engagement.",
-             "Reference the GHG Protocol and CDP disclosures."),
-            ("Adaptation & Resilience",
-             "Rising sea levels, heatwaves and extreme precipitation demand resilient building envelopes and passive cooling.",
-             "Point to cool roofs and high-performance glazing as proven adaptation measures."),
+            ("Large Language Models",
+             "Large language models are trained on vast text corpora to predict the next token and follow natural-language instructions.",
+             "Explain tokens, context windows and why instruction tuning makes models helpful."),
+            ("Small Language Models",
+             "Small language models trade breadth for speed and cost and can run on laptops, phones or edge devices.",
+             "Contrast the latency, cost and privacy benefits of on-device inference."),
+            ("Open-Weight Models",
+             "Open-weight models publish their parameters so teams can self-host, inspect and fine-tune them.",
+             "Clarify the difference between open weights and fully open training data and code."),
+            ("Speech: STT and TTS",
+             "Speech-to-text transcribes spoken audio while neural text-to-speech turns text into natural-sounding voices.",
+             "Mention the latency budget of a real-time voice assistant."),
+            ("Choosing a Model",
+             "Model selection balances quality, latency, cost and licensing against the needs of each task.",
+             "Recommend evaluating candidate models on a representative golden dataset."),
         ],
     },
     {
@@ -106,47 +106,47 @@ DECKS = [
         ],
     },
     {
-        "filename": "transition-energetique.pptx",
+        "filename": "ia-generative-fr.pptx",
         "language": "fr-FR",
-        "title": "La transition énergétique en France",
+        "title": "L'IA générative en entreprise",
         "slides": [
-            ("Mix énergétique français",
-             "Le nucléaire fournit environ 70% de l'électricité française, complété par l'hydraulique et les renouvelables.",
-             "Évoquer la fermeture de Fessenheim et la relance du nouveau nucléaire (EPR2)."),
-            ("Rénovation énergétique des bâtiments",
-             "MaPrimeRénov' et les certificats d'économie d'énergie financent l'isolation thermique des logements anciens.",
-             "Citer l'objectif de 700 000 rénovations par an."),
-            ("Hydrogène décarboné",
-             "L'électrolyse de l'eau alimentée par le nucléaire produit un hydrogène bas-carbone pour l'industrie lourde.",
-             "Mentionner la stratégie nationale hydrogène dotée de 9 milliards d'euros."),
-            ("Mobilité électrique",
-             "Le déploiement des bornes de recharge rapide accélère l'adoption des véhicules électriques.",
-             "Référence au règlement AFIR européen."),
-            ("Sobriété énergétique",
-             "Réduire la consommation avant de produire : c'est le premier levier du plan sobriété énergétique.",
-             "Rappeler l'objectif de -10% de consommation d'ici 2024."),
+            ("Qu'est-ce que l'IA générative ?",
+             "Les modèles de langage génèrent du texte, du code ou des images à partir d'instructions en langage naturel.",
+             "Rappeler la différence entre IA prédictive et IA générative."),
+            ("Ingénierie du contexte",
+             "L'ingénierie du contexte assemble instructions, documents et mémoire pour guider le modèle de langage.",
+             "Montrer qu'un bon contexte réduit les hallucinations davantage qu'une formulation astucieuse."),
+            ("Génération augmentée par récupération",
+             "Le RAG recherche les passages pertinents dans vos documents et les transmet au modèle pour une réponse sourcée.",
+             "Évoquer la recherche hybride et le reclassement sémantique."),
+            ("Agents et protocole MCP",
+             "Les agents enchaînent raisonnement et appels d'outils ; le protocole MCP standardise l'accès aux outils et aux données.",
+             "Insister sur la validation humaine des actions sensibles."),
+            ("IA responsable",
+             "Transparence, confidentialité des données et supervision humaine encadrent chaque déploiement d'IA générative.",
+             "Mentionner le règlement européen sur l'IA (AI Act)."),
         ],
     },
     {
-        "filename": "innovacion-industrial.pptx",
+        "filename": "agentes-ia-produccion.pptx",
         "language": "es-ES",
-        "title": "Innovación industrial y fabricación avanzada",
+        "title": "Agentes de IA en producción",
         "slides": [
-            ("Industria 4.0",
-             "La digitalización, el IoT industrial y los gemelos digitales transforman la fabricación tradicional.",
-             "Mencionar el plan España Digital 2026 y los PERTE industriales."),
-            ("Fabricación aditiva",
-             "La impresión 3D metálica permite piezas ligeras y geometrías imposibles con mecanizado convencional.",
-             "Citar ejemplos aeroespaciales y de herramental."),
-            ("Robótica colaborativa",
-             "Los cobots trabajan junto a operarios humanos sin jaulas de seguridad, aumentando la productividad.",
-             "Referencia a la norma ISO 10218 y TS 15066."),
-            ("Economía circular",
-             "La remanufactura y el reciclaje avanzado reducen el consumo de materias primas críticas.",
-             "Destacar el reglamento europeo sobre diseño ecológico."),
-            ("Gemelos digitales",
-             "Los modelos virtuales sincronizados con activos físicos optimizan el mantenimiento predictivo y la eficiencia.",
-             "Ejemplos en plantas químicas y líneas de ensamblaje."),
+            ("Del chatbot al agente",
+             "Un agente de IA planifica, llama a herramientas y observa los resultados hasta completar una tarea.",
+             "Contrastar un asistente conversacional con un agente que actúa."),
+            ("El arnés del agente",
+             "Instrucciones, herramientas bien descritas, memoria y límites de pasos forman el arnés que hace fiable al agente.",
+             "Destacar el registro detallado de cada paso."),
+            ("Protocolo MCP",
+             "El Model Context Protocol conecta los agentes con herramientas y fuentes de datos mediante un estándar abierto.",
+             "Mencionar la autenticación y el principio de mínimo privilegio."),
+            ("Evaluación y observabilidad",
+             "Conjuntos de pruebas, trazas y métricas de calidad permiten detectar regresiones antes de cada despliegue.",
+             "Referencia a la evaluación continua con conjuntos dorados."),
+            ("IA en producción",
+             "Cuotas, control de costes, supervisión humana y planes de reversión permiten operar agentes a escala.",
+             "Ejemplos de despliegue progresivo por fases."),
         ],
     },
 ]
@@ -162,7 +162,7 @@ def build_deck(out_path: Path, title: str, slides: list[tuple[str, str, str]]) -
     slide = prs.slides.add_slide(layout)
     slide.shapes.title.text = title
     if len(slide.placeholders) > 1:
-        slide.placeholders[1].text = "DeckFM — Demo"
+        slide.placeholders[1].text = "Oz Radio — Demo"
 
     # Content slides
     content_layout = prs.slide_layouts[1]
@@ -178,8 +178,8 @@ def build_deck(out_path: Path, title: str, slides: list[tuple[str, str, str]]) -
         notes_tf = s.notes_slide.notes_text_frame
         notes_tf.text = notes_text
 
-    prs.core_properties.author = "DeckFM"
-    prs.core_properties.last_modified_by = "DeckFM"
+    prs.core_properties.author = "Oz Radio"
+    prs.core_properties.last_modified_by = "Oz Radio"
     prs.core_properties.title = title
     prs.save(str(out_path))
     print(f"Wrote {out_path}  ({len(slides) + 1} slides)")

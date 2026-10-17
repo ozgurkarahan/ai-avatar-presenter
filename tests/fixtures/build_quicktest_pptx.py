@@ -8,14 +8,14 @@ OUT = Path(__file__).parent / "quicktest.pptx"
 
 SLIDES = [
     {
-        "title": "Low-Carbon Buildings in 30 Seconds",
-        "bullets": ["Buildings drive ~37% of energy-related CO2", "Insulation and smart glazing cut demand"],
-        "notes": "Buildings account for roughly a third of global energy-related emissions, so better insulation and smart glazing are among the fastest levers to cut them.",
+        "title": "Small Language Models in 30 Seconds",
+        "bullets": ["Smaller models answer faster and cost less", "Many can run on a laptop or phone"],
+        "notes": "Small language models trade some breadth for speed and cost, so they are among the fastest ways to bring AI onto devices and close to your data.",
     },
     {
-        "title": "A 2030 Ambition",
-        "bullets": ["Net zero by 2050", "-33% CO2 by 2030"],
-        "notes": "A typical industrial roadmap commits to net-zero carbon emissions by 2050, with a 33 percent reduction in CO2 by 2030.",
+        "title": "Grounded Answers with RAG",
+        "bullets": ["Retrieve the right passages", "Answer and cite the sources"],
+        "notes": "Retrieval-augmented generation finds the most relevant passages in your documents, so the model can answer from them and cite every source it used.",
     },
 ]
 
@@ -43,8 +43,8 @@ def build():
 
         slide.notes_slide.notes_text_frame.text = s["notes"]
 
-    prs.core_properties.author = "DeckFM"
-    prs.core_properties.last_modified_by = "DeckFM"
+    prs.core_properties.author = "Oz Radio"
+    prs.core_properties.last_modified_by = "Oz Radio"
     prs.save(OUT)
     print(f"Wrote {OUT} ({OUT.stat().st_size} bytes, {len(SLIDES)} slides)")
 

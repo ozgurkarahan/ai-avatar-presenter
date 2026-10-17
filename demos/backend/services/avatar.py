@@ -208,7 +208,7 @@ _QUESTION_WORDS = {
 }
 _BENEFIT_WORDS = {
     "benefit", "success", "improve", "reduce", "reduction", "save", "impact",
-    "result", "conclusion", "sustainable", "decarbonization", "decarbonisation",
+    "result", "conclusion", "sustainable",
     "benefice", "succes", "ameliorer", "reduire", "reduction", "impact",
     "resultat", "conclusion", "durable",
 }

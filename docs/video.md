@@ -21,7 +21,7 @@ This complements:
 ```mermaid
 flowchart LR
     A[User opens /video] --> B[Upload .pptx]
-    B --> C[Pick language + voice + style]
+    B --> C[Pick language + voice + style<br/>+ optional audience level]
     C --> D[Generate narration script]
     D --> E{Review / edit slides}
     E -->|Looks good| F[Click Render]
@@ -82,6 +82,19 @@ The first batch-avatar prototype used **one batch job per presentation** — a m
 - Errors in one slide don't poison the whole deck (retry a single clip)
 - Parallelism: N slides = N batch jobs running in parallel on Azure Speech
 - Subtitles burn-in timed per slide (fine-grained)
+
+### Audience level
+
+`ScriptRequest.audience_level` (optional: `"beginner" | "practitioner" | "expert"`, default `null`) tunes vocabulary and depth of the narration. `services/video_script.py::_build_system_prompt` adds one `Audience:` line next to style / focus / language; it still demands exactly one narration per slide, in slide order. Unknown values are rejected with **422**.
+
+| Level | Directive added to the system prompt |
+|---|---|
+| *Any (default)* → `null` | nothing — the prompt is byte-for-byte the pre-existing one |
+| `beginner` | assume no prior AI/technical knowledge; define every term in plain words; everyday analogies; avoid jargon and acronyms (expand if unavoidable); one idea at a time |
+| `practitioner` | audience builds or operates solutions; concrete how-to, trade-offs, practical tips, common pitfalls; standard terminology OK |
+| `expert` | deep technical audience; architecture, internals, limits, failure modes, evaluation; precise vocabulary; stay strictly within the source — never invent numbers or details |
+
+The level is saved on `VideoScript`, written to the library `manifest.json` (`audience_level`) and returned by the admin `GET /api/video/library` + `/library/{job_id}` responses (shown as an "*Level* audience" chip). The anonymous public DTO is unchanged. In the UI, the **Audience level** select sits next to **Style** in the *Narration* panel and is also sent on per-slide regeneration requests.
 
 ---
 
@@ -198,7 +211,7 @@ All under `/api/video` (prefix from `routers/video.py`).
 | `GET`  | `/languages` | supported target languages |
 | `GET`  | `/voices` | 16 DragonHD voices w/ `display_name`, language, gender, HD flag |
 | `POST` | `/ingest` | multipart upload, returns `doc_id` + parsed slides |
-| `POST` | `/script/{doc_id}` | NDJSON stream: `{event:"narration", data}` per slide, final `{event:"done", data: VideoScript}` |
+| `POST` | `/script/{doc_id}` | body `{language, style?, focus?, audience_level?, voice}` → NDJSON stream: `{event:"narration", data}` per slide, final `{event:"done", data: VideoScript}` |
 | `GET`  | `/script/{doc_id}` | fetch current narrations |
 | `POST` | `/render/{doc_id}` | start render job |
 | `GET`  | `/jobs/{job_id}` | poll `VideoJob` with nested `progress` + outputs |
@@ -239,12 +252,12 @@ The recommended path is `azd deploy` (or `azd up` for a first deployment) — se
 
 ```powershell
 # 1. Build in ACR (no local docker needed)
-az acr build -r <acr-name> -t ai-presenter:<tag> -t ai-presenter:latest --no-logs .
+az acr build -r <acr-name> -t oz-radio/backend-<env>:<tag> -t oz-radio/backend-<env>:latest --no-logs .
 
 # 2. Roll new revision with bumped resources
 az containerapp update `
   -n ca-<token> -g <resource-group> `
-  --image <acr-name>.azurecr.io/ai-presenter:<tag> `
+  --image <acr-name>.azurecr.io/oz-radio/backend-<env>:<tag> `
   --cpu 2.0 --memory 4.0Gi `
   --revision-suffix <revision-suffix>
 ```

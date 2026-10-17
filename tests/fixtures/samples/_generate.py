@@ -89,71 +89,71 @@ GROUP_A_SAFETY_FR = {
     },
 }
 
-GROUP_B_SUSTAINABILITY_EN = {
-    "decarbonization-intro": {
-        "title": "Decarbonization: Introduction for industry",
+GROUP_B_GENAI_EN = {
+    "ai-models-intro": {
+        "title": "AI models: An introduction for teams",
         "lang": "en-US",
-        "tags": ["sustainability", "climate", "en"],
+        "tags": ["ai", "models", "en"],
         "slides": [
-            ("Decarbonization: An introduction for industry",
-             ["Why decarbonization matters", "Scope 1, 2 and 3 emissions", "Target audience: all employees"],
-             "Welcome to this introduction on decarbonization for industrial companies. We will cover why it matters, how emissions are categorized, and what each of us can do to contribute."),
-            ("Climate science in three facts",
-             ["Global temperature +1.2°C since 1900", "CO2 concentration now 420 ppm", "Industry = 30% of global emissions", "Paris Agreement target: limit to +1.5°C"],
-             "Three facts frame the urgency: global temperatures have already risen by 1.2 degrees, CO2 concentration is at a three-million-year high, and industry accounts for thirty percent of emissions."),
-            ("Scope 1, 2 and 3 emissions explained",
-             ["Scope 1: direct emissions (factories, vehicles)", "Scope 2: indirect from purchased electricity", "Scope 3: value chain (suppliers, products in use)", "Scope 3 is often the largest"],
-             "Corporate emissions are reported in three scopes. Scope 1 covers what you burn directly, scope 2 the electricity you buy, and scope 3 everything else in your value chain, which is usually the largest share."),
-            ("Levers available to companies",
-             ["Energy efficiency in plants", "Switch to renewable electricity", "Low-carbon raw materials", "Product design for circularity"],
-             "Companies have four main decarbonization levers: improving energy efficiency, switching to renewable electricity, sourcing low-carbon raw materials, and redesigning products for circularity."),
+            ("AI models: An introduction for teams",
+             ["Why model choice matters", "LLMs, SLMs and open-weight models", "Target audience: all employees"],
+             "Welcome to this introduction to AI models for business teams. We will cover what a language model is, how large and small models differ, and how to choose the right one for each task."),
+            ("Language models in three ideas",
+             ["Models predict the next token", "Trained on very large text corpora", "Instruction tuning makes them helpful", "Capabilities grow with data and scale"],
+             "Three ideas frame how language models work: they predict the next token, they learn patterns from very large text corpora, and instruction tuning turns them into helpful assistants that follow requests."),
+            ("LLMs, SLMs and open-weight models",
+             ["LLM: broad reasoning, usually hosted in the cloud", "SLM: smaller and faster, can run on device", "Open-weight: downloadable and fine-tunable", "Most solutions combine several models"],
+             "Language models come in three broad families. Large language models offer the broadest reasoning, small language models trade breadth for speed and cost, and open-weight models can be downloaded, inspected and fine-tuned."),
+            ("Choosing the right model",
+             ["Match model size to task complexity", "Balance quality, latency and cost", "Check licensing and data residency", "Evaluate on your own examples"],
+             "Choosing a model is a trade-off between quality, latency and cost. Match the model size to the complexity of the task, check licensing and data residency, and always evaluate candidates on your own representative examples."),
             ("What comes next in this path",
-             ["Deep dive: low-carbon materials", "Deep dive: circular economy", "Then: action plan for your team"],
-             "This introduction is the first step of a three-deck path. The next decks go deeper into low-carbon materials and circular economy, with concrete actions your team can take."),
+             ["Deep dive: context engineering and RAG", "Deep dive: AI agents and MCP", "Then: action plan for your team"],
+             "This introduction is the first step of a three-deck path. The next decks go deeper into context engineering and retrieval-augmented generation, then AI agents connected through MCP, with concrete actions your team can take."),
         ],
     },
-    "low-carbon-materials": {
-        "title": "Low-carbon materials in construction",
+    "context-engineering-rag": {
+        "title": "Context engineering and RAG in practice",
         "lang": "en-US",
-        "tags": ["sustainability", "materials", "en"],
+        "tags": ["ai", "rag", "en"],
         "slides": [
-            ("Low-carbon materials in construction",
-             ["Why materials matter: 40% of built-environment CO2", "Main categories", "Prerequisite: decarbonization intro"],
-             "Materials represent around forty percent of built-environment emissions, making them a critical lever. This deck reviews the main low-carbon materials available today and their trade-offs."),
-            ("Cement and concrete innovations",
-             ["Clinker substitution (slag, fly ash)", "Limestone calcined clay (LC3)", "CO2-cured concrete", "Up to 60% emission reduction"],
-             "Cement is the largest single source of industrial CO2. Innovations like clinker substitution and LC3 technology can cut emissions by up to sixty percent without changing construction practices."),
-            ("Bio-based and recycled insulation",
-             ["Wood fiber, hemp, cellulose", "Recycled cotton and glass wool", "Lower embodied carbon", "Often equal or better thermal performance"],
-             "Insulation is another high-impact area where bio-based materials like wood fiber or hemp can replace oil-derived foams. They often match or exceed thermal performance while storing carbon in the building."),
-            ("Recycled steel and aluminum",
-             ["Recycled steel: 75% less energy than virgin", "Recycled aluminum: 95% less", "Mature industrial supply chains", "Requires end-of-life collection"],
-             "Recycled metals offer dramatic savings: recycled steel uses seventy-five percent less energy than virgin, and recycled aluminum saves ninety-five percent. The challenge is organizing end-of-life collection at scale."),
-            ("How to specify low-carbon materials",
-             ["Use EPDs (verified environmental product data)", "Compare per functional unit", "Check local availability", "Pilot on one project first"],
-             "To specify low-carbon materials, start from verified EPD data sheets and compare on a functional-unit basis. Pilot on a single project before rolling out, and always check local supply to avoid transport emissions."),
+            ("Context engineering and RAG in practice",
+             ["Why context matters more than prompts", "Retrieval-augmented generation", "Prerequisite: AI models intro"],
+             "A model is only as good as the context it receives, making context engineering a critical skill. This deck reviews retrieval-augmented generation and the main techniques to give models the right information at the right time."),
+            ("What is context engineering?",
+             ["System instructions and role", "Relevant documents and data", "Conversation memory", "Tool results fed back to the model"],
+             "Context engineering is the practice of assembling everything the model sees: instructions, relevant documents, memory and tool results. Well-curated context reduces hallucinations far more reliably than clever prompt wording alone."),
+            ("Retrieval-augmented generation",
+             ["Split documents into chunks", "Embed chunks as vectors", "Retrieve the most relevant passages", "Ground the answer and cite sources"],
+             "Retrieval-augmented generation grounds answers in your own documents. Content is split into chunks and embedded as vectors, and the most relevant passages are retrieved at question time so the model can answer and cite its sources."),
+            ("Improving retrieval quality",
+             ["Hybrid search: keywords plus vectors", "Semantic reranking of results", "Chunk size tuned to the content", "Metadata filters for freshness and access"],
+             "Retrieval quality drives answer quality. Hybrid search combines keywords with vectors, semantic reranking puts the best passages first, and metadata filters keep results fresh and limited to what each user may see."),
+            ("How to evaluate a RAG system",
+             ["Build a golden set of real questions", "Measure groundedness and relevance", "Track citations and refusals", "Pilot on one knowledge base first"],
+             "To evaluate a RAG system, start from a golden set of real questions and measure groundedness, relevance and citation accuracy. Pilot on a single knowledge base before rolling out, and keep evaluating as your documents change."),
         ],
     },
-    "circular-economy": {
-        "title": "Circular economy in practice",
+    "ai-agents-mcp": {
+        "title": "AI agents and MCP in practice",
         "lang": "en-US",
-        "tags": ["sustainability", "circular", "en"],
+        "tags": ["ai", "agents", "en"],
         "slides": [
-            ("Circular economy in practice",
-             ["From linear to circular models", "Four circular strategies", "Prerequisite: low-carbon materials"],
-             "The final deck of this sustainability path shifts from reducing emissions to rethinking the whole value chain. Circular economy turns waste into resource and extends product life."),
-            ("From linear to circular thinking",
-             ["Linear: take-make-waste", "Circular: reduce-reuse-recycle-regenerate", "Keep materials at highest value", "Design for disassembly"],
-             "The linear take-make-waste model reaches its limits as resources get scarcer. Circular economy keeps materials at their highest value through reduce, reuse, recycle and regenerate strategies."),
-            ("Reuse before recycle",
-             ["Component reuse: windows, beams", "Refurbishment programs", "Second-life markets", "Avoids reprocessing energy"],
-             "Reuse almost always beats recycling because it avoids the energy of reprocessing. Component reuse programs for windows, beams or equipment can extend lifespan and unlock second-life markets."),
-            ("Industrial symbiosis",
-             ["One company's waste = another's feedstock", "Example: slag from steel to cement", "Regional clusters work best", "Shared infrastructure key"],
-             "Industrial symbiosis turns one company's waste into another's feedstock, like steel slag feeding cement plants. Regional clusters with shared infrastructure make the economics work."),
+            ("AI agents and MCP in practice",
+             ["From chatbots to agents", "The agent harness and MCP", "Prerequisite: context engineering and RAG"],
+             "The final deck of this AI path moves from answering questions to taking actions. AI agents combine a model, tools and a control loop to complete multi-step tasks on behalf of their users."),
+            ("From chatbots to agents",
+             ["Chatbot: answers one question", "Agent: plans, acts and observes", "Loops until the goal is reached", "Humans approve sensitive steps"],
+             "A chatbot answers a single question, while an agent plans, calls tools, observes the results and loops until the goal is reached. Sensitive steps should always keep a human in the loop for approval."),
+            ("The agent harness",
+             ["Model plus clear instructions", "Tools with well-described schemas", "Memory and state management", "Guardrails, step limits and logging"],
+             "The agent harness is everything around the model that makes it reliable: instructions, well-described tools, memory and state. Guardrails, step limits and detailed logging turn an impressive demo into a dependable system."),
+            ("Model Context Protocol",
+             ["Open standard to connect tools and data", "One MCP server, many AI clients", "Tools, resources and prompts", "Authentication and least privilege"],
+             "The Model Context Protocol is an open standard that connects AI applications to tools and data sources. Build one MCP server and many AI clients can reuse it, as long as authentication and least privilege are designed in."),
             ("Getting started: 3 quick wins",
-             ["Audit waste streams on one site", "Find a local reuse partner", "Set a 10% recycled-content target"],
-             "To start, audit waste streams at one site to see the value leaking out. Find a local reuse partner and set an achievable recycled-content target; small wins build momentum for bigger changes."),
+             ["Pick one repetitive workflow", "Expose two or three tools via MCP", "Measure success rate and time saved"],
+             "To start, pick one repetitive workflow where the steps are well understood. Expose a few tools through MCP and measure success rate and time saved; small wins build trust for more ambitious agents."),
         ],
     },
 }
@@ -171,8 +171,8 @@ GROUP_C_AI_ES = {
              ["IA predictiva (mantenimiento)", "IA generativa (documentos, diseño)", "Visión por computadora (calidad)", "Cada tipo resuelve problemas distintos"],
              "En la industria hay tres grandes tipos de IA con aplicaciones específicas. La predictiva anticipa fallos, la generativa crea contenido y la visión por computadora automatiza el control de calidad."),
             ("Casos de uso probados",
-             ["Mantenimiento predictivo de equipos", "Optimización energética de plantas", "Control de calidad automatizado", "Asistentes para documentación"],
-             "Los casos de uso más maduros son el mantenimiento predictivo, la optimización energética y el control de calidad automatizado. Todos han demostrado retornos medibles en plantas industriales."),
+             ["Mantenimiento predictivo de equipos", "Asistentes generativos para operarios", "Control de calidad automatizado", "Asistentes para documentación"],
+             "Los casos de uso más maduros son el mantenimiento predictivo, los asistentes generativos y el control de calidad automatizado. Todos han demostrado retornos medibles en plantas industriales."),
             ("Datos: el combustible de la IA",
              ["Sensores e IoT en máquinas", "Datos históricos de producción", "Calidad y limpieza son críticas", "Sin datos buenos no hay IA útil"],
              "La IA depende completamente de la calidad de los datos disponibles. Sensores, históricos de producción y procesos limpios son el combustible; sin datos fiables ninguna IA ofrece resultados útiles."),
@@ -192,9 +192,9 @@ GROUP_C_AI_ES = {
             ("Mantenimiento predictivo",
              ["Sensores vibración y temperatura", "Modelos detectan anomalías", "Reducción paradas no planificadas", "Retorno típico: 20-30% ahorro"],
              "El mantenimiento predictivo combina sensores y modelos de machine learning para detectar anomalías antes del fallo. Las empresas reportan entre veinte y treinta por ciento de ahorro en paradas no planificadas."),
-            ("Optimización energética",
-             ["Modelos de consumo en tiempo real", "Ajuste automático de consignas", "Ahorro 5-15% en energía", "Reduce scope 2 directamente"],
-             "La optimización energética basada en IA ajusta consignas en tiempo real según demanda y condiciones. Ahorros típicos de cinco a quince por ciento reducen directamente las emisiones de alcance dos."),
+            ("Asistentes con IA generativa",
+             ["Respuestas sobre manuales y procedimientos", "Búsqueda RAG en documentación técnica", "Modelos pequeños cerca de la línea", "Fuentes citadas en cada respuesta"],
+             "Los asistentes con IA generativa responden a los operarios a partir de manuales y procedimientos mediante RAG. Los modelos pequeños pueden ejecutarse cerca de la línea y cada respuesta cita sus fuentes."),
             ("Control de calidad con visión",
              ["Cámaras de alta resolución", "Modelos detectan defectos", "100% de piezas inspeccionadas", "Retroalimentación instantánea al operario"],
              "La visión por computadora permite inspeccionar el cien por cien de las piezas en tiempo real, algo imposible manualmente. La retroalimentación instantánea al operario mejora tanto calidad como productividad."),
@@ -227,7 +227,7 @@ GROUP_C_AI_ES = {
     },
 }
 
-ALL_GROUPS = {"A_safety_fr": GROUP_A_SAFETY_FR, "B_sustainability_en": GROUP_B_SUSTAINABILITY_EN, "C_ai_es": GROUP_C_AI_ES}
+ALL_GROUPS = {"A_safety_fr": GROUP_A_SAFETY_FR, "B_genai_en": GROUP_B_GENAI_EN, "C_ai_es": GROUP_C_AI_ES}
 
 
 def _add_title_slide(prs: Presentation, title: str, bullets: list[str], notes: str) -> None:
@@ -262,8 +262,8 @@ def build_deck(filename: str, spec: dict) -> Path:
     _add_title_slide(prs, *slides[0])
     for s in slides[1:]:
         _add_content_slide(prs, *s)
-    prs.core_properties.author = "DeckFM"
-    prs.core_properties.last_modified_by = "DeckFM"
+    prs.core_properties.author = "Oz Radio"
+    prs.core_properties.last_modified_by = "Oz Radio"
     prs.core_properties.title = spec["title"]
     out = OUT / f"{filename}.pptx"
     prs.save(out)

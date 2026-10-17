@@ -52,6 +52,7 @@ from services.podcast_models import (
     ScriptPatch,
     ScriptRequest,
     VoiceOption,
+    audience_level_or_none,
 )
 
 logger = logging.getLogger(__name__)
@@ -146,7 +147,7 @@ async def ingest_document(
             tmp_dir = Path("data/uploads/podcast"); tmp_dir.mkdir(parents=True, exist_ok=True)
             tmp_path = tmp_dir / f"{uuid.uuid4().hex}{suffix}"
             tmp_path.write_bytes(content)
-            doc = await asyncio.to_thread(ingest_file, tmp_path)
+            doc = await asyncio.to_thread(ingest_file, tmp_path, cfg.libreoffice_path or "soffice")
             # Preserve the original filename as the display title (ingest sees
             # the uuid-renamed temp file).
             if original_name:
@@ -194,6 +195,7 @@ async def stream_script(
                 language=req.language,
                 style=req.style,
                 length=req.length,
+                audience_level=req.audience_level,
                 turns=turns,
             )
             SCRIPTS[script.id] = script
@@ -374,6 +376,7 @@ def _full_item(item: dict) -> dict:
         "duration_sec": item.get("duration_sec"),
         "language": item.get("language") or "en-US",
         "style": item.get("style") or "casual",
+        "audience_level": audience_level_or_none(item.get("audience_level")),
         "speaker_names": item.get("speaker_names") or [],
         "turn_count": item.get("turn_count") or 0,
         "thumbnail_url": item.get("thumbnail_url"),
@@ -404,7 +407,9 @@ def list_library(
                                   "document_title": item.get("document_title") or "",
                                   "created_at": item.get("created_at") or "",
                                   "language": item.get("language") or "en-US",
-                                  "style": item.get("style") or "casual"}).model_dump()
+                                  "style": item.get("style") or "casual",
+                                  "audience_level": audience_level_or_none(item.get("audience_level"))
+                                  }).model_dump()
                 for item in lib.list()]
     return [_public_item(item) for item in lib.list(published_only=True)]
 
@@ -496,6 +501,7 @@ async def _render_job_body(job_id: str, cfg: AzureConfig) -> None:
             compose_podcast,
             clips, doc, script, job.roles, out_dir,
             job.music, job.intro,
+            layout=job.layout,
         )
         job.outputs = JobOutputs(
             mp4_url=f"/api/podcast/jobs/{job.id}/file/mp4",
@@ -538,6 +544,7 @@ async def _render_job_body(job_id: str, cfg: AzureConfig) -> None:
                                    job.roles.expert.display_name],
                     turn_count=len(script.turns),
                     created_at=job.created_at,
+                    audience_level=script.audience_level,
                 )
                 if manifest:
                     job.archive_state = "published"

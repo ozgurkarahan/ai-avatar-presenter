@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { calls, DECKS, mockApi, type Role } from './support/mock-api';
+import { calls, DECKS, FR_NOTES, mockApi, type Role } from './support/mock-api';
 
 /**
  * Behaviour lock for the UI redesign (non-regression).
@@ -25,6 +25,9 @@ async function expectHealthy(page: Page, errors: string[]) {
   const text = (await page.locator('#root').innerText()).trim();
   expect(text.length).toBeGreaterThan(20);
 }
+
+// Pre-rename localStorage key that getOrCreateUserId() migrates.
+const LEGACY_USER_ID_KEY = 'deckfm.userId';
 
 const ROUTES = [
   '/', '/live', '/decks', '/decks/deck-live/present', '/search', '/playlists', '/playlists/pl-1',
@@ -80,6 +83,16 @@ test.describe('Regression — decks & presenter', () => {
     await open(page, 'visitor', '/');
     await page.getByTestId('home-try-live-demo').click();
     await expect(page).toHaveURL(/\/decks\/deck-live\/present$/);
+  });
+
+  test('home demo note reflects whether demo Q&A is on', async ({ page }) => {
+    await open(page, 'visitor', '/');
+    await expect(page.getByTestId('home-demo-note')).toHaveText(/^Narration-only · up to 3 min · no sign-in$/);
+
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await mockApi(page, 'visitor', { demoQa: { enabled: true, max_questions: 3, max_audio_seconds: 15 }, demoSessionSeconds: 300 });
+    await page.reload();
+    await expect(page.getByTestId('home-demo-note')).toHaveText(/^Ask questions by voice · up to 5 min · no sign-in$/);
   });
 
   test('decks list renders one card per deck and opens the presenter', async ({ page }) => {
@@ -158,6 +171,61 @@ test.describe('Regression — search, libraries, playlists', () => {
     await page.getByTestId('playlist-next-deck').click();
     await expect(page.getByTestId('playlist-next-deck')).toBeDisabled();
   });
+
+  test('playlist: a step picked while progress is loading is not overridden by the resume step', async ({ page }) => {
+    let release!: () => void;
+    let served = false;
+    const gate = new Promise<void>((r) => { release = r; });
+    await open(page, 'admin', '/playlists');
+    await page.route(/\/api\/playlists\/pl-1\/progress(\?|$)/, async (r) => {
+      if (r.request().method() !== 'GET') return r.fallback();
+      await gate;
+      served = true;
+      return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        user_id: 'u', playlist_id: 'pl-1', last_deck_id: 'deck-plain', last_slide_index: 1, resume_deck_id: 'deck-plain',
+        resume_slide_index: 1, completed_slides: { 'deck-live': [0, 1, 2] }, total_slides: 6, completed_count: 3, percent: 50,
+        updated_at: '2026-10-14T00:00:00Z' }) });
+    });
+    await page.goto('/playlists/pl-1');
+    const steps = page.locator('.pp-step');
+    await expect(steps).toHaveCount(2);
+    await steps.first().click();
+    await expect(steps.first()).toHaveAttribute('aria-current', 'step');
+    release();
+    await expect.poll(() => served).toBe(true);
+    await page.waitForTimeout(500);
+    await expect(steps.first()).toHaveAttribute('aria-current', 'step');
+    await expect(steps.nth(1)).not.toHaveAttribute('aria-current', 'step');
+    await expect(page.getByText('Deck 1 of 2')).toBeVisible();
+  });
+
+  test('playlist: the pre-rename user id is migrated once to oz-radio.userId', async ({ page }) => {
+    await open(page, 'admin', '/');
+    await page.evaluate((k) => { localStorage.clear(); localStorage.setItem(k, 'u_legacy-123'); }, LEGACY_USER_ID_KEY);
+    const progressUser = async () => {
+      const req = page.waitForRequest((r) => r.method() === 'GET' && /\/api\/playlists\/pl-1\/progress\?/.test(r.url()));
+      await page.goto('/playlists/pl-1');
+      return new URL((await req).url()).searchParams.get('user_id');
+    };
+    expect(await progressUser()).toBe('u_legacy-123');
+    const stored = () => page.evaluate((k) => ({ next: localStorage.getItem('oz-radio.userId'), old: localStorage.getItem(k) }), LEGACY_USER_ID_KEY);
+    expect(await stored()).toEqual({ next: 'u_legacy-123', old: null });
+    // A stale legacy key must never override the migrated id.
+    await page.evaluate((k) => localStorage.setItem(k, 'u_other'), LEGACY_USER_ID_KEY);
+    expect(await progressUser()).toBe('u_legacy-123');
+    expect((await stored()).next).toBe('u_legacy-123');
+  });
+
+  test('playlist: a first-time user gets a fresh id under oz-radio.userId', async ({ page }) => {
+    await open(page, 'admin', '/');
+    await page.evaluate(() => localStorage.clear());
+    const req = page.waitForRequest((r) => r.method() === 'GET' && /\/api\/playlists\/pl-1\/progress\?/.test(r.url()));
+    await page.goto('/playlists/pl-1');
+    const userId = new URL((await req).url()).searchParams.get('user_id');
+    expect(userId).toMatch(/^u_[0-9a-f-]{36}$/);
+    expect(await page.evaluate(() => localStorage.getItem('oz-radio.userId'))).toBe(userId);
+    expect(await page.evaluate((k) => localStorage.getItem(k), LEGACY_USER_ID_KEY)).toBeNull();
+  });
 });
 
 test.describe('Regression — redesign behaviours', () => {
@@ -231,11 +299,11 @@ test.describe('Regression — redesign behaviours', () => {
     await page.getByTestId('demo-start').click();
     await page.clock.runFor(50);
     const left = page.getByTestId('demo-time-left');
-    await expect(left).toHaveText('3:00 left');
+    await expect(left).toHaveText('Demo time left 3:00');
     await page.clock.runFor(1000);
-    await expect(left).toHaveText('2:59 left');
+    await expect(left).toHaveText('Demo time left 2:59');
     await page.clock.runFor(60_000);
-    await expect(left).toHaveText('1:59 left');
+    await expect(left).toHaveText('Demo time left 1:59');
   });
 
   test('host disc falls back to a monogram when the avatar image fails', async ({ page }) => {
@@ -248,6 +316,95 @@ test.describe('Regression — redesign behaviours', () => {
     await expect(sofia).toContainText('S');
     const lucas = page.getByRole('img', { name: 'Lucas' }).first();
     await expect(lucas).toHaveAttribute('data-avatar-status', /keyed|original/);
+  });
+});
+
+test.describe('Regression — speaker notes read aloud', () => {
+  const notes = (page: Page) => page.getByTestId('slide-notes');
+
+  test('admin sees the notes the avatar reads, in English by default', async ({ page }) => {
+    const errors = await open(page, 'admin', '/decks/deck-plain/present');
+    await expect(page.getByTestId('slide-notes-label')).toHaveText('Speaker notes — read aloud');
+    await expect(page.getByTestId('slide-notes-text')).toHaveText('Notes 1');
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveCount(0);
+    await expectHealthy(page, errors);
+  });
+
+  test('fr-FR shows the cached French translation on every slide', async ({ page }) => {
+    await open(page, 'admin', '/decks/deck-plain/present');
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('fr-FR');
+    await expect(notes(page).getByText('Speaker notes — read aloud')).toBeVisible();
+    await expect(page.getByTestId('slide-notes-text')).toHaveText(FR_NOTES[0]);
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveCount(0);
+    await page.getByTestId('slide-next').click();
+    await expect(page.getByTestId('slide-notes-text')).toHaveText(FR_NOTES[1]);
+    // Already cached: no translation request.
+    expect(calls.some((c) => c.path.endsWith('/translate-notes'))).toBe(false);
+  });
+
+  test('an uncached language is translated on demand (admin) and narrated', async ({ page }) => {
+    await open(page, 'admin', '/decks/deck-plain/present');
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('es-ES');
+    await expect(page.getByTestId('slide-notes-text')).toHaveText('Notes es-ES 1');
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveCount(0);
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/decks/deck-plain/translate-notes');
+    expect(JSON.parse(post!.body!).target_language).toBe('es-ES');
+  });
+
+  test('original notes are shown with a hint when no translation is available', async ({ page }) => {
+    await mockApi(page, 'admin');
+    await page.route('**/api/decks/*/translate-notes', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"detail":"Translation service not configured"}' }));
+    await page.goto('/decks/deck-plain/present');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('de-DE');
+    await expect(page.getByTestId('slide-notes-text')).toHaveText('Notes 1');
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveText('Original language — translation not available yet');
+  });
+
+  test('visitors never receive or see speaker notes', async ({ page }) => {
+    await open(page, 'visitor', '/decks/deck-live/present');
+    await expect(page.getByTestId('slide-counter')).toBeVisible();
+    await expect(notes(page)).toHaveCount(0);
+    expect(calls.some((c) => c.path.endsWith('/translate-notes'))).toBe(false);
+  });
+
+  test('narrationFor keeps the avatar priority (translated → notes → body → title)', async ({ page }) => {
+    await open(page, 'visitor', '/');
+    const results = await page.evaluate(async () => {
+      try {
+        const modPath = '/src/services/narration.ts';
+        const { narrationFor } = await import(/* @vite-ignore */ modPath);
+        const full = { title: 'T', body: 'B', notes: 'N', translated_notes: { 'fr-FR': 'N-fr' } };
+        return [
+          narrationFor(full, 'en-US'),
+          narrationFor(full, 'fr-FR'),
+          narrationFor(full, 'de-DE'),
+          narrationFor(full, 'fr-FR', 'fr-FR'),
+          narrationFor({ ...full, notes: '' , translated_notes: {} }, 'fr-FR'),
+          narrationFor({ title: 'T', body: '', notes: '' }, 'en-US'),
+          narrationFor({ title: '', body: '', notes: '' }, 'fr-FR'),
+          narrationFor({ title: 'T', body: 'B', notes: 'N' }, 'de-DE', 'de-DE'),
+          // French deck narrated in English: the cached en-US translation is read.
+          narrationFor({ title: 'T', notes: 'N-fr', translated_notes: { 'en-US': 'N-en' } }, 'en-US', 'fr-FR'),
+          narrationFor({ title: 'T', notes: 'N-fr' }, 'en-US', 'fr-FR'),
+        ];
+      } catch {
+        return null;
+      }
+    });
+    test.skip(results === null, 'module import needs the Vite dev server');
+    expect(results).toEqual([
+      { text: 'N', source: 'notes', fallbackOriginal: false },
+      { text: 'N-fr', source: 'translated_notes', fallbackOriginal: false },
+      { text: 'N', source: 'notes', fallbackOriginal: true },
+      { text: 'N', source: 'notes', fallbackOriginal: false },
+      { text: 'B', source: 'body', fallbackOriginal: true },
+      { text: 'T', source: 'title', fallbackOriginal: false },
+      { text: '', source: 'none', fallbackOriginal: false },
+      { text: 'N', source: 'notes', fallbackOriginal: false },
+      { text: 'N-en', source: 'translated_notes', fallbackOriginal: false },
+      { text: 'N-fr', source: 'notes', fallbackOriginal: true },
+    ]);
   });
 });
 

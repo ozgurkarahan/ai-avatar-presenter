@@ -1,6 +1,6 @@
-# DeckFM — Deep Dive: Azure Deployment & Architecture
+# Oz Radio — Deep Dive: Azure Deployment & Architecture
 
-> **Document scope**: Full technical walkthrough of the cleanup, architecture decisions, Azure infrastructure, and deployment pipeline for the DeckFM PoC.
+> **Document scope**: Full technical walkthrough of the cleanup, architecture decisions, Azure infrastructure, and deployment pipeline for the Oz Radio PoC.
 >
 > **Audience**: Technical stakeholders, Azure architects, developers.
 >
@@ -27,7 +27,7 @@
 
 ## 1. Executive Summary
 
-DeckFM is a PoC built for the organization's training teams that allows users to upload PowerPoint presentations and have a lifelike AI avatar present them with multilingual text-to-speech. The solution was cleaned up from a local-development prototype into a production-ready Azure deployment.
+Oz Radio is a PoC built for the organization's training teams that allows users to upload PowerPoint presentations and have a lifelike AI avatar present them with multilingual text-to-speech. The solution was cleaned up from a local-development prototype into a production-ready Azure deployment.
 
 ### What We Deployed
 
@@ -124,7 +124,7 @@ https://<your-container-app>.azurecontainerapps.io
 │  │  <your-acr>.azurecr.io             │  │  <your-log-analytics>            │ │
 │  │                                   │  │                                  │ │
 │  │  Repository:                      │  │  • Container App system logs     │ │
-│  │  └── ai-presenter:latest          │  │  • Application stdout/stderr     │ │
+│  │  └── oz-radio/backend-<env>       │  │  • Application stdout/stderr     │ │
 │  │      Multi-stage Docker image     │  │  • 30-day retention              │ │
 │  │      ~800MB (includes LibreOffice)│  │  • PerGB2018 pricing             │ │
 │  └──────────────────────────────────┘  └──────────────────────────────────┘ │
@@ -192,7 +192,7 @@ We chose a **single-container architecture** where the React frontend is built a
 │   └── STS Token Issuance             (AAD → Speech JWT exchange)
 │
 ├── <your-acr>                         Microsoft.ContainerRegistry/registries (Basic)
-│   └── ai-presenter:latest            Docker image repository
+│   └── oz-radio/backend-<env>         Docker image repository (azd: <project>/<service>-<env>)
 │
 ├── <your-container-env>               Microsoft.App/managedEnvironments
 │   └── Log Analytics integration      (<your-log-analytics>)
@@ -485,7 +485,7 @@ az deployment sub create \
 # 2. Build Docker image in the cloud (no local Docker needed)
 az acr build \
   --registry <your-acr> \
-  --image ai-presenter:latest \
+  --image oz-radio/backend-<env>:latest \
   --file Dockerfile . \
   --no-logs
 
@@ -493,7 +493,7 @@ az acr build \
 az containerapp update \
   --name <your-container-app> \
   --resource-group <your-resource-group> \
-  --image <your-acr>.azurecr.io/ai-presenter:latest
+  --image <your-acr>.azurecr.io/oz-radio/backend-<env>:latest
 ```
 
 ### CI/CD Flow Diagram
@@ -659,7 +659,7 @@ az containerapp update \
 ### File Structure (Final State)
 
 ```
-deckfm/
+oz-radio/
 ├── .azure/                         azd environment config (gitignored)
 ├── .claude/                        Claude Code config (gitignored)
 ├── .dockerignore                   Docker build exclusions

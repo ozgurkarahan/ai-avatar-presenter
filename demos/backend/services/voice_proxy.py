@@ -17,6 +17,7 @@ from azure.identity import DefaultAzureCredential
 from config import AzureConfig
 from services import avatar_registry
 from services.voice_catalog import HD_VOICES, is_allowed_voice
+from services.voice_questions import QaOptions, QaSession
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,9 @@ def build_session_config(
         },
         "avatar": avatar_registry.voice_live_session_avatar(entry),
         "instructions": default_instructions,
+        # Word timestamps (response.audio_timestamp.delta) let the client
+        # estimate the audible end of a turn (response.done arrives early).
+        "output_audio_timestamp_types": ["word"],
     }
     if instructions is not None:
         session["instructions"] = instructions.format(lang_name=lang_name)
@@ -217,6 +221,21 @@ def slide_narration(slide: Dict[str, Any]) -> str:
     return text[:DEMO_MAX_NARRATION_CHARS]
 
 
+def demo_narration_chars(slides: list[Dict[str, Any]]) -> list[int]:
+    """Narration length per slide in index order (counts only, never text)
+    — what ``demo.speak`` would send, as resolved by :class:`DemoMessageFilter`."""
+    by_index: Dict[int, Dict[str, Any]] = {}
+    for i, s in enumerate(slides or []):
+        if not isinstance(s, dict):
+            continue
+        try:
+            idx = int(s.get("index", i))
+        except (TypeError, ValueError):
+            idx = i
+        by_index.setdefault(idx, s)
+    return [len(slide_narration(by_index[i])) for i in sorted(by_index)]
+
+
 def speak_messages(text: str) -> list[str]:
     """Client→Azure messages that make the avatar narrate ``text``
     (mirrors AvatarPanel.speakSlide exactly)."""
@@ -237,9 +256,12 @@ class DemoMessageFilter:
     """Strict allowlist for client→server messages in a demo session.
 
     Accepted: one ``session.avatar.connect`` (SDP offer), ``demo.speak``
-    (server looks up stored narration) and ``response.cancel``. Everything
-    else is dropped silently.
+    (server looks up stored narration) and ``response.cancel``; plus, via
+    :meth:`filter_qa`, the demo subset of raise-hand Q&A messages (handled by
+    the backend, never forwarded). Everything else is dropped silently.
     """
+
+    QA_TYPES = frozenset({"qa.begin", "qa.audio", "qa.commit", "qa.cancel", "qa.resume"})
 
     def __init__(
         self,
@@ -247,6 +269,7 @@ class DemoMessageFilter:
         max_speaks: int,
         min_interval: float = DEMO_MIN_SPEAK_INTERVAL_SECONDS,
         clock: Callable[[], float] = time.monotonic,
+        remaining_ms: Optional[Callable[[], int]] = None,
     ) -> None:
         self._slides: Dict[int, Dict[str, Any]] = {}
         for i, s in enumerate(slides or []):
@@ -263,6 +286,31 @@ class DemoMessageFilter:
         self._clock = clock
         self._last_speak: Optional[float] = None
         self._sdp_sent = False
+        self._remaining_ms = remaining_ms
+
+    def filter_qa(self, data: Any) -> Optional[Dict[str, Any]]:
+        """Sanitised demo Q&A message, or ``None`` when ``data`` is not an
+        allowed demo Q&A message (``qa.text``, ``context.switch`` and
+        ``mode: "now"`` are never allowed in the demo)."""
+        if not isinstance(data, str) or len(data) > DEMO_MAX_CLIENT_MESSAGE_BYTES:
+            return None
+        try:
+            msg = json.loads(data)
+        except (json.JSONDecodeError, ValueError):
+            return None
+        if not isinstance(msg, dict) or msg.get("type") not in self.QA_TYPES:
+            return None
+        msg_type = msg["type"]
+        out: Dict[str, Any] = {"type": msg_type, "request_id": msg.get("request_id")}
+        if msg_type == "qa.begin":
+            if msg.get("mode", "after_slide") != "after_slide":
+                return None
+            out["slide"] = msg.get("slide")
+            out["mode"] = "after_slide"
+        elif msg_type == "qa.audio":
+            out["seq"] = msg.get("seq")
+            out["audio"] = msg.get("audio")
+        return out
 
     def handle(self, data: Any) -> tuple[list[str], list[Dict[str, Any]]]:
         """Return ``(messages_to_azure, messages_to_client)`` for one client frame."""
@@ -318,6 +366,8 @@ class DemoMessageFilter:
             "chars": len(text),
             "remaining": self.max_speaks - self.speaks,
         }
+        if self._remaining_ms is not None:
+            ack["remaining_ms"] = self._remaining_ms()
         return speak_messages(text), [ack]
 
 
@@ -328,6 +378,7 @@ async def handle_voice_proxy(
     avatar_style: str = DEFAULT_AVATAR_STYLE,
     language: str = "en-US",
     voice_name: Optional[str] = None,
+    qa: Optional[QaOptions] = None,
 ) -> None:
     """Handle a WebSocket proxy connection between client and Azure Voice API.
 
@@ -338,6 +389,8 @@ async def handle_voice_proxy(
         avatar_style: Avatar style
         language: Language code
         voice_name: Optional voice id (must be allowlisted)
+        qa: Optional raise-hand Q&A options; ``qa.*`` / ``context.*`` client
+            messages are always intercepted and never forwarded to Azure.
     """
     session_config = build_session_config(
         language=language,
@@ -347,7 +400,19 @@ async def handle_voice_proxy(
     )
     entry = avatar_registry.get(avatar_character or None)
     redact = {entry.foundry_name: entry.id} if entry.customized and entry.foundry_name != entry.id else {}
-    await _run_proxy(client_ws, config, session_config, redact, _forward_client_to_azure)
+    if qa is None:
+        await _run_proxy(client_ws, config, session_config, redact, _forward_client_to_azure)
+        return
+    qa.language = language
+
+    async def pump(cws: Any, azure_ws: Any) -> None:
+        session = _make_qa_session(qa, config, cws, azure_ws)
+        try:
+            await _forward_client_to_azure(cws, azure_ws, session)
+        finally:
+            session.close()
+
+    await _run_proxy(client_ws, config, session_config, redact, pump)
 
 
 async def handle_demo_proxy(
@@ -358,21 +423,105 @@ async def handle_demo_proxy(
     slides: list[Dict[str, Any]],
     max_speaks: int,
     avatar_id: Optional[str] = None,
+    deadline: Optional[float] = None,
+    qa: Optional[QaOptions] = None,
 ) -> None:
     """Narration-only proxy for the anonymous public demo.
 
     The session config is 100% server-side and the client can only send an
-    SDP offer, ``demo.speak`` (stored slide narration) and ``response.cancel``.
-    The Azure connection is torn down as soon as either side goes away.
+    SDP offer, ``demo.speak`` (stored slide narration), ``response.cancel``
+    and the demo subset of ``qa.*`` (handled server-side, only server text is
+    spoken). ``deadline`` (``time.monotonic()``) adds ``remaining_ms`` to the
+    acks. The Azure connection is torn down as soon as either side goes away.
     """
     session_config, entry = build_demo_session_config(language, avatar_id)
     redact = {entry.foundry_name: entry.id} if entry.customized and entry.foundry_name != entry.id else {}
-    flt = DemoMessageFilter(slides, max_speaks)
+    remaining = None
+    if deadline is not None:
+        def remaining() -> int:
+            return max(0, int((deadline - time.monotonic()) * 1000))
+    flt = DemoMessageFilter(slides, max_speaks, remaining_ms=remaining)
+    if qa is not None:
+        qa.language = language
+        qa.access = "demo"
+        if qa.deadline is None:
+            qa.deadline = deadline
 
     async def pump(cws: Any, azure_ws: Any) -> None:
-        await _forward_demo_client_to_azure(cws, azure_ws, flt)
+        session = _make_qa_session(qa, config, cws, azure_ws) if qa is not None else None
+        try:
+            await _forward_demo_client_to_azure(cws, azure_ws, flt, session)
+        finally:
+            if session is not None:
+                session.close()
 
     await _run_proxy(client_ws, config, session_config, redact, pump, generic_errors=True)
+
+
+class _SerializedClient:
+    """Browser socket whose writes are serialized: the Azure→client loop and
+    background Q&A tasks send concurrently."""
+
+    def __init__(self, ws: Any) -> None:
+        self._ws = ws
+        self._lock = asyncio.Lock()
+
+    async def send_json(self, data: Any) -> None:
+        async with self._lock:
+            await self._ws.send_json(data)
+
+    async def send_text(self, data: str) -> None:
+        async with self._lock:
+            await self._ws.send_text(data)
+
+    async def send_bytes(self, data: bytes) -> None:
+        async with self._lock:
+            await self._ws.send_bytes(data)
+
+    async def receive_text(self) -> str:
+        return await self._ws.receive_text()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._ws, name)
+
+
+class _SerializedAzure:
+    """Azure socket whose writes are serialized (client pump + Q&A tasks);
+    :meth:`send_many` keeps a multi-message turn contiguous."""
+
+    def __init__(self, ws: Any) -> None:
+        self._ws = ws
+        self._lock = asyncio.Lock()
+
+    async def send(self, data: Any) -> None:
+        async with self._lock:
+            await self._ws.send(data)
+
+    async def send_many(self, messages: list[str]) -> None:
+        async with self._lock:
+            for m in messages:
+                await self._ws.send(m)
+
+    def __aiter__(self) -> Any:
+        return self._ws.__aiter__()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._ws, name)
+
+
+async def _send_all(azure_ws: Any, messages: list[str]) -> None:
+    if hasattr(azure_ws, "send_many"):
+        await azure_ws.send_many(messages)
+    else:
+        for m in messages:
+            await azure_ws.send(m)
+
+
+def _make_qa_session(opts: QaOptions, config: AzureConfig, client_ws: Any, azure_ws: Any) -> QaSession:
+    async def speak(text: str) -> None:
+        await _send_all(azure_ws, speak_messages(text))
+
+    return QaSession(opts, cfg=config, send_client=client_ws.send_json, speak=speak)
 
 
 async def _run_proxy(
@@ -404,6 +553,8 @@ async def _run_proxy(
             ping_interval=30,
         ) as azure_ws:
             logger.info("Connected to Azure Voice API")
+            client_ws = _SerializedClient(client_ws)
+            azure_ws = _SerializedAzure(azure_ws)
 
             # Send proxy.connected to client
             await client_ws.send_json({"type": "proxy.connected", "message": "Connected to Azure Voice API"})
@@ -443,18 +594,25 @@ async def _run_proxy(
             pass
 
 
-async def _forward_demo_client_to_azure(client_ws: Any, azure_ws: Any, flt: DemoMessageFilter) -> None:
+async def _forward_demo_client_to_azure(
+    client_ws: Any, azure_ws: Any, flt: DemoMessageFilter, qa: Optional[QaSession] = None,
+) -> None:
     """Forward only what :class:`DemoMessageFilter` allows; reply to the client
-    with demo acks / notices."""
+    with demo acks / notices. Allowed demo ``qa.*`` messages go to ``qa``."""
     try:
         while True:
             data = await client_ws.receive_text()
+            if qa is not None:
+                qa_msg = flt.filter_qa(data)
+                if qa_msg is not None:
+                    await qa.handle(qa_msg)
+                    continue
             to_azure, to_client = flt.handle(data)
             if not to_azure and not to_client:
                 logger.info("Demo client→Azure: dropped message (len=%s)", len(data))
                 continue
-            for out in to_azure:
-                await azure_ws.send(out)
+            if to_azure:
+                await _send_all(azure_ws, to_azure)
             for note in to_client:
                 await client_ws.send_json(note)
     except Exception as e:
@@ -472,6 +630,8 @@ ALLOWED_CLIENT_TYPES = frozenset({
     "input_audio_buffer.append",
     "input_audio_buffer.commit",
     "input_audio_buffer.clear",
+    # Stops avatar speech immediately (avatar mode; "Ask now" after response.cancel).
+    "output_audio_buffer.clear",
 })
 MAX_CLIENT_MESSAGE_BYTES = 256 * 1024
 MAX_CLIENT_TEXT_CHARS = 8_000
@@ -490,6 +650,8 @@ def sanitize_client_message(data: str) -> Optional[str]:
     msg_type = msg.get("type")
     if msg_type not in ALLOWED_CLIENT_TYPES:
         return None
+    if msg_type == "output_audio_buffer.clear":
+        return json.dumps({"type": "output_audio_buffer.clear"})
     if msg_type == "response.create":
         resp = msg.get("response")
         if isinstance(resp, dict):
@@ -510,11 +672,36 @@ def sanitize_client_message(data: str) -> Optional[str]:
     return json.dumps(msg)
 
 
-async def _forward_client_to_azure(client_ws: Any, azure_ws: Any) -> None:
-    """Forward allowlisted messages from browser client to Azure Voice API."""
+def intercepted_message(data: Any) -> Optional[Dict[str, Any]]:
+    """The parsed message when ``data`` is a backend-handled ``qa.*`` /
+    ``context.*`` message (never forwarded to Azure), else ``None``."""
+    if not isinstance(data, str) or len(data) > MAX_CLIENT_MESSAGE_BYTES:
+        return None
+    if '"qa.' not in data and '"context.' not in data:
+        return None
+    try:
+        msg = json.loads(data)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(msg, dict):
+        return None
+    msg_type = msg.get("type")
+    if isinstance(msg_type, str) and msg_type.startswith(("qa.", "context.")):
+        return msg
+    return None
+
+
+async def _forward_client_to_azure(client_ws: Any, azure_ws: Any, qa: Optional[QaSession] = None) -> None:
+    """Forward allowlisted messages from browser client to Azure Voice API.
+    ``qa.*`` / ``context.*`` go to ``qa`` (or are dropped without it)."""
     try:
         while True:
             data = await client_ws.receive_text()
+            intercepted = intercepted_message(data)
+            if intercepted is not None:
+                if qa is not None:
+                    await qa.handle(intercepted)
+                continue
             safe = sanitize_client_message(data)
             if safe is None:
                 logger.info("Client→Azure: dropped disallowed message (len=%s)", len(data))

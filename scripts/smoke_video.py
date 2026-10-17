@@ -10,7 +10,7 @@ import json, os, sys, time, urllib.request
 from pathlib import Path
 
 BASE = os.environ.get("AI_PRESENTER_BASE_URL", "http://localhost:8000").rstrip("/") + "/api/video"
-DEFAULT_PPTX = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "samples" / "circular-economy.pptx"
+DEFAULT_PPTX = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "samples" / "ai-agents-mcp.pptx"
 
 def get(path):
     with urllib.request.urlopen(f"{BASE}{path}") as r:

@@ -168,6 +168,7 @@ function LivePresenter() {
               onSlideChange={setCurrentSlide}
               videoPlaying={videoPlaying}
               onRequestVideoAutoPlay={() => setAutoPlayVideo(true)}
+              presentationId={presentation.id}
             />
             <div className="live-presenter__qa">
               <AdminOnly action="chat with the presenter agent">

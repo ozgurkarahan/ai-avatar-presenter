@@ -32,6 +32,9 @@
     "customAvatarsJson": {
       "value": "${CUSTOM_AVATARS_JSON=}"
     },
+    "hideStockAvatars": {
+      "value": "${HIDE_STOCK_AVATARS=false}"
+    },
     "enableUrlIngest": {
       "value": "${ENABLE_URL_INGEST=false}"
     },
@@ -70,6 +73,21 @@
     },
     "demoQuotaExemptIps": {
       "value": "${DEMO_QUOTA_EXEMPT_IPS=}"
+    },
+    "demoQaEnabled": {
+      "value": "${DEMO_QA_ENABLED=false}"
+    },
+    "demoQaMaxQuestions": {
+      "value": "${DEMO_QA_MAX_QUESTIONS=2}"
+    },
+    "demoQaSessionSeconds": {
+      "value": "${DEMO_QA_SESSION_SECONDS=300}"
+    },
+    "demoQaDailyMax": {
+      "value": "${DEMO_QA_DAILY_MAX=40}"
+    },
+    "demoQaDailyPerIp": {
+      "value": "${DEMO_QA_DAILY_PER_IP=6}"
     },
     "useExternalAiServices": {
       "value": "${USE_EXTERNAL_AI_SERVICES=false}"

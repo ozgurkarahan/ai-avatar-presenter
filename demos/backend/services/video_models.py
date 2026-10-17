@@ -7,7 +7,7 @@ Prefix: /api/video
 
   POST   /ingest                 multipart file (pptx|pdf|png|jpg|jpeg)
                                  -> IngestResponse { doc_id, slides[] }
-  POST   /script/{doc_id}        ScriptRequest { language, style?, focus?, voice }
+  POST   /script/{doc_id}        ScriptRequest { language, style?, focus?, audience_level?, voice }
                                  -> NDJSON stream: {"event":"narration","data":SlideNarration},
                                     final line {"event":"done","data":VideoScript}
   GET    /script/{doc_id}        -> VideoScript
@@ -31,6 +31,8 @@ from enum import Enum
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+from services.podcast_models import AudienceLevel
 
 
 SourceKind = Literal["pptx", "pdf", "image"]
@@ -83,6 +85,7 @@ class VideoScript(BaseModel):
     language: str = "en-US"
     style: Optional[Style] = "explainer"
     focus: Optional[str] = None
+    audience_level: Optional[AudienceLevel] = None
     voice: str
     narrations: list[SlideNarration] = Field(default_factory=list)
 
@@ -91,6 +94,7 @@ class ScriptRequest(BaseModel):
     language: str = Field("en-US", max_length=16)
     style: Optional[Style] = "explainer"
     focus: Optional[str] = Field(None, max_length=500)
+    audience_level: Optional[AudienceLevel] = None
     voice: str = Field(..., max_length=100)
 
 
@@ -161,6 +165,7 @@ class LibrarySummary(BaseModel):
     duration_sec: Optional[float] = None
     language: str = "en-US"
     voice: str = ""
+    audience_level: Optional[AudienceLevel] = None
     slide_count: int = 0
     thumbnail_url: Optional[str] = None
     published: bool = False

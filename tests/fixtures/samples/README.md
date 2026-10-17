@@ -18,14 +18,14 @@ Progression: fundamentals → risk identification → emergency response.
 | 2 | `risques-chantier.pptx` | Identifier et prévenir les risques de chantier |
 | 3 | `intervention-urgence.pptx` | Intervention en cas d'urgence |
 
-### 🌱 Group B — Sustainability (🇬🇧 EN)
-Progression: why decarbonize → low-carbon materials → circular economy.
+### 🧠 Group B — Generative AI (🇬🇧 EN)
+Progression: AI models (LLM, SLM, open-weight) → context engineering & RAG → AI agents & MCP.
 
 | Order | File | Title |
 |---|---|---|
-| 1 | `decarbonization-intro.pptx` | Decarbonization: Introduction for industry |
-| 2 | `low-carbon-materials.pptx` | Low-carbon materials in construction |
-| 3 | `circular-economy.pptx` | Circular economy in practice |
+| 1 | `ai-models-intro.pptx` | AI models: An introduction for teams |
+| 2 | `context-engineering-rag.pptx` | Context engineering and RAG in practice |
+| 3 | `ai-agents-mcp.pptx` | AI agents and MCP in practice |
 
 ### 🤖 Group C — AI / Digital Transformation (🇪🇸 ES)
 Progression: intro to industrial AI → AI in production → AI ethics.
@@ -40,8 +40,8 @@ Progression: intro to industrial AI → AI in production → AI ethics.
 
 - **Decks catalog**: 9 decks in 3 languages → test upload, listing, filtering.
 - **Playlists**: 3 natural playlists creatable (manually and via AI recommend).
-- **AI playlist recommendation**: test topics "sécurité chantier" → group A, "decarbonization" → B, "inteligencia artificial" → C.
+- **AI playlist recommendation**: test topics "sécurité chantier" → group A, "retrieval-augmented generation" → B, "inteligencia artificial" → C.
 - **Video library**: each PPT exercises a different language + can be regenerated in another.
-- **Podcast library / Q&A**: coherent corpus for retrieval tests ("Quels matériaux bas carbone ?", "¿Qué es el mantenimiento predictivo?", etc.).
+- **Podcast library / Q&A**: coherent corpus for retrieval tests ("What is retrieval-augmented generation?", "¿Qué es el mantenimiento predictivo?", etc.).
 
 `manifest.json` is regenerated on each run and lists every deck with its group, language, tags, and slide count — consumable by automated e2e tests.

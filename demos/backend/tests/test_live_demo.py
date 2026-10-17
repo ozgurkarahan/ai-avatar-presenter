@@ -110,6 +110,10 @@ def _post_accept_close(client, url, headers=None):
 
 def _run_session(client, url=None, headers=None):
     with client.websocket_connect(url or _url(), headers=headers if headers is not None else ORIGIN) as ws:
+        started = ws.receive_json()
+        assert started["type"] == "demo.started"
+        assert started["remaining_ms"] == started["session_seconds"] * 1000
+        assert started["narration_chars"] == [28, 12, 0, 2000]
         assert ws.receive_json() == {"type": "proxy.connected"}
 
 
@@ -140,7 +144,13 @@ def test_demo_ws_rejects_foreign_or_missing_origin(client, demo_on):
 
 def test_demo_ws_happy_path_uses_deck_language_and_speak_cap(client, demo_on):
     _run_session(client, _url(extra="&avatar=harry"))
-    assert demo_on == [{"language": "fr-FR", "slides": SLIDES, "max_speaks": 8, "avatar_id": "harry"}]
+    assert len(demo_on) == 1
+    call = dict(demo_on[0])
+    deadline, qa = call.pop("deadline"), call.pop("qa")
+    assert call == {"language": "fr-FR", "slides": SLIDES, "max_speaks": 8, "avatar_id": "harry"}
+    assert isinstance(deadline, float)
+    assert qa.access == "demo" and qa.enabled is False and qa.max_questions == 2
+    assert qa.deadline == deadline and qa.slides == SLIDES and qa.language == "fr-FR"
     from security import DEMO_SESSIONS
 
     assert DEMO_SESSIONS.active == 0
@@ -237,6 +247,8 @@ def test_demo_ws_time_limit_4408_and_release(client, demo_on, monkeypatch, app_m
 
     monkeypatch.setattr(app_module, "handle_demo_proxy", slow_proxy)
     with client.websocket_connect(_url(), headers=ORIGIN) as ws:
+        assert ws.receive_json() == {"type": "demo.started", "session_seconds": 1, "remaining_ms": 1000,
+                                     "narration_chars": [28, 12, 0, 2000]}
         assert ws.receive_json()["type"] == "proxy.connected"
         with pytest.raises(WebSocketDisconnect) as exc:
             ws.receive_text()
@@ -274,11 +286,20 @@ def test_demo_max_speaks(monkeypatch):
 # ---------------------------------------------------------------------------
 def test_demo_config_shape(client, monkeypatch):
     monkeypatch.setenv("AUTH_MODE", "easyauth")
-    assert client.get("/api/demo/config").json() == {"enabled": False, "session_seconds": 180}
+    qa_off = {"enabled": False, "max_questions": 2, "max_audio_seconds": 15}
+    assert client.get("/api/demo/config").json() == {"enabled": False, "session_seconds": 180, "qa": qa_off}
     monkeypatch.setenv("PUBLIC_DEMO_ENABLED", "true")
     monkeypatch.setenv("DEMO_SESSION_SECONDS", "120")
     body = client.get("/api/demo/config").json()
-    assert body == {"enabled": True, "session_seconds": 120, "remaining_today": 20}
+    assert body == {"enabled": True, "session_seconds": 120, "remaining_today": 20, "qa": qa_off}
+    # Q&A on: the effective session cap becomes DEMO_QA_SESSION_SECONDS.
+    monkeypatch.setenv("DEMO_QA_ENABLED", "true")
+    monkeypatch.setenv("DEMO_QA_MAX_QUESTIONS", "3")
+    body = client.get("/api/demo/config").json()
+    assert body["session_seconds"] == 300
+    assert body["qa"] == {"enabled": True, "max_questions": 3, "max_audio_seconds": 15}
+    monkeypatch.setenv("DEMO_QA_SESSION_SECONDS", "240")
+    assert client.get("/api/demo/config").json()["session_seconds"] == 240
 
 
 # ---------------------------------------------------------------------------

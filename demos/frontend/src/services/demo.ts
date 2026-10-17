@@ -3,14 +3,34 @@
 // actual guardrails (deck allowlist, quotas, time cap) are enforced server-side.
 import { useEffect, useState } from 'react';
 
+export interface DemoQaConfig {
+  enabled: boolean;
+  max_questions: number;
+  max_audio_seconds: number;
+}
+
 export interface DemoConfig {
   enabled: boolean;
+  /** Effective session cap (larger when demo Q&A is on, per the server). */
   session_seconds: number;
   remaining_today?: number;
+  qa: DemoQaConfig;
   loading: boolean;
 }
 
-const DISABLED: DemoConfig = { enabled: false, session_seconds: 180, loading: false };
+const QA_OFF: DemoQaConfig = { enabled: false, max_questions: 0, max_audio_seconds: 15 };
+const DISABLED: DemoConfig = { enabled: false, session_seconds: 180, qa: QA_OFF, loading: false };
+
+function parseQa(raw: any): DemoQaConfig {
+  if (!raw || raw.enabled !== true) return QA_OFF;
+  const max = Number(raw.max_questions);
+  const audio = Number(raw.max_audio_seconds);
+  return {
+    enabled: true,
+    max_questions: Number.isFinite(max) && max > 0 ? Math.floor(max) : 0,
+    max_audio_seconds: Number.isFinite(audio) && audio > 0 ? audio : 15,
+  };
+}
 
 let cache: Promise<DemoConfig> | null = null;
 
@@ -25,6 +45,7 @@ export function loadDemoConfig(): Promise<DemoConfig> {
           enabled: d?.enabled === true,
           session_seconds: Number.isFinite(seconds) && seconds > 0 ? seconds : 180,
           remaining_today: typeof d?.remaining_today === 'number' ? d.remaining_today : undefined,
+          qa: parseQa(d?.qa),
           loading: false,
         };
       })
@@ -59,6 +80,27 @@ export function demoCloseMessage(code: number, opened: boolean): string | null {
       if (!opened && code === 1006) return 'Demo not available for this deck';
       return null;
   }
+}
+
+/** m:ss for countdowns (seconds are rounded up by the caller). */
+export function formatClock(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/**
+ * How many slides fit in the remaining demo time, given per-slide narration
+ * seconds (from the current slide onwards).
+ */
+export function slidesThatFit(slideSeconds: number[], secondsLeft: number): number {
+  let used = 0;
+  let n = 0;
+  for (const s of slideSeconds) {
+    used += s;
+    if (used > secondsLeft) break;
+    n += 1;
+  }
+  return n;
 }
 
 export function formatMinutes(seconds: number): string {

@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import {
   DialogueTurn, Document as PodDoc, JobState, Layout,
-  PodcastJob, RoleConfig, Speaker, Style, VoiceOption,
+  PodcastJob, RoleConfig, Speaker, Style, VoiceOption, AudienceLevel,
+  AUDIENCE_LEVELS, AUDIENCE_LEVEL_LABELS, toAudienceLevel,
   getJob, ingestFile, ingestUrl, listVoices,
   startRender, streamScript,
 } from '../services/podcast';
@@ -72,15 +73,18 @@ function PodcastGenerator() {
   const [urlInput, setUrlInput] = useState('');
   const [focus, setFocus] = useState('');
   const [style, setStyle] = useState<Style>('casual');
+  const [audienceLevel, setAudienceLevel] = useState<AudienceLevel | null>(null);
   const [numTurns, setNumTurns] = useState(8);
   const [language, setLanguage] = useState('en-US');
   const [avatars, setAvatars] = useState<AvatarInfo[]>([]);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
+  // Same cast as the live presenter and the published library: Sofia interviews,
+  // Lucas is the expert. Display names default to the avatar names.
   const [interviewer, setInterviewer] = useState<RoleConfig>({
-    display_name: 'Dr. Marc Chen', avatar: '', voice: 'en-US-Andrew:DragonHDLatestNeural',
+    display_name: '', avatar: '', voice: 'en-US-Ava:DragonHDLatestNeural',
   });
   const [expert, setExpert] = useState<RoleConfig>({
-    display_name: 'Dr. Sophie Patel', avatar: '', voice: 'en-US-Ava:DragonHDLatestNeural',
+    display_name: '', avatar: '', voice: 'en-US-Andrew:DragonHDLatestNeural',
   });
   const [streamingTurns, setStreamingTurns] = useState<DialogueTurn[]>([]);
   const [scriptId, setScriptId] = useState<string | null>(null);
@@ -95,10 +99,14 @@ function PodcastGenerator() {
     listAvatars().then((list) => {
       setAvatars(list);
       const ids = new Set(list.map((a) => a.id));
-      const male = pickAvatarForGender(list, 'male');
       const female = pickAvatarForGender(list, 'female');
-      setInterviewer((prev) => (ids.has(prev.avatar) ? prev : { ...prev, avatar: male?.id ?? '' }));
-      setExpert((prev) => (ids.has(prev.avatar) ? prev : { ...prev, avatar: female?.id ?? '' }));
+      const male = pickAvatarForGender(list, 'male');
+      const withAvatar = (prev: RoleConfig, pick: AvatarInfo | undefined): RoleConfig => {
+        const avatar = ids.has(prev.avatar) ? list.find((a) => a.id === prev.avatar) : pick;
+        return { ...prev, avatar: avatar?.id ?? '', display_name: prev.display_name || avatar?.display_name || '' };
+      };
+      setInterviewer((prev) => withAvatar(prev, female));
+      setExpert((prev) => withAvatar(prev, male));
     }).catch(() => {});
   }, []);
   useEffect(() => {
@@ -112,8 +120,8 @@ function PodcastGenerator() {
       if (intOk && expOk) return;
       const male = vs.find(v => v.gender === 'male');
       const female = vs.find(v => v.gender === 'female');
-      const intPick = male ?? vs[0];
-      const expPick = female && female.id !== intPick.id ? female : vs.find(v => v.id !== intPick.id) ?? vs[0];
+      const intPick = female ?? vs[0];
+      const expPick = male && male.id !== intPick.id ? male : vs.find(v => v.id !== intPick.id) ?? vs[0];
       if (!intOk) setInterviewer(prev => ({ ...prev, voice: intPick.id }));
       if (!expOk) setExpert(prev => ({ ...prev, voice: expPick.id }));
     }).catch(() => {});
@@ -150,7 +158,10 @@ function PodcastGenerator() {
     setStreamingTurns([]); setScriptId(null); setScriptError(null);
     abortRef.current?.();
     streamScript(
-      { document_id: doc.id, language, style, length: 'medium', num_turns: numTurns, focus: focus || undefined },
+      {
+        document_id: doc.id, language, style, length: 'medium', num_turns: numTurns, focus: focus || undefined,
+        audience_level: audienceLevel,
+      },
       (t) => setStreamingTurns((prev) => [...prev, t]),
       (id) => { setScriptId(id); setPhase('review'); },
       (msg) => setScriptError(msg),
@@ -160,8 +171,11 @@ function PodcastGenerator() {
   async function kickOffRender() {
     if (!scriptId) return;
     try {
+      const named = (r: RoleConfig, speaker: Speaker): RoleConfig => ({
+        ...r, display_name: r.display_name.trim() || avatars.find((a) => a.id === r.avatar)?.display_name || ROLE_LABEL[speaker],
+      });
       const j = await startRender({
-        script_id: scriptId, roles: { interviewer, expert },
+        script_id: scriptId, roles: { interviewer: named(interviewer, 'interviewer'), expert: named(expert, 'expert') },
         layout, music, intro,
       });
       setJob(j); setPhase('rendering');
@@ -180,11 +194,12 @@ function PodcastGenerator() {
         {phase === 'setup' && (
           <motion.div key="setup" {...fade}>
             <SetupPhase {...{
-              doc, uploadBusy, urlInput, focus, style, numTurns, language,
+              doc, uploadBusy, urlInput, focus, style, audienceLevel, numTurns, language,
             }}
               onUrlInput={setUrlInput} onFile={handleFile} onUrl={handleUrl}
               onFocusChange={setFocus} onApplyPrompt={(p) => setFocus(p.focus)}
-              onStyle={setStyle} onNumTurns={setNumTurns} onLanguage={setLanguage}
+              onStyle={setStyle} onAudienceLevel={setAudienceLevel}
+              onNumTurns={setNumTurns} onLanguage={setLanguage}
               onGenerate={startScript} />
           </motion.div>
         )}
@@ -244,6 +259,7 @@ interface SetupProps {
   focus: string; onFocusChange: (v: string) => void;
   onApplyPrompt: (p: typeof SAMPLE_PROMPTS[number]) => void;
   style: Style; onStyle: (s: Style) => void;
+  audienceLevel: AudienceLevel | null; onAudienceLevel: (l: AudienceLevel | null) => void;
   numTurns: number; onNumTurns: (n: number) => void;
   language: string; onLanguage: (l: string) => void;
   onGenerate: () => void;
@@ -279,7 +295,7 @@ function SetupPhase(p: SetupProps) {
               value={p.focus}
               onChange={(e) => p.onFocusChange(e.target.value)}
               rows={3}
-              placeholder="e.g. focus on ROI for retrofit customers"
+              placeholder="e.g. focus on when to use open-weight models"
             />
           </Field>
         </section>
@@ -293,6 +309,15 @@ function SetupPhase(p: SetupProps) {
               <option value="formal">Formal</option>
               <option value="debate">Debate</option>
               <option value="explainer">Explainer</option>
+            </Select>
+          </Field>
+          <Field label="Audience level" hint="Tunes vocabulary and depth for the listeners.">
+            <Select
+              value={p.audienceLevel ?? ''}
+              onChange={(e) => p.onAudienceLevel(toAudienceLevel(e.target.value))}
+            >
+              <option value="">Any (default)</option>
+              {AUDIENCE_LEVELS.map((lvl) => <option key={lvl} value={lvl}>{AUDIENCE_LEVEL_LABELS[lvl]}</option>)}
             </Select>
           </Field>
           <Field label={<>Turns <span className="pc-range-value tabular">{p.numTurns}</span></>} hint="Between 4 and 16 exchanges.">
@@ -400,7 +425,15 @@ function RoleCard({ speaker, role, onChange, avatars, voices }: {
           />
         </Field>
         <Field label="Avatar">
-          <Select value={role.avatar} onChange={(e) => onChange({ ...role, avatar: e.target.value })}>
+          <Select
+            value={role.avatar}
+            onChange={(e) => {
+              const next = avatars.find((a) => a.id === e.target.value);
+              // Keep a custom name; follow the avatar when the name was the default.
+              const followName = !role.display_name.trim() || role.display_name === avatar?.display_name;
+              onChange({ ...role, avatar: e.target.value, display_name: followName ? next?.display_name ?? '' : role.display_name });
+            }}
+          >
             {!role.avatar && <option value="">Choose an avatar</option>}
             {avatars.map((a) => <option key={a.id} value={a.id}>{a.display_name}</option>)}
           </Select>

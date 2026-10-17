@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Captions, Download, Headphones, Layers, Music, Package, Play, Plus, RotateCw, Trash2,
+  Captions, Download, GraduationCap, Headphones, Layers, Music, Package, Play, Plus, RotateCw, Trash2,
 } from 'lucide-react';
 import {
-  LibraryItem, LibrarySummary,
+  AUDIENCE_LEVEL_LABELS, LibraryItem, LibrarySummary, toAudienceLevel,
   deleteLibraryItem, getLibraryItem, listLibrary, publishLibraryItem,
 } from '../services/podcast';
 import { useAuth } from '../services/auth';
 import { type AvatarInfo, pickDefaultAvatar, useAvatars } from '../services/avatars';
 import { GateNotice, PublishBadge, PublishToggle } from '../components/AuthGate';
 import {
-  Alert, Button, ButtonLink, EmptyState, EpisodeList, EpisodeRow, HostsMini, Modal, PageHeader, Spinner,
+  Alert, Button, ButtonLink, Chip, EmptyState, EpisodeList, EpisodeRow, HostsMini, Modal, PageHeader, Spinner,
   buttonClass, episodeNumber, formatDate, formatDuration, humanizeTitle, languageName, pluralize,
 } from '../ui';
 import '../styles/pages/library.css';
@@ -20,6 +20,10 @@ const KIND = { icon: Headphones, label: 'Podcast' };
 const duration = (sec: number | null | undefined) => (sec && sec > 0 ? formatDuration(sec) : '—');
 const styleLabel = (style: string) => style.charAt(0).toUpperCase() + style.slice(1);
 const speakersOf = (item: LibrarySummary) => item.speaker_names?.filter(Boolean) ?? [];
+function audienceChip(level: unknown) {
+  const lvl = toAudienceLevel(level);
+  return lvl ? <Chip icon={GraduationCap} data-testid="audience-chip">{AUDIENCE_LEVEL_LABELS[lvl]} audience</Chip> : null;
+}
 
 export default function PodcastLibraryPage() {
   const auth = useAuth();
@@ -148,6 +152,7 @@ export default function PodcastLibraryPage() {
                     languageName(it.language),
                     speakers.length > 0 ? speakers.join(' & ') : null,
                     it.style ? styleLabel(it.style) : null,
+                    audienceChip(it.audience_level),
                     isAdmin ? <PublishBadge published={it.published} /> : null,
                   ]}
                   kind={KIND}
@@ -223,6 +228,7 @@ export default function PodcastLibraryPage() {
                 <span>{duration(selected.duration_sec)}</span>
                 <span>{languageName(selected.language)}</span>
                 {selected.style && <span>{styleLabel(selected.style)}</span>}
+                {audienceChip(selected.audience_level)}
                 {typeof selected.turn_count === 'number' && <span>{pluralize(selected.turn_count, 'turn')}</span>}
                 {speakersOf(selected).length > 0 && <span>{speakersOf(selected).join(' & ')}</span>}
               </div>

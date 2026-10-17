@@ -31,6 +31,7 @@ from azure.storage.blob import (
 )
 
 from config import AzureConfig
+from services.podcast_models import audience_level_or_none
 
 log = logging.getLogger(__name__)
 
@@ -114,6 +115,7 @@ class VideoLibrary:
         slide_count: int,
         duration_sec: Optional[float],
         created_at: str,
+        audience_level: Optional[str] = None,
     ) -> Optional[dict]:
         if not valid_job_id(job_id):
             log.warning("Library publish skipped: invalid job id")
@@ -151,6 +153,7 @@ class VideoLibrary:
                 "duration_sec": duration_sec,
                 "language": language,
                 "voice": voice,
+                "audience_level": audience_level_or_none(audience_level),
                 "slide_count": slide_count,
                 "video_blob": f"{prefix}/video.mp4",
                 "audio_blob": f"{prefix}/audio.mp3",
@@ -208,6 +211,7 @@ class VideoLibrary:
                     "duration_sec": m.get("duration_sec"),
                     "language": m.get("language", "en-US"),
                     "voice": m.get("voice", ""),
+                    "audience_level": audience_level_or_none(m.get("audience_level")),
                     "slide_count": m.get("slide_count", 0),
                     "thumbnail_url": self._sas(m.get("thumbnail_blob"), minutes),
                     "published": published,
@@ -225,6 +229,7 @@ class VideoLibrary:
         if not m or m.get("job_id") != job_id:
             return None
         m["published"] = m.get("published") is True
+        m["audience_level"] = audience_level_or_none(m.get("audience_level"))
         return m
 
     def get(self, job_id: str, *, public: bool = False) -> Optional[dict]:
@@ -266,6 +271,30 @@ class VideoLibrary:
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("Video library publish flag update failed for %s: %s", job_id, exc)
+            return None
+        return self.get(job_id)
+
+    def set_title(self, job_id: str, title: str, *, document_title: Optional[str] = None) -> Optional[dict]:
+        """Rename a library item (and optionally its source document title)."""
+        title = (title or "").strip()
+        if not title:
+            return None
+        m = self._manifest(job_id)
+        if not m:
+            return None
+        for k in ("video_url", "audio_url", "srt_url", "thumbnail_url", "scorm_url"):
+            m.pop(k, None)
+        m["title"] = title
+        if document_title is not None and document_title.strip():
+            m["document_title"] = document_title.strip()
+        try:
+            self._upload(
+                f"{LIBRARY_PREFIX}/{job_id}/{MANIFEST_NAME}",
+                json.dumps(m, indent=2).encode("utf-8"),
+                content_type="application/json",
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Video library title update failed for %s: %s", job_id, exc)
             return None
         return self.get(job_id)
 

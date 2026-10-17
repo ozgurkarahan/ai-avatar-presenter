@@ -102,6 +102,46 @@ export async function setDeckLiveDemo(deckId: string, enabled: boolean): Promise
   return r.json();
 }
 
+export interface TranslateDeckNotesResponse {
+  deck_id: string;
+  target_language: string;
+  /** Slide index (as string) → translated speaker notes. */
+  translated_notes: Record<string, string>;
+  cached: boolean;
+}
+
+/** Admin only: translate a deck's speaker notes into `language` (cached server-side in Cosmos). */
+export async function translateDeckNotes(deckId: string, language: string): Promise<TranslateDeckNotesResponse> {
+  const r = await fetch(`${API}/decks/${encodeURIComponent(deckId)}/translate-notes`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ target_language: language }),
+  });
+  if (!r.ok) throw new Error(await safeText(r));
+  return r.json();
+}
+
+/**
+ * True when narrating `deck` in `language` would fall back to original notes
+ * on at least one slide (translations are used whenever `language` differs
+ * from the deck's own language, default en-US).
+ */
+export function deckNeedsNotesTranslation(deck: DeckDetail | null, language: string): boolean {
+  if (!deck || language === (deck.language || 'en-US')) return false;
+  return (deck.slides ?? []).some((s) => !!s.notes?.trim() && !s.translated_notes?.[language]);
+}
+
+/** Return a copy of `deck` with `translations` merged into each slide's `translated_notes[language]`. */
+export function mergeDeckTranslations(deck: DeckDetail, language: string, translations: Record<string, string>): DeckDetail {
+  return {
+    ...deck,
+    slides: (deck.slides ?? []).map((s) => {
+      const text = translations[String(s.index)];
+      return text ? { ...s, translated_notes: { ...(s.translated_notes ?? {}), [language]: text } } : s;
+    }),
+  };
+}
+
 export async function searchDecks(query: string, topK = 5): Promise<SearchResponse> {
   const r = await fetch(`${API}/search`, {
     method: 'POST',
@@ -172,6 +212,22 @@ export function avatarForVoice(voice: string, avatars: AvatarInfo[], fallback = 
   const sameGender = avatars.filter((a) => a.gender === gender);
   if (fallback && sameGender.some((a) => a.id === fallback)) return fallback;
   return (sameGender.find((a) => a.is_default) ?? sameGender[0])?.id || fallback;
+}
+
+/**
+ * Voice to use after the narration language changes: the current voice when it
+ * already speaks `language`, else a same-gender native voice for it, else the
+ * same-gender multilingual en-US HD voice (languages without a native one).
+ * An explicitly chosen voice would otherwise win over the language server-side.
+ */
+export function voiceForLanguage(currentVoice: string, language: string): string {
+  const current = DECK_VOICES.find((v) => v.id === currentVoice);
+  if (current?.language === language) return currentVoice;
+  const gender = current?.gender ?? voiceGender(currentVoice) ?? 'female';
+  const native = DECK_VOICES.filter((v) => v.language === language);
+  const pick = native.find((v) => v.gender === gender) ?? native[0]
+    ?? DECK_VOICES.find((v) => v.language === 'en-US' && v.gender === gender);
+  return pick?.id ?? currentVoice;
 }
 
 
@@ -295,10 +351,20 @@ export async function postProgress(playlistId: string, body: ProgressPostInput):
   return r.json();
 }
 
-const USER_ID_KEY = 'deckfm.userId';
+const USER_ID_KEY = 'oz-radio.userId';
+// Pre-rename key: migrated once so returning users keep their playlist progress.
+const LEGACY_USER_ID_KEY = 'deckfm.userId';
 export function getOrCreateUserId(): string {
   try {
     let id = localStorage.getItem(USER_ID_KEY);
+    if (!id) {
+      const legacy = localStorage.getItem(LEGACY_USER_ID_KEY);
+      if (legacy) {
+        localStorage.setItem(USER_ID_KEY, legacy);
+        localStorage.removeItem(LEGACY_USER_ID_KEY);
+        id = legacy;
+      }
+    }
     if (!id) {
       id = 'u_' + crypto.randomUUID();
       localStorage.setItem(USER_ID_KEY, id);
