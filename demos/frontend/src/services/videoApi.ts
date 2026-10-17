@@ -1,6 +1,11 @@
 // Typed API client for the /api/video/* endpoints.
 // Slide-first script model (one narration per slide, NOT turn-based).
 
+import type { AudienceLevel } from './podcast';
+
+export type { AudienceLevel } from './podcast';
+export { AUDIENCE_LEVELS, AUDIENCE_LEVEL_LABELS, toAudienceLevel } from './podcast';
+
 export type JobState = 'queued' | 'rendering' | 'composing' | 'publishing' | 'done' | 'failed';
 export type ArchiveState = 'none' | 'archiving' | 'published' | 'failed';
 export type ScriptStyle = 'casual' | 'formal' | 'explainer' | 'marketing';
@@ -35,6 +40,7 @@ export interface VideoScript {
   language: string;
   style?: ScriptStyle | null;
   focus?: string | null;
+  audience_level?: AudienceLevel | null;
   voice: string;
   narrations: SlideNarration[];
   title?: string;
@@ -95,6 +101,8 @@ export interface LibrarySummary {
   thumbnail_url: string | null;
   duration_sec: number | null;
   slide_count?: number | null;
+  /** Admins only (absent from the anonymous public DTO). */
+  audience_level?: AudienceLevel | null;
   /** Present for admins only. */
   published?: boolean;
 }
@@ -110,6 +118,7 @@ export interface ScriptRequest {
   language: string;
   style?: ScriptStyle;
   focus?: string;
+  audience_level?: AudienceLevel | null;
   voice: string;
 }
 

@@ -32,6 +32,33 @@ STYLE_DIRECTIVES = {
 
 LENGTH_TURNS = {"short": 6, "medium": 10, "long": 16}
 
+# Appended only when ScriptRequest.audience_level is set; None keeps the
+# original prompt byte-for-byte. Depth/vocabulary only — never slide rules.
+AUDIENCE_DIRECTIVES = {
+    "beginner": (
+        "Beginner listeners with no prior AI or technical knowledge. Define every term in plain words "
+        "the first time it appears, use everyday analogies, avoid jargon and acronyms (expand any "
+        "acronym that is unavoidable), and introduce one idea at a time."
+    ),
+    "practitioner": (
+        "Practitioners who build or operate solutions. Favor concrete how-to guidance, trade-offs, "
+        "practical tips and common pitfalls; standard industry terminology is fine without definitions."
+    ),
+    "expert": (
+        "Deep technical experts. Discuss architecture, internals, limits, failure modes and evaluation "
+        "with precise vocabulary. Stay strictly within the source material — do NOT invent numbers, "
+        "benchmarks or details that are not in the source."
+    ),
+}
+AUDIENCE_SCOPE_NOTE = (
+    " This adjusts depth and vocabulary only; it does not change the turn, slide or output-format rules."
+)
+
+
+def _audience_line(level: str | None) -> str:
+    directive = AUDIENCE_DIRECTIVES.get(level or "")
+    return f"Audience: {directive}{AUDIENCE_SCOPE_NOTE}\n" if directive else ""
+
 
 def _build_source_excerpt(doc: Document, max_chars: int = 8000) -> str:
     parts: list[str] = []
@@ -71,6 +98,7 @@ def _build_system_prompt(req: ScriptRequest, doc: Document) -> str:
         f"Do NOT translate English idioms word-for-word. Do NOT mix in English words unless they are "
         f"true borrowings in the target language. Speaker display names and proper nouns may stay as-is.\n\n"
         f"Style: {style}\n"
+        f"{_audience_line(req.audience_level)}"
         f"Target length: about {n_turns} turns total, alternating speakers starting with the Interviewer."
         f"{slide_hint}"
         f"{focus}\n\n"

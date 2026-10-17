@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Captions, Clapperboard, Download, Layers, Music, Package, Play, Plus, RotateCw, Trash2,
+  Captions, Clapperboard, Download, GraduationCap, Layers, Music, Package, Play, Plus, RotateCw, Trash2,
 } from 'lucide-react';
 import {
-  LibraryItem, LibrarySummary,
+  AUDIENCE_LEVEL_LABELS, LibraryItem, LibrarySummary, toAudienceLevel,
   deleteLibraryItem, getLibraryItem, listLibrary, publishLibraryItem,
 } from '../services/videoApi';
 import { useAuth } from '../services/auth';
 import { pickDefaultAvatar, useAvatars } from '../services/avatars';
 import { GateNotice, PublishBadge, PublishToggle } from '../components/AuthGate';
 import {
-  Alert, Button, ButtonLink, EmptyState, EpisodeList, EpisodeRow, HostsMini, Modal, PageHeader, Spinner,
+  Alert, Button, ButtonLink, Chip, EmptyState, EpisodeList, EpisodeRow, HostsMini, Modal, PageHeader, Spinner,
   buttonClass, episodeNumber, formatDate, formatDuration, humanizeTitle, languageName, pluralize,
 } from '../ui';
 import '../styles/pages/library.css';
@@ -18,6 +18,10 @@ import '../styles/pages/library.css';
 const KIND = { icon: Clapperboard, label: 'Narrated video' };
 
 const duration = (sec: number | null | undefined) => (sec && sec > 0 ? formatDuration(sec) : '—');
+function audienceChip(level: unknown) {
+  const lvl = toAudienceLevel(level);
+  return lvl ? <Chip icon={GraduationCap} data-testid="audience-chip">{AUDIENCE_LEVEL_LABELS[lvl]} audience</Chip> : null;
+}
 
 export default function VideoLibraryPage() {
   const auth = useAuth();
@@ -135,6 +139,7 @@ export default function VideoLibraryPage() {
                     formatDate(it.created_at),
                     languageName(it.language),
                     typeof it.slide_count === 'number' ? pluralize(it.slide_count, 'slide') : null,
+                    audienceChip(it.audience_level),
                     isAdmin ? <PublishBadge published={it.published} /> : null,
                   ]}
                   kind={KIND}
@@ -207,6 +212,7 @@ export default function VideoLibraryPage() {
                 <span>{duration(selected.duration_sec)}</span>
                 <span>{languageName(selected.language)}</span>
                 {typeof selected.slide_count === 'number' && <span>{pluralize(selected.slide_count, 'slide')}</span>}
+                {audienceChip(selected.audience_level)}
               </div>
               <div className="library-player__downloads">
                 {selected.video_url && (

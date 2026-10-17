@@ -57,6 +57,7 @@ from services.video_models import (
     VideoScript,
     VoiceOption,
 )
+from services.podcast_models import audience_level_or_none
 
 log = logging.getLogger(__name__)
 # Everything on `router` is admin-only (default deny). Anonymous library
@@ -205,6 +206,7 @@ async def generate_script(
                 language=req.language,
                 style=req.style,
                 focus=req.focus,
+                audience_level=req.audience_level,
                 voice=req.voice,
                 narrations=sorted(narrations, key=lambda n: n.slide_index),
             )
@@ -392,6 +394,7 @@ def _full_item(item: dict) -> dict:
         "duration_sec": item.get("duration_sec"),
         "language": item.get("language") or "en-US",
         "voice": item.get("voice") or "",
+        "audience_level": audience_level_or_none(item.get("audience_level")),
         "slide_count": item.get("slide_count") or 0,
         "thumbnail_url": item.get("thumbnail_url"),
         "published": bool(item.get("published")),
@@ -415,7 +418,9 @@ def list_library(
         return [LibrarySummary(**{**item, "title": item.get("title") or "",
                                   "document_title": item.get("document_title") or "",
                                   "created_at": item.get("created_at") or "",
-                                  "language": item.get("language") or "en-US"}).model_dump()
+                                  "language": item.get("language") or "en-US",
+                                  "audience_level": audience_level_or_none(item.get("audience_level"))
+                                  }).model_dump()
                 for item in lib.list()]
     return [_public_item(item) for item in lib.list(published_only=True)]
 
@@ -562,6 +567,7 @@ async def _render_job_body(job_id: str, cfg: AzureConfig) -> None:
                     slide_count=len(script.narrations),
                     duration_sec=result.duration_sec,
                     created_at=job.created_at,
+                    audience_level=script.audience_level,
                 )
                 job.archive_state = "published" if manifest else "failed"
             else:

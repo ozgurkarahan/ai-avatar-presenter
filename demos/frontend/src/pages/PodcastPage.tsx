@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import {
   DialogueTurn, Document as PodDoc, JobState, Layout,
-  PodcastJob, RoleConfig, Speaker, Style, VoiceOption,
+  PodcastJob, RoleConfig, Speaker, Style, VoiceOption, AudienceLevel,
+  AUDIENCE_LEVELS, AUDIENCE_LEVEL_LABELS, toAudienceLevel,
   getJob, ingestFile, ingestUrl, listVoices,
   startRender, streamScript,
 } from '../services/podcast';
@@ -72,6 +73,7 @@ function PodcastGenerator() {
   const [urlInput, setUrlInput] = useState('');
   const [focus, setFocus] = useState('');
   const [style, setStyle] = useState<Style>('casual');
+  const [audienceLevel, setAudienceLevel] = useState<AudienceLevel | null>(null);
   const [numTurns, setNumTurns] = useState(8);
   const [language, setLanguage] = useState('en-US');
   const [avatars, setAvatars] = useState<AvatarInfo[]>([]);
@@ -150,7 +152,10 @@ function PodcastGenerator() {
     setStreamingTurns([]); setScriptId(null); setScriptError(null);
     abortRef.current?.();
     streamScript(
-      { document_id: doc.id, language, style, length: 'medium', num_turns: numTurns, focus: focus || undefined },
+      {
+        document_id: doc.id, language, style, length: 'medium', num_turns: numTurns, focus: focus || undefined,
+        audience_level: audienceLevel,
+      },
       (t) => setStreamingTurns((prev) => [...prev, t]),
       (id) => { setScriptId(id); setPhase('review'); },
       (msg) => setScriptError(msg),
@@ -180,11 +185,12 @@ function PodcastGenerator() {
         {phase === 'setup' && (
           <motion.div key="setup" {...fade}>
             <SetupPhase {...{
-              doc, uploadBusy, urlInput, focus, style, numTurns, language,
+              doc, uploadBusy, urlInput, focus, style, audienceLevel, numTurns, language,
             }}
               onUrlInput={setUrlInput} onFile={handleFile} onUrl={handleUrl}
               onFocusChange={setFocus} onApplyPrompt={(p) => setFocus(p.focus)}
-              onStyle={setStyle} onNumTurns={setNumTurns} onLanguage={setLanguage}
+              onStyle={setStyle} onAudienceLevel={setAudienceLevel}
+              onNumTurns={setNumTurns} onLanguage={setLanguage}
               onGenerate={startScript} />
           </motion.div>
         )}
@@ -244,6 +250,7 @@ interface SetupProps {
   focus: string; onFocusChange: (v: string) => void;
   onApplyPrompt: (p: typeof SAMPLE_PROMPTS[number]) => void;
   style: Style; onStyle: (s: Style) => void;
+  audienceLevel: AudienceLevel | null; onAudienceLevel: (l: AudienceLevel | null) => void;
   numTurns: number; onNumTurns: (n: number) => void;
   language: string; onLanguage: (l: string) => void;
   onGenerate: () => void;
@@ -293,6 +300,15 @@ function SetupPhase(p: SetupProps) {
               <option value="formal">Formal</option>
               <option value="debate">Debate</option>
               <option value="explainer">Explainer</option>
+            </Select>
+          </Field>
+          <Field label="Audience level" hint="Tunes vocabulary and depth for the listeners.">
+            <Select
+              value={p.audienceLevel ?? ''}
+              onChange={(e) => p.onAudienceLevel(toAudienceLevel(e.target.value))}
+            >
+              <option value="">Any (default)</option>
+              {AUDIENCE_LEVELS.map((lvl) => <option key={lvl} value={lvl}>{AUDIENCE_LEVEL_LABELS[lvl]}</option>)}
             </Select>
           </Field>
           <Field label={<>Turns <span className="pc-range-value tabular">{p.numTurns}</span></>} hint="Between 4 and 16 exchanges.">

@@ -33,6 +33,7 @@ from azure.storage.blob import (
 )
 
 from config import AzureConfig
+from services.podcast_models import audience_level_or_none
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,7 @@ class PodcastLibrary:
         speaker_names: list[str],
         turn_count: int,
         created_at: str,
+        audience_level: Optional[str] = None,
     ) -> Optional[dict]:
         """Upload assets and manifest to blob storage.
 
@@ -171,6 +173,7 @@ class PodcastLibrary:
                 "duration_sec": duration_sec,
                 "language": language,
                 "style": style,
+                "audience_level": audience_level_or_none(audience_level),
                 "speaker_names": speaker_names,
                 "turn_count": turn_count,
                 "video_blob": f"{prefix}/video.mp4",
@@ -242,6 +245,7 @@ class PodcastLibrary:
                     "duration_sec": m.get("duration_sec"),
                     "language": m.get("language"),
                     "style": m.get("style"),
+                    "audience_level": audience_level_or_none(m.get("audience_level")),
                     "speaker_names": m.get("speaker_names", []),
                     "turn_count": m.get("turn_count", 0),
                     "thumbnail_url": self._sas(m.get("thumbnail_blob"), minutes),
@@ -262,6 +266,7 @@ class PodcastLibrary:
         if not m or m.get("job_id") != job_id:
             return None
         m["published"] = m.get("published") is True
+        m["audience_level"] = audience_level_or_none(m.get("audience_level"))
         return m
 
     def get(self, job_id: str, *, public: bool = False) -> Optional[dict]:

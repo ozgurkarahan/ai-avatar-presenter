@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import {
   DRAGONHD_LANGUAGES, DEFAULT_VOICE_BY_LANG,
-  IngestResponse, ScriptStyle, SlideInfo, SlideNarration, VideoJob, VoiceOption,
+  IngestResponse, ScriptStyle, SlideInfo, SlideNarration, VideoJob, VoiceOption, AudienceLevel,
+  AUDIENCE_LEVELS, AUDIENCE_LEVEL_LABELS, toAudienceLevel,
   getJob, getScript, ingestFile, listVoices, patchScript,
   startRender, streamScript,
 } from '../services/videoApi';
@@ -83,6 +84,7 @@ function VideoGenerator() {
 
   const [language, setLanguage] = useState('en-US');
   const [style, setStyle] = useState<ScriptStyle>('explainer');
+  const [audienceLevel, setAudienceLevel] = useState<AudienceLevel | null>(null);
   const [focus, setFocus] = useState('');
   const [voice, setVoice] = useState<string>(DEFAULT_VOICE_BY_LANG['en-US']);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
@@ -145,7 +147,7 @@ function VideoGenerator() {
     abortRef.current?.();
     streamScript(
       doc.doc_id,
-      { language, style, focus: focus || undefined, voice },
+      { language, style, focus: focus || undefined, audience_level: audienceLevel, voice },
       (n) => setNarrations((prev) => {
         const next = [...prev];
         const existing = next.findIndex((x) => x.slide_index === n.slide_index);
@@ -200,7 +202,7 @@ function VideoGenerator() {
       const r = await fetch(`/api/video/script/${doc.doc_id}/slide/${slideIndex}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ language, style, focus, voice }),
+        body: JSON.stringify({ language, style, focus, audience_level: audienceLevel, voice }),
       });
       if (r.ok) {
         const updated = await r.json();
@@ -251,6 +253,7 @@ function VideoGenerator() {
               doc={doc} uploadBusy={uploadBusy}
               focus={focus} onFocusChange={setFocus}
               style={style} onStyle={setStyle}
+              audienceLevel={audienceLevel} onAudienceLevel={setAudienceLevel}
               language={language} onLanguage={setLanguage}
               voice={voice} onVoice={setVoice} voices={voices}
               onFile={handleFile}
@@ -338,6 +341,7 @@ interface SetupProps {
   uploadBusy: boolean;
   focus: string; onFocusChange: (v: string) => void;
   style: ScriptStyle; onStyle: (s: ScriptStyle) => void;
+  audienceLevel: AudienceLevel | null; onAudienceLevel: (l: AudienceLevel | null) => void;
   language: string; onLanguage: (l: string) => void;
   voice: string; onVoice: (v: string) => void;
   voices: VoiceOption[];
@@ -390,6 +394,15 @@ function SetupPhase(p: SetupProps) {
               <option value="formal">Formal</option>
               <option value="casual">Casual</option>
               <option value="marketing">Marketing</option>
+            </Select>
+          </Field>
+          <Field label="Audience level">
+            <Select
+              value={p.audienceLevel ?? ''}
+              onChange={(e) => p.onAudienceLevel(toAudienceLevel(e.target.value))}
+            >
+              <option value="">Any (default)</option>
+              {AUDIENCE_LEVELS.map((lvl) => <option key={lvl} value={lvl}>{AUDIENCE_LEVEL_LABELS[lvl]}</option>)}
             </Select>
           </Field>
           <div className="video-settings__full">

@@ -31,6 +31,7 @@ from azure.storage.blob import (
 )
 
 from config import AzureConfig
+from services.podcast_models import audience_level_or_none
 
 log = logging.getLogger(__name__)
 
@@ -114,6 +115,7 @@ class VideoLibrary:
         slide_count: int,
         duration_sec: Optional[float],
         created_at: str,
+        audience_level: Optional[str] = None,
     ) -> Optional[dict]:
         if not valid_job_id(job_id):
             log.warning("Library publish skipped: invalid job id")
@@ -151,6 +153,7 @@ class VideoLibrary:
                 "duration_sec": duration_sec,
                 "language": language,
                 "voice": voice,
+                "audience_level": audience_level_or_none(audience_level),
                 "slide_count": slide_count,
                 "video_blob": f"{prefix}/video.mp4",
                 "audio_blob": f"{prefix}/audio.mp3",
@@ -208,6 +211,7 @@ class VideoLibrary:
                     "duration_sec": m.get("duration_sec"),
                     "language": m.get("language", "en-US"),
                     "voice": m.get("voice", ""),
+                    "audience_level": audience_level_or_none(m.get("audience_level")),
                     "slide_count": m.get("slide_count", 0),
                     "thumbnail_url": self._sas(m.get("thumbnail_blob"), minutes),
                     "published": published,
@@ -225,6 +229,7 @@ class VideoLibrary:
         if not m or m.get("job_id") != job_id:
             return None
         m["published"] = m.get("published") is True
+        m["audience_level"] = audience_level_or_none(m.get("audience_level"))
         return m
 
     def get(self, job_id: str, *, public: bool = False) -> Optional[dict]:
