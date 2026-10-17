@@ -168,6 +168,33 @@ test.describe('Regression — search, libraries, playlists', () => {
     await page.getByTestId('playlist-next-deck').click();
     await expect(page.getByTestId('playlist-next-deck')).toBeDisabled();
   });
+
+  test('playlist: a step picked while progress is loading is not overridden by the resume step', async ({ page }) => {
+    let release!: () => void;
+    let served = false;
+    const gate = new Promise<void>((r) => { release = r; });
+    await open(page, 'admin', '/playlists');
+    await page.route(/\/api\/playlists\/pl-1\/progress(\?|$)/, async (r) => {
+      if (r.request().method() !== 'GET') return r.fallback();
+      await gate;
+      served = true;
+      return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        user_id: 'u', playlist_id: 'pl-1', last_deck_id: 'deck-plain', last_slide_index: 1, resume_deck_id: 'deck-plain',
+        resume_slide_index: 1, completed_slides: { 'deck-live': [0, 1, 2] }, total_slides: 6, completed_count: 3, percent: 50,
+        updated_at: '2026-10-14T00:00:00Z' }) });
+    });
+    await page.goto('/playlists/pl-1');
+    const steps = page.locator('.pp-step');
+    await expect(steps).toHaveCount(2);
+    await steps.first().click();
+    await expect(steps.first()).toHaveAttribute('aria-current', 'step');
+    release();
+    await expect.poll(() => served).toBe(true);
+    await page.waitForTimeout(500);
+    await expect(steps.first()).toHaveAttribute('aria-current', 'step');
+    await expect(steps.nth(1)).not.toHaveAttribute('aria-current', 'step');
+    await expect(page.getByText('Deck 1 of 2')).toBeVisible();
+  });
 });
 
 test.describe('Regression — redesign behaviours', () => {

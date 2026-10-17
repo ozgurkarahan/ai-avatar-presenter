@@ -91,6 +91,8 @@ function PathPlayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avatars]);
   const [started, setStarted] = useState(false);
+  const startedRef = React.useRef(false);
+  useEffect(() => { startedRef.current = started; }, [started]);
 
   // Load playlist + progress, and initialize language once from the first deck
   useEffect(() => {
@@ -104,7 +106,8 @@ function PathPlayer() {
         if (cancelled) return;
         setProgress(pr);
         const idx = p.steps.findIndex((s) => s.deck_id === pr.resume_deck_id);
-        if (idx >= 0) setCurrentStep(idx);
+        // Resume only if the user has not already picked a step while progress loaded.
+        if (idx >= 0 && !startedRef.current) setCurrentStep(idx);
         // Initialize language & voice from the first step's deck (one-time)
         if (p.steps.length > 0) {
           try {
@@ -204,6 +207,7 @@ function PathPlayer() {
   function goToStep(idx: number) {
     if (!playlist) return;
     if (idx < 0 || idx >= playlist.steps.length) return;
+    startedRef.current = true;
     setCurrentStep(idx);
     setStarted(true);
   }
