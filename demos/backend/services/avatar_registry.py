@@ -6,8 +6,9 @@ avatar identity.
 
 Two kinds of avatars are available:
 
-* **Stock video avatars** (lisa, harry, max, meg, jeff, lori) — always
-  available. They emit transparent webm/vp9 and support gestures.
+* **Stock video avatars** (lisa, harry, max, meg, jeff, lori) — available
+  unless ``HIDE_STOCK_AVATARS=true`` and at least one custom avatar is
+  configured; then stock ids are only aliases to a same-gender custom avatar. They emit transparent webm/vp9 and support gestures.
 * **Custom avatars** — loaded only from the ``CUSTOM_AVATARS_JSON``
   environment variable (JSON array)::
 
@@ -18,6 +19,8 @@ Two kinds of avatars are available:
   ``character`` is the server-only Speech ``talkingAvatarCharacter`` and is
   never returned by any API. ``thumbnail`` is a file name under
   ``static/avatars/``. ``kind`` is ``photo`` (default) or ``video``.
+  Optional ``podcast_crop`` (``[x, y, w, h]``, normalized 0..1) sets the
+  head-and-shoulders crop used for the podcast video tiles.
 
 Photo avatars (custom photo avatars built on the vasa-1 base model) are
 512x512 head-only with no transparency. They are emitted as mp4/h264 with a
@@ -72,6 +75,10 @@ class AvatarEntry:
         ``False`` when alpha is already present (video avatars).
     thumbnail_url : str
         Static asset path served by the backend (may be empty).
+    podcast_crop : tuple[float, float, float, float] | None
+        Optional normalized ``(x, y, w, h)`` head-and-shoulders crop applied
+        to this avatar's clip before it is scaled into a podcast tile. When
+        ``None`` the kind fallback from :func:`podcast_crop_for` is used.
     """
 
     id: str
@@ -88,9 +95,51 @@ class AvatarEntry:
     chroma_key: bool
     thumbnail_url: str
     aliases: tuple[str, ...] = field(default_factory=tuple)
+    podcast_crop: Optional[tuple[float, float, float, float]] = None
 
 
-def _stock(id_: str, display: str, gender: str, style: str) -> AvatarEntry:
+# Normalized (x, y, w, h) head-and-shoulders crops used by the podcast
+# compositor when an entry has no explicit ``podcast_crop``.
+#   * prebuilt video avatars render a full 1920x1080 (16:9) stage with the
+#     person standing/sitting in the centre → keep the centre top half.
+#   * photo avatars (vasa-1) are 512x512 head-only portraits → keep almost the
+#     full frame (the chin sits at ~0.87 of the height, so don't cut low).
+PODCAST_CROP_PREBUILT: tuple[float, float, float, float] = (0.31, 0.02, 0.38, 0.43)
+PODCAST_CROP_PHOTO: tuple[float, float, float, float] = (0.06, 0.0, 0.88, 1.0)
+
+
+def _normalize_crop(raw) -> Optional[tuple[float, float, float, float]]:
+    """Validate/clamp a normalized ``[x, y, w, h]`` crop rect (or ``None``)."""
+    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
+        return None
+    try:
+        x, y, w, h = (float(v) for v in raw)
+    except (TypeError, ValueError):
+        return None
+    x = min(max(x, 0.0), 0.95)
+    y = min(max(y, 0.0), 0.95)
+    w = min(max(w, 0.05), 1.0 - x)
+    h = min(max(h, 0.05), 1.0 - y)
+    return (round(x, 4), round(y, 4), round(w, 4), round(h, 4))
+
+
+def podcast_crop_for(entry: "AvatarEntry") -> tuple[float, float, float, float]:
+    """Normalized head-and-shoulders crop for ``entry`` (explicit or kind fallback)."""
+    explicit = _normalize_crop(entry.podcast_crop) if entry.podcast_crop else None
+    if explicit:
+        return explicit
+    if entry.photo_base_model or entry.chroma_key:
+        return PODCAST_CROP_PHOTO
+    return PODCAST_CROP_PREBUILT
+
+
+def _stock(
+    id_: str,
+    display: str,
+    gender: str,
+    style: str,
+    podcast_crop: Optional[tuple[float, float, float, float]] = None,
+) -> AvatarEntry:
     return AvatarEntry(
         id=id_,
         foundry_name=id_,
@@ -105,12 +154,15 @@ def _stock(id_: str, display: str, gender: str, style: str) -> AvatarEntry:
         background_color="#00000000",
         chroma_key=False,
         thumbnail_url="",
+        podcast_crop=podcast_crop,
     )
 
 
 # Styles mirror services.avatar.AVATAR_STYLES (docs-verified pairs).
+# Lisa's crop was tuned on a real casual-sitting clip (face centre x≈0.51,
+# hair top y≈0.07, shoulders y≈0.37): head-and-shoulders fills the tile.
 _STOCK: list[AvatarEntry] = [
-    _stock("lisa", "Lisa", "female", "casual-sitting"),
+    _stock("lisa", "Lisa", "female", "casual-sitting", podcast_crop=(0.355, 0.05, 0.306, 0.35)),
     _stock("harry", "Harry", "male", "business"),
     _stock("max", "Max", "male", "business"),
     _stock("meg", "Meg", "female", "business"),
@@ -139,6 +191,7 @@ def _custom_entry(raw: dict) -> Optional[tuple[AvatarEntry, bool]]:
     thumb = str(raw.get("thumbnail") or "").strip()
     thumbnail_url = f"{THUMBNAIL_URL_PREFIX}{thumb}" if _THUMB_RE.fullmatch(thumb) else ""
     kind = str(raw.get("kind") or "photo").strip().lower()
+    crop = _normalize_crop(raw.get("podcast_crop"))
     if kind == "video":
         entry = AvatarEntry(
             id=avatar_id,
@@ -154,6 +207,7 @@ def _custom_entry(raw: dict) -> Optional[tuple[AvatarEntry, bool]]:
             background_color="#00000000",
             chroma_key=False,
             thumbnail_url=thumbnail_url,
+            podcast_crop=crop,
         )
     else:
         entry = AvatarEntry(
@@ -170,6 +224,7 @@ def _custom_entry(raw: dict) -> Optional[tuple[AvatarEntry, bool]]:
             background_color="#00FF00FF",
             chroma_key=True,
             thumbnail_url=thumbnail_url,
+            podcast_crop=crop,
         )
     return entry, bool(raw.get("default") is True)
 
@@ -216,23 +271,37 @@ def reload(raw_json: Optional[str] = None) -> None:
         if is_default and explicit_default is None:
             explicit_default = entry.id
 
-    for e in _STOCK:
-        entries[e.id] = e
+    hide_stock = bool(custom_ids) and os.environ.get("HIDE_STOCK_AVATARS", "").strip().lower() in ("1", "true", "yes")
+    if not hide_stock:
+        for e in _STOCK:
+            entries[e.id] = e
 
     alias_index: dict[str, str] = {}
     for e in entries.values():
         alias_index[e.id.lower()] = e.id
         for a in e.aliases:
             alias_index[a.lower()] = e.id
+    if hide_stock:
+        # Legacy references (saved jobs, library items, old clients) to a stock
+        # id resolve to a custom avatar of the same gender.
+        for e in _STOCK:
+            match = next((cid for cid in custom_ids if entries[cid].gender == e.gender), None)
+            target = match or explicit_default or custom_ids[0]
+            alias_index.setdefault(e.id.lower(), target)
 
     _ENTRIES.clear()
     _ENTRIES.update(entries)
     _CUSTOM_IDS[:] = custom_ids
     _ALIAS_INDEX.clear()
     _ALIAS_INDEX.update(alias_index)
-    DEFAULT_ID = explicit_default or next(e.id for e in _STOCK if e.gender == "female")
+    if hide_stock:
+        DEFAULT_ID = explicit_default or next(
+            (cid for cid in custom_ids if entries[cid].gender == "female"), custom_ids[0])
+    else:
+        DEFAULT_ID = explicit_default or next(e.id for e in _STOCK if e.gender == "female")
     if custom_ids:
-        log.info("Avatar registry: %d custom avatar(s) loaded, default=%s", len(custom_ids), DEFAULT_ID)
+        log.info("Avatar registry: %d custom avatar(s) loaded, stock %s, default=%s",
+                 len(custom_ids), "hidden" if hide_stock else "shown", DEFAULT_ID)
 
 
 reload()
@@ -309,7 +378,7 @@ def for_voice(voice: Optional[str], fallback: Optional[str] = None) -> AvatarEnt
             if _ENTRIES[cid].gender == gender:
                 return _ENTRIES[cid]
         for e in _STOCK:
-            if e.gender == gender:
+            if e.gender == gender and e.id in _ENTRIES:
                 return _ENTRIES[e.id]
     return get(fallback or DEFAULT_ID)
 
