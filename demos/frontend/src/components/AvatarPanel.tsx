@@ -1230,10 +1230,12 @@ export default function AvatarPanel({
 
   // Auto-start: connect on mount, and auto-present whenever the deck changes (playlist mode)
   const autoStartedForRef = useRef<string | null>(null);
+  const userDisconnectedRef = useRef(false);
   useEffect(() => {
     if (!autoStart || !canUseAvatar || authBlock) return;
     if (!connected) {
-      startSessionRef.current();
+      // An explicit Disconnect must stick: only the Connect button reconnects then.
+      if (!userDisconnectedRef.current) startSessionRef.current();
       return;
     }
     // Already connected — if presentation changed, auto-present from the current slide
@@ -1479,7 +1481,7 @@ export default function AvatarPanel({
                 variant="primary"
                 icon={Play}
                 className="avatar-rail__start"
-                onClick={() => { ensureAudioContext(); void startSession(); }}
+                onClick={() => { userDisconnectedRef.current = false; ensureAudioContext(); void startSession(); }}
               >
                 Connect avatar
               </Button>
@@ -1506,7 +1508,7 @@ export default function AvatarPanel({
                   </Button>
                 ) : null}
                 {stalledButton}
-                <Button size="sm" variant="ghost" icon={PhoneOff} onClick={stopSession}>
+                <Button size="sm" variant="ghost" icon={PhoneOff} onClick={() => { userDisconnectedRef.current = true; stopSession(); }}>
                   Disconnect
                 </Button>
               </>

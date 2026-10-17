@@ -341,4 +341,22 @@ test.describe('Raise hand — playlist deck switch', () => {
     const prompts = voice.ofType('conversation.item.create').map((m) => m.item.content[0].text);
     expect(prompts[1]).toContain('Notes 1');
   });
+
+  test('Disconnect sticks in the playlist player (no auto-reconnect) until Connect avatar', async ({ page }) => {
+    const voice = await openPlaylist(page);
+    expect(voice.ofType('session.update')).toHaveLength(1);
+    await page.getByRole('button', { name: 'Disconnect' }).click();
+    await expect(page.getByRole('button', { name: 'Connect avatar' })).toBeVisible();
+    await page.waitForTimeout(2500);
+    expect(voice.ofType('session.update'), 'no new voice session after Disconnect').toHaveLength(1);
+    // Changing deck while disconnected does not reconnect either.
+    await page.getByTestId('playlist-next-deck').click();
+    await page.waitForTimeout(1500);
+    expect(voice.ofType('session.update')).toHaveLength(1);
+    await expect(page.getByRole('button', { name: 'Connect avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Connect avatar' }).click();
+    await expect.poll(() => voice.ofType('session.update').length).toBe(2);
+    await avatar.connected(page);
+    await expect(page.getByRole('button', { name: 'Disconnect' })).toBeVisible();
+  });
 });
