@@ -11,6 +11,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
+# Configure logging before importing first-party modules: some of them log at
+# import time (e.g. the avatar registry summary), which would otherwise be lost.
+logging.basicConfig(level=logging.INFO)
+
 from fastapi import APIRouter, Depends, FastAPI, File, UploadFile, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -65,7 +69,6 @@ SUPPORTED_LANGUAGES = [
     "it-IT", "pt-BR", "ko-KR", "ar-SA",
 ]
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Directory to store rendered slide images
