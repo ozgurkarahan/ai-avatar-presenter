@@ -28,12 +28,17 @@ class _SectionDeleted:
 # Format-specific ingesters
 # ---------------------------------------------------------------------------
 
-def ingest_pptx(path: str | Path) -> Document:
-    """Parse a PPTX, render slide images via LibreOffice, return a Document."""
+def ingest_pptx(path: str | Path, libreoffice_path: str | None = None) -> Document:
+    """Parse a PPTX, render slide images, return a Document.
+
+    ``libreoffice_path`` is forwarded to :func:`pptx_parser.parse_pptx` so the
+    podcast renders slides with the same LibreOffice binary as the Decks
+    upload path (rendering parity).
+    """
     from services.pptx_parser import parse_pptx
 
     p = Path(path)
-    data = parse_pptx(p.read_bytes(), p.name)
+    data = parse_pptx(p.read_bytes(), p.name, libreoffice_path or "soffice")
 
     sections: list[Section] = []
     slide_titles: list[str] = []
@@ -46,13 +51,23 @@ def ingest_pptx(path: str | Path) -> Document:
         slide_notes.append(sl.notes or "")
 
     # Persist rendered PNGs alongside the source so compose can reference them.
+    # The list stays index-aligned with the slides (turn.slide_idx indexes it);
+    # a slide the renderer skipped becomes "" and compose uses its fallback.
     img_dir = p.parent / f"{p.stem}_slides_{data.id[:8]}"
     img_dir.mkdir(parents=True, exist_ok=True)
-    slide_images: list[str] = []
+    by_idx: dict[int, str] = {}
     for idx, png in data.slide_images:
         out = img_dir / f"slide_{idx:03d}.png"
         out.write_bytes(png)
-        slide_images.append(str(out))
+        by_idx[idx] = str(out)
+    count = max([len(data.slides)] + [i + 1 for i in by_idx])
+    slide_images = [by_idx.get(i, "") for i in range(count)] if by_idx else []
+    missing = [i + 1 for i in range(count) if i not in by_idx]
+    if missing:
+        log.warning(
+            "pptx %s: no rendered image for slide(s) %s — podcast will use a fallback slide",
+            p.name, missing,
+        )
 
     return Document(
         id=data.id,
@@ -167,16 +182,16 @@ def ingest_url(url: str) -> Document:
 ALLOWED_FILE_SUFFIXES = {".pptx", ".pdf", ".docx", ".txt", ".md", ".markdown"}
 
 
-def ingest_file(path: str | Path) -> Document:
+def ingest_file(path: str | Path, libreoffice_path: str | None = None) -> Document:
     """Ingest a server-side uploaded file, picking the ingester by extension.
 
     Only the allowlisted extensions are accepted; there is no URL or
-    content-sniffing fallback.
+    content-sniffing fallback. ``libreoffice_path`` is only used for PPTX.
     """
     p = Path(path)
     ext = p.suffix.lower()
     if ext == ".pptx":
-        return ingest_pptx(p)
+        return ingest_pptx(p, libreoffice_path=libreoffice_path)
     if ext == ".pdf":
         return ingest_pdf(p)
     if ext == ".docx":

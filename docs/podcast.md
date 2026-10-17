@@ -30,7 +30,7 @@
 
 1. User navigates to `/podcast`.
 2. Uploads one or more documents (drag/drop) and/or pastes a URL.
-3. (Optional) Enters instructions: topic focus, conversation style (casual/formal/debate), target length (short ~3 min / medium ~6 min / long ~10 min), target language, number of turns.
+3. (Optional) Enters instructions: topic focus, conversation style (casual/formal/debate), **audience level** (Any / Beginner / Practitioner / Expert — see §3.2.1), target length (short ~3 min / medium ~6 min / long ~10 min), target language, number of turns.
 4. Picks Interviewer avatar + voice and Expert avatar + voice (defaults filled in).
 5. Clicks **Generate script** → sees a two-column editable dialogue. Each turn shows speaker label, text area, word count, estimated duration.
 6. Edits / reorders / deletes turns if desired. Can regenerate specific turns.
@@ -64,7 +64,20 @@ GET    /api/podcast/avatars              → Available pre-built avatars (harry,
 | `services/podcast_ingest.py` | Multi-format parsing: PPTX (reuse `pptx_parser`), PDF (`pypdf`), DOCX (`python-docx`), TXT/MD (plain), URL (`httpx` + `readability-lxml`). Returns normalized `Document`. |
 | `services/podcast_script.py` | GPT-4.1 structured output. Prompt builds context from `Document`, respects style / length / language. Returns `Script` (list of `DialogueTurn`). |
 | `services/podcast_render.py` | Orchestrator. Groups turns by speaker; submits **one batch synthesis job per speaker** with per-turn SSML inputs; polls; downloads each clip to blob; maintains per-clip manifest (remote job id, status, attempt, blob url, duration). Designed for idempotent re-run. |
-| `services/podcast_compose.py` | ffmpeg composition. **Current: sequential full-frame concat** (one speaker fills the frame at a time, with a lower-third banner naming the speaker). Applies `loudnorm` audio normalization. Probes actual durations with `ffprobe` to build SRT. Emits MP4 + MP3 + SRT. |
+| `services/podcast_compose.py` | ffmpeg composition. **Split-screen layout** (see §3.5): both avatars as head-and-shoulders tiles across the top, karaoke captions + speaker labels between them, the current slide below in true 16:9 (contained, never stretched). Per-turn segments are rendered then concatenated; applies `loudnorm`, probes actual durations with `ffprobe` to build SRT. Emits MP4 + MP3 + SRT. |
+
+#### 3.2.1 Audience level
+
+`ScriptRequest.audience_level` (optional: `"beginner" | "practitioner" | "expert"`, default `null`) tunes vocabulary and depth of the dialogue. It is composed with style, focus and language in `_build_system_prompt` as one extra `Audience:` line and never changes the turn / `slide_idx` / output-format rules. Unknown values are rejected with **422**.
+
+| Level | Directive added to the system prompt |
+|---|---|
+| *Any (default)* → `null` | nothing — the prompt is byte-for-byte the pre-existing one |
+| `beginner` | assume no prior AI/technical knowledge; define every term in plain words; everyday analogies; avoid jargon and acronyms (expand if unavoidable); one idea at a time |
+| `practitioner` | audience builds or operates solutions; concrete how-to, trade-offs, practical tips, common pitfalls; standard terminology OK |
+| `expert` | deep technical audience; architecture, internals, limits, failure modes, evaluation; precise vocabulary; stay strictly within the source — never invent numbers or details |
+
+The level is stored on the saved `Script` (`GET /api/podcast/scripts/{id}`), written to the library `manifest.json` (`audience_level`) and returned by the admin `GET /api/podcast/library` + `/library/{job_id}` responses — the library shows it as a small "*Level* audience" chip. The anonymous public DTO is unchanged. In the UI, the **Audience level** select sits next to **Style** in *Conversation settings*.
 
 ### 3.3 Data model — Cosmos DB `podcasts` database
 
@@ -90,7 +103,7 @@ GET    /api/podcast/avatars              → Available pre-built avatars (harry,
     "interviewer": { "avatar": "harry", "voice": "en-US-Andrew:DragonHDLatestNeural" },
     "expert":      { "avatar": "lisa",  "voice": "en-US-Ava:DragonHDLatestNeural" }
   },
-  "layout": "sequential",          // only "sequential" is supported for now
+  "layout": "split_screen_with_slides",   // or "split_screen_only" (no slide)
   "state":  "queued|rendering|composing|done|failed|cancelled",
   "progress": { "stage": "rendering", "completed": 3, "total": 8 },
   // per-clip manifest — the source of truth for idempotent retry & resume
@@ -139,21 +152,26 @@ queued → rendering → composing → done
 
 Ingestion + scripting are synchronous REST endpoints (no job row); if their outputs take longer than the request budget we move them to the same worker pattern later.
 
-### 3.5 Composition algorithm (sequential only)
+### 3.5 Composition algorithm — video layout (geometry contract v1)
 
-Azure Batch Avatar Synthesis returns one MP4 per clip. The current version renders the active speaker full-frame; a lower-third banner names them. No split-screen yet (deferred; it requires transparent-background outputs — WebM/VP9 — and an idle-state visual for the silent avatar).
+Output is 1920x1080 @ 25 fps. Each turn is rendered as its own segment (slide still + the active speaker's clip + a still of the idle speaker), then the segments are concatenated with the concat *filter* (full re-encode, no AAC clicks). The AI still chooses `slide_idx` per turn.
 
-```
-ffmpeg \
-  -i turn0.mp4 -i turn1.mp4 … -i turnN.mp4 \
-  -filter_complex "\
-    [0:v]drawtext=text='Interviewer':…[v0]; \
-    [1:v]drawtext=text='Expert':…[v1]; \
-    … \
-    [v0][0:a][v1][1:a]…concat=n=N+1:v=1:a=1[vout][aout_raw]; \
-    [aout_raw]loudnorm=I=-16:TP=-1.5:LRA=11[aout]" \
-  -map [vout] -map [aout] -c:v libx264 -c:a aac final.mp4
-```
+**`split_screen_with_slides` (default)**
+
+| Zone | Rect (x, y, w, h) | Content |
+|---|---|---|
+| Interviewer tile | 0, 0, 560, 360 | head-and-shoulders crop; active = live clip in a 4 px clay (`#B8461E`) frame, idle = first-frame still dimmed to ~55 % |
+| Expert tile | 1360, 0, 560, 360 | same for the expert |
+| Label zone | 560, 0, 800, 96 | "Name / Role" next to each tile; active speaker larger with a clay accent bar, idle muted |
+| Caption zone | 560, 96, 800, 264 | karaoke captions (ASS `\k`), `\an5\pos(960,228)`, wrapped with `\N` to ≤ 40 chars (≈ 760 px) and ≤ 3 lines per event; MarginL/R = 580 so text never leaves the zone |
+| Slide | 320, 360, 1280, 720 | `scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2` — never stretched or cropped (4:3 / portrait slides are pillar-boxed) |
+| Gutters | 0..320 and 1600..1920 below the tiles | background `#0B1220`; "n / N" slide counter in the right gutter |
+
+**`split_screen_only`** — two 960x900 tiles at (0,0) and (960,0), "Name · Role" labels at y 900..960, captions (≤ 2 lines) at y 960..1080.
+
+**Avatar framing.** Per tile: `chromakey/despill` (only if *that* speaker's clip is a green-screen photo avatar) → `crop` (normalized rect, even pixels) → `scale` to the tile (decrease) → `pad` (bottom-aligned, transparent) → `format=yuva420p` → `overlay`. The chroma flag is resolved per speaker from its own clips, so the idle still never inherits the active clip's flag. VP9 WebM clips are decoded with `libvpx-vp9` so their alpha channel survives. The crop rect comes from `avatar_registry` (`AvatarEntry.podcast_crop`, normalized `[x, y, w, h]`; custom avatars may set `"podcast_crop"` in `CUSTOM_AVATARS_JSON`) with kind fallbacks: prebuilt 16:9 avatars `(0.31, 0.02, 0.38, 0.43)`, photo avatars `(0.06, 0.0, 0.88, 1.0)`; Lisa is tuned to `(0.355, 0.05, 0.306, 0.35)`.
+
+**Slides.** PPTX slides are rendered with the same LibreOffice binary as Decks (`LIBREOFFICE_PATH`, passed through `ingest_file`); `Document.slide_images` stays index-aligned with the slides and a missing image falls back to a 1280x720 title card (a warning is logged). Intro/outro cards stay full-frame.
 
 - **MP3 output:** `ffmpeg -i final.mp4 -vn -acodec libmp3lame -q:a 2 final.mp3`
 - **SRT output:** iterate clips; for each, read actual duration via `ffprobe -v quiet -of csv=p=0 -show_entries format=duration` and accumulate. This avoids timing drift introduced by `loudnorm` or re-encoding.
@@ -287,4 +305,4 @@ src/components/podcast/JobStatus.tsx          // progress + final player
 
 **Current PoC:** backend router + services, frontend route, render pipeline, library, and Blob-backed MP4 / MP3 / SRT / SCORM deliverables.
 
-**Next polish:** split-screen / PiP layout (requires transparent-bg WebM/VP9 output from Speech), regenerate single turn, voice preview, background music, and transitions.
+**Next polish:** regenerate single turn, voice preview, and slide transitions.
