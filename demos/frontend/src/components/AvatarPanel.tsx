@@ -282,6 +282,7 @@ export default function AvatarPanel({
     remoteSourceRef.current = null;
     analyserRef.current = null;
     playback.setAnalyserAvailable(false);
+    playback.setMediaInterrupted(false);
   }, [playback]);
 
   // ── Slide flow ────────────────────────────────────────────────────────
@@ -367,6 +368,8 @@ export default function AvatarPanel({
     // Report the real media state: signalling success does not mean video flows.
     pc.onconnectionstatechange = () => {
       if (peerConnectionRef.current !== pc) return;
+      // A dropped link is silent too: never read that silence as the end of speech.
+      playback.setMediaInterrupted(pc.connectionState === 'disconnected');
       if (pc.connectionState === 'connected') {
         setConnected(true);
         setStatus((s) => (s.startsWith('Reconnected') ? s : 'Avatar connected — ready to present'));

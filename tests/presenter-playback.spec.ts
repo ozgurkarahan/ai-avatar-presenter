@@ -86,6 +86,65 @@ test.describe('Playback controller (unit)', () => {
     expect(r[0].at).toBeLessThan(12000);
   });
 
+  test('a dropped media link is not the end of speech: completes after the buffered tail', async ({ page }) => {
+    await loadPlayback(page);
+    const r = await page.evaluate(() => {
+      const { AvatarPlayback } = (window as any).__pb;
+      let now = 0;
+      const done: any[] = [];
+      const pb = new AvatarPlayback({ now: () => now, onComplete: (c: any) => done.push({ ...c, at: now }) });
+      pb.setAnalyserAvailable(true);
+      pb.begin('slide', { chars: 120 });
+      pb.onServerEvent({ type: 'response.created', response: { id: 'r1' } });
+      pb.onServerEvent({ type: 'response.output_item.added', response_id: 'r1', item: { id: 'i1' } });
+      now = 800; pb.onDataChannelMessage({ event: { eventType: 'EVENT_TYPE_TURN_START', turnID: 'i1' } });
+      pb.onServerEvent({ type: 'response.audio_timestamp.delta', response_id: 'r1', item_id: 'i1', audio_offset_ms: 9500, audio_duration_ms: 400 });
+      now = 2900; pb.onServerEvent({ type: 'response.done', response: { id: 'r1' } });
+      // Network stalls delay playback past the word-timestamp estimate (1000 + 9900 + 1000).
+      for (now = 1000; now <= 12000; now += 50) pb.onAudioLevel(-25);
+      pb.setMediaInterrupted(true); // WebRTC 'disconnected': silence for 1.1 s
+      for (; now <= 13100; now += 50) pb.onAudioLevel(-120);
+      const duringOutage = done.length;
+      const quietDuringOutage = pb.quietForMs();
+      pb.setMediaInterrupted(false); // 'connected': the buffered tail plays
+      for (; now <= 13600; now += 50) pb.onAudioLevel(-25);
+      now = 13650; pb.onDataChannelMessage({ event: { eventType: 'EVENT_TYPE_TURN_END', turnID: 'i1' } });
+      for (; now <= 16000 && done.length === 0; now += 50) pb.onAudioLevel(-120);
+      return { duringOutage, quietDuringOutage, done };
+    });
+    expect(r.duringOutage).toBe(0);
+    expect(r.quietDuringOutage).toBe(0);
+    expect(r.done).toHaveLength(1);
+    expect(r.done[0].reason).toBe('turn_end');
+    // Last loud sample (13600) + 700 ms of real silence.
+    expect(r.done[0].at).toBeGreaterThanOrEqual(14300);
+  });
+
+  test('silence right after the link is restored still needs 700 ms before completing', async ({ page }) => {
+    await loadPlayback(page);
+    const r = await page.evaluate(() => {
+      const { AvatarPlayback } = (window as any).__pb;
+      let now = 0;
+      const done: any[] = [];
+      const pb = new AvatarPlayback({ now: () => now, onComplete: (c: any) => done.push({ ...c, at: now }) });
+      pb.setAnalyserAvailable(true);
+      pb.begin('slide', { chars: 120 });
+      pb.onServerEvent({ type: 'response.created', response: { id: 'r1' } });
+      pb.onServerEvent({ type: 'response.audio_timestamp.delta', response_id: 'r1', audio_offset_ms: 9500, audio_duration_ms: 400 });
+      pb.onServerEvent({ type: 'response.done', response: { id: 'r1' } });
+      for (now = 1000; now <= 11000; now += 50) pb.onAudioLevel(-25);
+      pb.setMediaInterrupted(true);
+      for (; now <= 14000; now += 50) pb.onAudioLevel(-120);
+      pb.setMediaInterrupted(false);
+      const restoredAt = now;
+      for (; now <= 16000 && done.length === 0; now += 50) pb.onAudioLevel(-120);
+      return { restoredAt, done };
+    });
+    expect(r.done).toHaveLength(1);
+    expect(r.done[0].reason).toBe('word_timestamps');
+    expect(r.done[0].at - r.restoredAt).toBeGreaterThanOrEqual(700);
+  });
+
   test('no completion signal at all → stalled (Continue), never a silent skip', async ({ page }) => {
     await loadPlayback(page);
     const r = await page.evaluate(() => {

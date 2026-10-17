@@ -12,6 +12,9 @@
  *   3. otherwise the turn goes "stalled" at expected end + 8 s (or a generous
  *      last-resort deadline when nothing is known) and the UI offers Continue.
  *      Stalled turns still complete if a late signal arrives.
+ *   While the media link is interrupted (WebRTC `disconnected`) the silence is
+ *   the network, not the end of speech: no rule fires, and quiet is measured
+ *   again from the moment the link is restored (the buffered tail still plays).
  *
  * Pure TypeScript with an injectable clock: the host feeds WS events, data
  * channel payloads and audio levels, and calls `tick()` periodically.
@@ -111,6 +114,9 @@ export class AvatarPlayback {
   private lastLoudAt: number | null = null;
   private lastSampleAt: number | null = null;
   private analyserAvailable = false;
+  private mediaInterrupted = false;
+  /** Silence before this instant does not count as quiet (media link was down). */
+  private quietFloorAt: number | null = null;
   private loggedShapes = new Set<string>();
   /** Item / turn ids of completed or cancelled turns: their late events are dropped. */
   private retired: string[] = [];
@@ -187,6 +193,16 @@ export class AvatarPlayback {
     this.analyserAvailable = available;
   }
 
+  /** WebRTC media link down (`disconnected`) / restored (`connected`). */
+  setMediaInterrupted(interrupted: boolean): void {
+    if (interrupted === this.mediaInterrupted) return;
+    this.mediaInterrupted = interrupted;
+    if (!interrupted) {
+      this.quietFloorAt = this.opts.now();
+      this.tick();
+    }
+  }
+
   get activeEpoch(): number | null {
     return this.current && (this.current.phase === 'waiting' || this.current.phase === 'playing' || this.current.phase === 'stalled')
       ? this.current.epoch : null;
@@ -208,9 +224,10 @@ export class AvatarPlayback {
 
   /** How long the remote audio has been quiet (0 while loud, Infinity if never loud). */
   quietForMs(): number {
-    if (this.loud) return 0;
-    if (this.lastLoudAt == null) return Number.POSITIVE_INFINITY;
-    return this.opts.now() - this.lastLoudAt;
+    if (this.loud || this.mediaInterrupted) return 0;
+    const since = Math.max(this.lastLoudAt ?? Number.NEGATIVE_INFINITY, this.quietFloorAt ?? Number.NEGATIVE_INFINITY);
+    if (!Number.isFinite(since)) return Number.POSITIVE_INFINITY;
+    return this.opts.now() - since;
   }
 
   /** True while the analyser is feeding samples (otherwise silence cannot be measured). */
@@ -319,6 +336,7 @@ export class AvatarPlayback {
   tick(): void {
     const t = this.current;
     if (!t || (t.phase !== 'waiting' && t.phase !== 'playing' && t.phase !== 'stalled')) return;
+    if (this.mediaInterrupted) return;
     const now = this.opts.now();
     const analyser = this.analyserLive;
     const quiet = this.quietForMs();
