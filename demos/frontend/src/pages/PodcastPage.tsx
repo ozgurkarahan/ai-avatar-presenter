@@ -78,11 +78,13 @@ function PodcastGenerator() {
   const [language, setLanguage] = useState('en-US');
   const [avatars, setAvatars] = useState<AvatarInfo[]>([]);
   const [voices, setVoices] = useState<VoiceOption[]>([]);
+  // Same cast as the live presenter and the published library: Sofia interviews,
+  // Lucas is the expert. Display names default to the avatar names.
   const [interviewer, setInterviewer] = useState<RoleConfig>({
-    display_name: 'Dr. Marc Chen', avatar: '', voice: 'en-US-Andrew:DragonHDLatestNeural',
+    display_name: '', avatar: '', voice: 'en-US-Ava:DragonHDLatestNeural',
   });
   const [expert, setExpert] = useState<RoleConfig>({
-    display_name: 'Dr. Sophie Patel', avatar: '', voice: 'en-US-Ava:DragonHDLatestNeural',
+    display_name: '', avatar: '', voice: 'en-US-Andrew:DragonHDLatestNeural',
   });
   const [streamingTurns, setStreamingTurns] = useState<DialogueTurn[]>([]);
   const [scriptId, setScriptId] = useState<string | null>(null);
@@ -97,10 +99,14 @@ function PodcastGenerator() {
     listAvatars().then((list) => {
       setAvatars(list);
       const ids = new Set(list.map((a) => a.id));
-      const male = pickAvatarForGender(list, 'male');
       const female = pickAvatarForGender(list, 'female');
-      setInterviewer((prev) => (ids.has(prev.avatar) ? prev : { ...prev, avatar: male?.id ?? '' }));
-      setExpert((prev) => (ids.has(prev.avatar) ? prev : { ...prev, avatar: female?.id ?? '' }));
+      const male = pickAvatarForGender(list, 'male');
+      const withAvatar = (prev: RoleConfig, pick: AvatarInfo | undefined): RoleConfig => {
+        const avatar = ids.has(prev.avatar) ? list.find((a) => a.id === prev.avatar) : pick;
+        return { ...prev, avatar: avatar?.id ?? '', display_name: prev.display_name || avatar?.display_name || '' };
+      };
+      setInterviewer((prev) => withAvatar(prev, female));
+      setExpert((prev) => withAvatar(prev, male));
     }).catch(() => {});
   }, []);
   useEffect(() => {
@@ -114,8 +120,8 @@ function PodcastGenerator() {
       if (intOk && expOk) return;
       const male = vs.find(v => v.gender === 'male');
       const female = vs.find(v => v.gender === 'female');
-      const intPick = male ?? vs[0];
-      const expPick = female && female.id !== intPick.id ? female : vs.find(v => v.id !== intPick.id) ?? vs[0];
+      const intPick = female ?? vs[0];
+      const expPick = male && male.id !== intPick.id ? male : vs.find(v => v.id !== intPick.id) ?? vs[0];
       if (!intOk) setInterviewer(prev => ({ ...prev, voice: intPick.id }));
       if (!expOk) setExpert(prev => ({ ...prev, voice: expPick.id }));
     }).catch(() => {});
@@ -165,8 +171,11 @@ function PodcastGenerator() {
   async function kickOffRender() {
     if (!scriptId) return;
     try {
+      const named = (r: RoleConfig, speaker: Speaker): RoleConfig => ({
+        ...r, display_name: r.display_name.trim() || avatars.find((a) => a.id === r.avatar)?.display_name || ROLE_LABEL[speaker],
+      });
       const j = await startRender({
-        script_id: scriptId, roles: { interviewer, expert },
+        script_id: scriptId, roles: { interviewer: named(interviewer, 'interviewer'), expert: named(expert, 'expert') },
         layout, music, intro,
       });
       setJob(j); setPhase('rendering');
@@ -416,7 +425,15 @@ function RoleCard({ speaker, role, onChange, avatars, voices }: {
           />
         </Field>
         <Field label="Avatar">
-          <Select value={role.avatar} onChange={(e) => onChange({ ...role, avatar: e.target.value })}>
+          <Select
+            value={role.avatar}
+            onChange={(e) => {
+              const next = avatars.find((a) => a.id === e.target.value);
+              // Keep a custom name; follow the avatar when the name was the default.
+              const followName = !role.display_name.trim() || role.display_name === avatar?.display_name;
+              onChange({ ...role, avatar: e.target.value, display_name: followName ? next?.display_name ?? '' : role.display_name });
+            }}
+          >
             {!role.avatar && <option value="">Choose an avatar</option>}
             {avatars.map((a) => <option key={a.id} value={a.id}>{a.display_name}</option>)}
           </Select>

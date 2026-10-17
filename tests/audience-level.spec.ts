@@ -100,6 +100,45 @@ test.describe('Audience level — script requests', () => {
     expect(bodies[0].audience_level ?? null).toBeNull();
   });
 
+  test('podcast: hosts default to Sofia (interviewer) + Lucas (expert) and render with their names', async ({ page }) => {
+    const { errors, go } = await openAsAdmin(page, '/podcast');
+    await mockPodcastFlow(page);
+    const renders: Record<string, any>[] = [];
+    await page.route('**/api/podcast/render', (r) => {
+      renders.push(JSON.parse(r.request().postData() || '{}'));
+      return json(r, { id: 'job-0000aaaa', state: 'queued', progress: { stage: 'queued', completed: 0, total: 1, message: '' }, outputs: {} });
+    });
+    await go();
+    await page.locator('input[type=file]').setInputFiles(SOURCE);
+    await page.getByRole('button', { name: /generate podcast script/i }).click();
+    await expect(page.getByRole('button', { name: 'Render podcast' })).toBeVisible();
+
+    const interviewer = page.getByRole('article', { name: 'Interviewer' });
+    const expert = page.getByRole('article', { name: 'Expert' });
+    await expect(interviewer.getByLabel('Avatar')).toHaveValue('photo_female');
+    await expect(interviewer.getByLabel('Display name')).toHaveValue('Sofia');
+    await expect(expert.getByLabel('Avatar')).toHaveValue('photo_male');
+    await expect(expert.getByLabel('Display name')).toHaveValue('Lucas');
+    await expect(page.locator('.pc-transcript .pc-turn__name').first()).toHaveText('Sofia');
+
+    // Swapping the avatar carries a default name along; a custom name is kept.
+    await expert.getByLabel('Avatar').selectOption('photo_female');
+    await expect(expert.getByLabel('Display name')).toHaveValue('Sofia');
+    await expert.getByLabel('Avatar').selectOption('photo_male');
+    await expect(expert.getByLabel('Display name')).toHaveValue('Lucas');
+    await interviewer.getByLabel('Display name').fill('Host');
+    await interviewer.getByLabel('Avatar').selectOption('photo_male');
+    await expect(interviewer.getByLabel('Display name')).toHaveValue('Host');
+    await interviewer.getByLabel('Avatar').selectOption('photo_female');
+    await interviewer.getByLabel('Display name').fill('');
+
+    await page.getByRole('button', { name: 'Render podcast' }).click();
+    await expect.poll(() => renders.length).toBe(1);
+    expect(renders[0].roles.interviewer).toMatchObject({ display_name: 'Sofia', avatar: 'photo_female' });
+    expect(renders[0].roles.expert).toMatchObject({ display_name: 'Lucas', avatar: 'photo_male' });
+    expect(errors, errors.join('\n')).toEqual([]);
+  });
+
   test('video: selected level is sent as audience_level', async ({ page }) => {
     const { errors, go } = await openAsAdmin(page, '/video');
     const bodies = await mockVideoFlow(page);
