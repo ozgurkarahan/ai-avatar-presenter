@@ -1,10 +1,10 @@
-# 🎙️ DeckFM
+# 🎙️ Oz Radio
 
 > AI avatars that present, narrate and podcast your decks
 
 ## Overview
 
-DeckFM: AI-powered avatar presentation assistant that reads PowerPoint speaker notes with multilingual text-to-speech. Upload a PowerPoint deck and an AI avatar autonomously presents it — translating speaker notes into the target language and delivering them via a realistic TTS avatar, without needing a live presenter.
+Oz Radio: AI-powered avatar presentation assistant that reads PowerPoint speaker notes with multilingual text-to-speech. Upload a PowerPoint deck and an AI avatar autonomously presents it — translating speaker notes into the target language and delivering them via a realistic TTS avatar, without needing a live presenter.
 
 The repo covers complementary avatar features in a single app:
 - **Home** at `/` — landing page
@@ -23,7 +23,7 @@ The repo covers complementary avatar features in a single app:
 4. **Multilingual**: Avatar speaks in a chosen language regardless of the source language of the speaker notes (translation + TTS)
 
 ### Teams
-5. **Teams embedding**: Embed DeckFM in Microsoft Teams as a static tab
+5. **Teams embedding**: Embed Oz Radio in Microsoft Teams as a static tab
 
 ### Decks, Search & Playlists (`/decks`, `/search`, `/playlists`)
 6. **Multi-deck corpus**: Decks ingested into Azure AI Search (index `decks`, Free SKU), hybrid vector + keyword retrieval across languages

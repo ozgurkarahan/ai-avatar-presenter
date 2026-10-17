@@ -1,9 +1,9 @@
 ---
 mode: agent
-description: Provision and deploy DeckFM to Azure with azd by following BOOTSTRAP.md, with human checkpoints and a browser smoke test.
+description: Provision and deploy Oz Radio to Azure with azd by following BOOTSTRAP.md, with human checkpoints and a browser smoke test.
 ---
 
-# Deploy DeckFM to Azure
+# Deploy Oz Radio to Azure
 
 Follow [`BOOTSTRAP.md`](../../BOOTSTRAP.md) exactly, step by step. Use
 [`docs/provisioning.md`](../../docs/provisioning.md) as the reference for every step.

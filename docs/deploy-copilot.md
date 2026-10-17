@@ -1,4 +1,4 @@
-# Deploying a parallel DeckFM instance
+# Deploying a parallel Oz Radio instance
 
 > This page used to describe a "copilot" instance that reused existing Azure
 > OpenAI and AI Speech resources through `openAiAccountName` /

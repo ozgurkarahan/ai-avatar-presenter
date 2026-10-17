@@ -43,8 +43,8 @@ def build():
 
         slide.notes_slide.notes_text_frame.text = s["notes"]
 
-    prs.core_properties.author = "DeckFM"
-    prs.core_properties.last_modified_by = "DeckFM"
+    prs.core_properties.author = "Oz Radio"
+    prs.core_properties.last_modified_by = "Oz Radio"
     prs.save(OUT)
     print(f"Wrote {OUT} ({OUT.stat().st_size} bytes, {len(SLIDES)} slides)")
 

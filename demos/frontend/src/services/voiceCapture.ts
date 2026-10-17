@@ -250,7 +250,7 @@ export class VoiceCapture {
     await this.ctx.audioWorklet.addModule(WORKLET_URL);
     if (this.closed) return;
     this.source = this.ctx.createMediaStreamSource(this.stream);
-    this.node = new AudioWorkletNode(this.ctx, 'deckfm-pcm-capture', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
+    this.node = new AudioWorkletNode(this.ctx, 'ozradio-pcm-capture', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
     this.sink = this.ctx.createGain();
     this.sink.gain.value = 0;
     this.node.port.onmessage = (e: MessageEvent<{ pcm: ArrayBuffer; rms: number }>) => this.onChunk(e.data);

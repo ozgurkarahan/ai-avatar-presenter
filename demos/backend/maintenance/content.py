@@ -1,4 +1,4 @@
-"""DeckFM content maintenance CLI (operator job, runs inside the app container).
+"""Oz Radio content maintenance CLI (operator job, runs inside the app container).
 
 Seeds the AI enablement catalog, renders podcasts/videos for it and purges
 retired content, reusing the routers' own code paths (catalog upload,
@@ -16,6 +16,7 @@ Usage (from the backend directory, ``/app`` in the image)::
     python -m maintenance.content purge --deck-title T ... --podcast-id job-... --video-id sv-... \\
         --record deleted.json [--allow-missing video:practitioner] [--dry-run]
     python -m maintenance.content retitle [--dry-run]
+    python -m maintenance.content rebrand-decks [--deck ai-enablement-1-beginner ...] [--dry-run]
     python -m maintenance.content --background /tmp/all.log all [--skip video:practitioner]
     python -m maintenance.content logtail /tmp/all.log -n 40
 
@@ -28,11 +29,23 @@ and podcasts/videos by library title (an existing item is only published).
 Titles match either the display title (``DISPLAY_TITLES``) or the original
 filename slug, so content seeded before ``retitle`` is never duplicated.
 Output never contains signed URLs.
+
+``render-podcast``/``render-video --force`` render a fresh item even when one
+with the same title exists (e.g. after a rebrand); retire the previous item
+afterwards with ``purge --podcast-id/--video-id`` (media only: purge touches
+playlists only when ``--deck-title`` deletes decks).
+
+``rebrand-decks`` re-renders the AI decks from the regenerated .pptx and
+overwrites the slide images, slide text and search chunks of the *same*
+deck ids in place (speaker notes must be identical; titles, translated
+notes, published/live-demo flags and playlists are kept).
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
+import io
 import json
 import logging
 import shutil
@@ -346,7 +359,8 @@ def _existing(lib, titles: frozenset[str] | set[str]) -> Optional[dict]:
     return items[0] if items else None
 
 
-async def render_podcast(cfg, name: str, *, dry_run: bool = False, deck_dir: Optional[Path] = None) -> dict:
+async def render_podcast(cfg, name: str, *, dry_run: bool = False, deck_dir: Optional[Path] = None,
+                         force: bool = False) -> dict:
     from routers import podcast as pr
     from services.podcast_ingest import ingest_file
     from services.podcast_models import (
@@ -364,7 +378,9 @@ async def render_podcast(cfg, name: str, *, dry_run: bool = False, deck_dir: Opt
             "audience_level": spec.audience_level,
             "roles": {"interviewer": roles.interviewer.model_dump(), "expert": roles.expert.model_dump()}}
     found = _existing(lib, spec.titles)
-    if found:
+    if found and force:
+        plan["replaces"] = found["job_id"]
+    elif found:
         plan.update(action="exists", job_id=found["job_id"], published=found.get("published"))
         if not found.get("published") and not dry_run:
             lib.set_published(found["job_id"], True)
@@ -412,7 +428,8 @@ async def render_podcast(cfg, name: str, *, dry_run: bool = False, deck_dir: Opt
 # ---------------------------------------------------------------------------
 # Videos
 # ---------------------------------------------------------------------------
-async def render_video(cfg, name: str, *, dry_run: bool = False, deck_dir: Optional[Path] = None) -> dict:
+async def render_video(cfg, name: str, *, dry_run: bool = False, deck_dir: Optional[Path] = None,
+                       force: bool = False) -> dict:
     from routers import video as vr
     from security import MAX_NARRATION_CHARS, MAX_SLIDES_PER_RENDER
     from services import avatar_registry
@@ -438,7 +455,9 @@ async def render_video(cfg, name: str, *, dry_run: bool = False, deck_dir: Optio
     plan = {"name": name, "title": spec.title, "language": spec.language, "voice": spec.voice,
             "avatar": spec.avatar, "audience_level": spec.audience_level, "style": spec.style}
     found = _existing(lib, spec.titles)
-    if found:
+    if found and force:
+        plan["replaces"] = found["job_id"]
+    elif found:
         plan.update(action="exists", job_id=found["job_id"], published=found.get("published"))
         if not found.get("published") and not dry_run:
             lib.set_published(found["job_id"], True)
@@ -530,15 +549,23 @@ def purge(cfg, *, deck_titles: list[str], podcast_ids: list[str], video_ids: lis
     decks = [d for d in inv["decks"] if d["title"] in set(deck_titles)]
     not_found = sorted(set(deck_titles) - {d["title"] for d in decks})
     deck_ids = {d["deck_id"] for d in decks}
+    # Playlists are only touched by a deck purge; a media-only purge never deletes one.
     playlists = [p for p in inv["playlists"]
-                 if p.get("status") == "broken" or any(s.get("deck_id") in deck_ids for s in p["steps"])]
+                 if p.get("status") == "broken" or any(s.get("deck_id") in deck_ids for s in p["steps"])
+                 ] if deck_ids else []
     if any(p.get("title") == PLAYLIST_TITLE and p.get("status") != "broken" for p in playlists):
         raise MaintenanceError(f"{PLAYLIST_TITLE!r} references a deck slated for deletion")
     podcasts = [i for i in inv["podcasts"] if i.get("job_id") in set(podcast_ids)]
     videos = [i for i in inv["videos"] if i.get("job_id") in set(video_ids)]
-    for item in podcasts + videos:
-        if item.get("title") in new_titles:
-            raise MaintenanceError(f"refusing to delete new item {item.get('job_id')} ({item.get('title')})")
+    for items, doomed in ((inv["podcasts"], podcasts), (inv["videos"], videos)):
+        doomed_ids = {i["job_id"] for i in doomed}
+        for item in doomed:
+            if item.get("title") not in new_titles:
+                continue
+            # A new-catalog item may only go once a published re-render with the same title remains.
+            if not any(o.get("title") == item.get("title") and o.get("published")
+                       and o.get("job_id") not in doomed_ids for o in items):
+                raise MaintenanceError(f"refusing to delete new item {item.get('job_id')} ({item.get('title')})")
     not_found += sorted(set(podcast_ids) - {i["job_id"] for i in podcasts})
     not_found += sorted(set(video_ids) - {i["job_id"] for i in videos})
 
@@ -701,6 +728,165 @@ def retitle(cfg, *, dry_run: bool = False) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Rebrand decks in place (same deck ids)
+# ---------------------------------------------------------------------------
+def _slide_text(content: bytes) -> list[dict[str, str]]:
+    """Title/body/notes per slide, extracted exactly like the production parser."""
+    from pptx import Presentation
+
+    from services import pptx_parser as pp
+
+    prs = Presentation(io.BytesIO(content))
+    return [{"title": pp._extract_title(s), "body": pp._extract_body(s), "notes": pp._extract_notes(s)}
+            for s in prs.slides]
+
+
+def _versioned(url: str, version: int) -> str:
+    return url if "?" in url else f"{url}?v={version}"
+
+
+def rebrand_decks(cfg, *, dry_run: bool = False, deck_dir: Optional[Path] = None,
+                  only: Optional[set[str]] = None) -> dict[str, Any]:
+    """Overwrite the AI decks' slide images and slide text from the regenerated .pptx.
+
+    Each existing deck keeps its id, title, speaker notes, translated notes,
+    published/live-demo flags and playlist membership; a deck is skipped
+    (error) when its slide count or any speaker note differs from the new file.
+    Slide PNGs are overwritten under the same blob names, ``images_version`` is
+    bumped (appended as ``?v=`` to unsigned image URLs) and the AI Search chunks
+    are re-indexed with the new slide text. Idempotent: a deck whose stored
+    ``source_sha256`` and slide text already match is reported ``already``.
+    Never deletes decks, playlists or media."""
+    from routers import decks as dr
+    from services.deck_search import DeckSlide
+    from services.pptx_parser import _fallback_placeholders, parse_pptx
+    from services.storage import deck_title
+
+    store = dr._store(cfg)
+    if not store or not store.cosmos_available:
+        raise MaintenanceError("Cosmos DB unavailable")
+    if not dry_run and not store.available:
+        raise MaintenanceError("Blob Storage unavailable")
+    by_title: dict[str, dict] = {}
+    for d in store.list_decks():
+        if isinstance(d, dict) and d.get("id"):
+            by_title.setdefault(dr._doc_to_summary(d).title, d)
+
+    report: dict[str, Any] = {"dry_run": dry_run, "decks": [], "errors": []}
+    search = None
+    for spec in SEED_DECKS:
+        if only and spec.slug not in only:
+            continue
+        entry: dict[str, Any] = {"title": spec.title, "file": spec.file}
+        report["decks"].append(entry)
+
+        def _fail(msg: str, entry=entry, spec=spec) -> None:
+            entry["action"] = "aborted"
+            entry["error"] = msg
+            report["errors"].append({"item": f"deck {spec.slug}", "error": msg[:300]})
+            _say(f"FAILED deck {spec.title}: {msg}")
+
+        found = by_title.get(spec.title) or by_title.get(spec.slug)
+        if not found:
+            _fail("deck not found (run seed first)")
+            continue
+        deck_id = found["id"]
+        entry["deck_id"] = deck_id
+        doc = store.get_presentation(deck_id)
+        if not doc or doc.get("source") != "deck":
+            _fail("deck document missing")
+            continue
+        content = _deck_path(spec.file, deck_dir).read_bytes()
+        if content[:4] != b"PK\x03\x04":
+            raise MaintenanceError(f"{spec.file} is not a .pptx")
+        sha = hashlib.sha256(content).hexdigest()
+        new = _slide_text(content)
+        old = sorted((s for s in doc.get("slides") or [] if isinstance(s, dict)),
+                     key=lambda s: int(s.get("index", 0)))
+        if len(new) != len(old) or int(doc.get("slide_count") or len(old)) != len(new):
+            _fail(f"slide count differs (stored {len(old)}, file {len(new)})")
+            continue
+        bad = [i for i, (o, n) in enumerate(zip(old, new)) if (o.get("notes") or "") != n["notes"]]
+        if bad:
+            _fail(f"speaker notes differ on slides {[i + 1 for i in bad]}")
+            continue
+        changed = [i for i, (o, n) in enumerate(zip(old, new))
+                   if (o.get("body") or "") != n["body"] or (o.get("title") or "") != n["title"]]
+        entry["text_changes"] = len(changed)
+        if doc.get("source_sha256") == sha and not changed:
+            entry["action"] = "already"
+            _say(f"deck {spec.title}: already rebranded")
+            continue
+        if dry_run:
+            entry["action"] = "would rebrand"
+            _say(f"deck {spec.title}: would rebrand ({len(new)} slides)")
+            continue
+
+        _say(f"deck {spec.title}: render {spec.file}")
+        pres = parse_pptx(content, spec.file, cfg.libreoffice_path or "soffice")
+        images = dict(pres.slide_images)
+        if sorted(images) != list(range(len(new))):
+            _fail(f"rendered {len(images)} images for {len(new)} slides")
+            continue
+        placeholders = dict(_fallback_placeholders(len(new)))
+        if any(images[i] == placeholders[i] for i in images):
+            _fail("slide rendering fell back to placeholders (LibreOffice unavailable?)")
+            continue
+        if [s.notes for s in pres.slides] != [n["notes"] for n in new]:
+            _fail("parser notes differ from the text extraction")
+            continue
+
+        local_dir = dr.SLIDES_DIR / deck_id
+        uploaded = 0
+        for idx in sorted(images):
+            if not store.upload_slide_image(deck_id, idx, images[idx]):
+                break
+            uploaded += 1
+            local_dir.mkdir(parents=True, exist_ok=True)
+            (local_dir / f"{idx}.png").write_bytes(images[idx])
+        entry["images"] = uploaded
+        if uploaded != len(images):
+            _fail(f"blob upload failed after {uploaded}/{len(images)} images")
+            continue
+        if doc.get("pptx_url"):
+            entry["pptx"] = "replaced" if store.upload_pptx(deck_id, doc.get("filename") or spec.file,
+                                                            content) else "failed"
+
+        latest = store.get_presentation(deck_id) or doc
+        version = int(latest.get("images_version") or 0) + 1
+        for s in latest.get("slides") or []:
+            if not isinstance(s, dict):
+                continue
+            i = int(s.get("index", 0))
+            s["title"], s["body"] = pres.slides[i].title, pres.slides[i].body
+            url = store.get_slide_image_url(deck_id, i) or f"/api/slides/{deck_id}/{i}.png"
+            s["image_url"] = _versioned(url, version)
+        latest["images_version"] = version
+        latest["source_sha256"] = sha
+        latest["rebranded_at"] = datetime.now(timezone.utc).isoformat()
+        if not store.save_presentation(latest):
+            _fail("Cosmos save failed (images already replaced)")
+            continue
+        entry.update(action="rebranded", images_version=version)
+
+        if search is None:
+            search = _deck_search(cfg) or False
+        if search:
+            try:
+                entry["search_chunks"] = search.index_deck([
+                    DeckSlide(deck_id=deck_id, deck_title=deck_title(latest), slide_index=i,
+                              slide_title=s.title or f"Slide {i + 1}", body=s.body or "", notes=s.notes or "",
+                              language=latest.get("language") or spec.language)
+                    for i, s in enumerate(pres.slides)
+                ])
+            except Exception as exc:  # noqa: BLE001
+                report["errors"].append({"item": f"search {deck_id}", "error": str(exc)[:300]})
+                _say(f"FAILED search reindex {deck_id}: {exc}")
+        _say(f"deck {spec.title}: rebranded ({uploaded} images, v{version})")
+    return report
+
+
+# ---------------------------------------------------------------------------
 # Everything (one operator call)
 # ---------------------------------------------------------------------------
 async def publish_all(cfg, *, dry_run: bool = False, deck_dir: Optional[Path] = None,
@@ -753,10 +939,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("render-podcast", help="Render + publish an AI podcast")
     p.add_argument("name", choices=[*PODCASTS, "all"])
+    p.add_argument("--force", action="store_true",
+                   help="Render a new item even if one with this title exists (purge the old id afterwards)")
     p.add_argument("--dry-run", action="store_true")
 
     p = sub.add_parser("render-video", help="Render + publish an AI video")
     p.add_argument("name", choices=[*VIDEOS, "all"])
+    p.add_argument("--force", action="store_true",
+                   help="Render a new item even if one with this title exists (purge the old id afterwards)")
     p.add_argument("--dry-run", action="store_true")
 
     p = sub.add_parser("purge", help="Delete retired decks/podcasts/videos (+ their playlists)")
@@ -769,6 +959,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true")
 
     p = sub.add_parser("retitle", help="Rename slug-titled AI decks/podcasts/videos to display titles")
+    p.add_argument("--dry-run", action="store_true")
+
+    p = sub.add_parser("rebrand-decks",
+                       help="Re-render the AI decks' slide images/text in place (same deck ids, notes unchanged)")
+    p.add_argument("--deck", action="append", default=[], choices=[s.slug for s in SEED_DECKS],
+                   help="Limit to these decks (default: all AI decks)")
     p.add_argument("--dry-run", action="store_true")
 
     p = sub.add_parser("all", help="seed, then every podcast, then every video (continues past failures)")
@@ -845,11 +1041,13 @@ def main(argv: Optional[list[str]] = None) -> int:
             _print(asyncio.run(seed(cfg, dry_run=args.dry_run, deck_dir=args.deck_dir)))
         elif args.cmd == "render-podcast":
             names = list(PODCASTS) if args.name == "all" else [args.name]
-            _print([asyncio.run(render_podcast(cfg, n, dry_run=args.dry_run, deck_dir=args.deck_dir))
+            _print([asyncio.run(render_podcast(cfg, n, dry_run=args.dry_run, deck_dir=args.deck_dir,
+                                               force=args.force))
                     for n in names])
         elif args.cmd == "render-video":
             names = list(VIDEOS) if args.name == "all" else [args.name]
-            _print([asyncio.run(render_video(cfg, n, dry_run=args.dry_run, deck_dir=args.deck_dir))
+            _print([asyncio.run(render_video(cfg, n, dry_run=args.dry_run, deck_dir=args.deck_dir,
+                                             force=args.force))
                     for n in names])
         elif args.cmd == "purge":
             result = purge(cfg, deck_titles=args.deck_title, podcast_ids=args.podcast_id,
@@ -860,6 +1058,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 return 1
         elif args.cmd == "retitle":
             result = retitle(cfg, dry_run=args.dry_run)
+            _print(result)
+            if result["errors"]:
+                return 1
+        elif args.cmd == "rebrand-decks":
+            result = rebrand_decks(cfg, dry_run=args.dry_run, deck_dir=args.deck_dir,
+                                   only=set(args.deck) or None)
             _print(result)
             if result["errors"]:
                 return 1

@@ -6,7 +6,7 @@ import { avatar, calls, mockApi, mockVoice } from './support/mock-api';
  *
  * The playback controller is pure TS: its rules are exercised in the page with
  * an injected clock (the module is served by the Vite dev server). The UI
- * tests drive a fake Voice Live socket plus the dev-only window.__deckfmTest
+ * tests drive a fake Voice Live socket plus the dev-only window.__ozRadioTest
  * hook (no real WebRTC in the mocks).
  */
 
@@ -325,9 +325,9 @@ test.describe('Presenter playback (UI)', () => {
     await avatar.connected(page);
     await page.getByRole('button', { name: 'Present all' }).click();
     await expect.poll(() => voice.items.length).toBe(1);
-    await page.evaluate(() => (window as any).__deckfmTest.audioLevel(-20));
+    await page.evaluate(() => (window as any).__ozRadioTest.audioLevel(-20));
     await page.waitForTimeout(300);
-    await page.evaluate(() => (window as any).__deckfmTest.audioLevel(-90));
+    await page.evaluate(() => (window as any).__ozRadioTest.audioLevel(-90));
     await expect(page.getByTestId('slide-counter')).toContainText('Slide 2 of 3', { timeout: 5000 });
   });
 
@@ -446,7 +446,7 @@ test.describe('Demo countdown (UI)', () => {
     await avatar.connected(page);
     await page.getByRole('button', { name: 'Present this slide' }).click();
     await expect.poll(() => voice.ofType('demo.speak')).toEqual([{ type: 'demo.speak', slide: 1 }]);
-    await page.evaluate(() => (window as any).__deckfmTest.playback()).then((s) => expect(s).toMatchObject({ kind: 'slide', chars: 130 }));
+    await page.evaluate(() => (window as any).__ozRadioTest.playback()).then((s) => expect(s).toMatchObject({ kind: 'slide', chars: 130 }));
     voice.close(4408, 'time limit');
     await expect(page.getByText('Demo time limit reached')).toBeVisible();
     await expect(page.getByTestId('slide-counter')).toContainText('Slide 2 of 3');

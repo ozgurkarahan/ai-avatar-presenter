@@ -162,7 +162,7 @@ def build_deck(out_path: Path, title: str, slides: list[tuple[str, str, str]]) -
     slide = prs.slides.add_slide(layout)
     slide.shapes.title.text = title
     if len(slide.placeholders) > 1:
-        slide.placeholders[1].text = "DeckFM — Demo"
+        slide.placeholders[1].text = "Oz Radio — Demo"
 
     # Content slides
     content_layout = prs.slide_layouts[1]
@@ -178,8 +178,8 @@ def build_deck(out_path: Path, title: str, slides: list[tuple[str, str, str]]) -
         notes_tf = s.notes_slide.notes_text_frame
         notes_tf.text = notes_text
 
-    prs.core_properties.author = "DeckFM"
-    prs.core_properties.last_modified_by = "DeckFM"
+    prs.core_properties.author = "Oz Radio"
+    prs.core_properties.last_modified_by = "Oz Radio"
     prs.core_properties.title = title
     prs.save(str(out_path))
     print(f"Wrote {out_path}  ({len(slides) + 1} slides)")

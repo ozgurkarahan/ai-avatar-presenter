@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Integrating DeckFM into Microsoft Teams meetings is **feasible** using Azure Communication Services (ACS) and the Bot Framework. The avatar bot would join a Teams meeting as a participant, stream its video feed, and speak slide content. This is significantly more complex than the web app and is recommended as a **V2 effort** after the web-based PoC is validated with end users.
+Integrating Oz Radio into Microsoft Teams meetings is **feasible** using Azure Communication Services (ACS) and the Bot Framework. The avatar bot would join a Teams meeting as a participant, stream its video feed, and speak slide content. This is significantly more complex than the web app and is recommended as a **V2 effort** after the web-based PoC is validated with end users.
 
 ---
 
@@ -13,13 +13,13 @@ Integrating DeckFM into Microsoft Teams meetings is **feasible** using Azure Com
 │                  Teams Meeting                          │
 │                                                         │
 │  ┌──────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ Human    │  │    DeckFM    │  │ Other            │  │
+│  │ Human    │  │   Oz Radio   │  │ Other            │  │
 │  │ Users    │  │ Bot (avatar) │  │ Participants     │  │
 │  └──────────┘  └──────┬───────┘  └──────────────────┘  │
 └────────────────────────┼────────────────────────────────┘
                          │ ACS SDK / Real-Time Media
 ┌────────────────────────┼────────────────────────────────┐
-│               DeckFM Bot Service                        │
+│               Oz Radio Bot Service                      │
 │                                                         │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │ Azure Bot Service                                │   │

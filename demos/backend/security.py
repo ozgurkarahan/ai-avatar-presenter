@@ -380,7 +380,7 @@ class DemoQuota:
     @staticmethod
     def _ip_key(ip: str, day: str) -> str:
         import hashlib
-        return hashlib.sha256(f"deckfm-demo|{day}|{ip}".encode()).hexdigest()[:20]
+        return hashlib.sha256(f"oz-radio-demo|{day}|{ip}".encode()).hexdigest()[:20]
 
     @staticmethod
     def _blank(day: str) -> dict:

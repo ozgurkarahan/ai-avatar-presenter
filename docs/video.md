@@ -252,12 +252,12 @@ The recommended path is `azd deploy` (or `azd up` for a first deployment) — se
 
 ```powershell
 # 1. Build in ACR (no local docker needed)
-az acr build -r <acr-name> -t ai-presenter:<tag> -t ai-presenter:latest --no-logs .
+az acr build -r <acr-name> -t oz-radio/backend-<env>:<tag> -t oz-radio/backend-<env>:latest --no-logs .
 
 # 2. Roll new revision with bumped resources
 az containerapp update `
   -n ca-<token> -g <resource-group> `
-  --image <acr-name>.azurecr.io/ai-presenter:<tag> `
+  --image <acr-name>.azurecr.io/oz-radio/backend-<env>:<tag> `
   --cpu 2.0 --memory 4.0Gi `
   --revision-suffix <revision-suffix>
 ```

@@ -1,10 +1,10 @@
-# DeckFM — Architecture Document
+# Oz Radio — Architecture Document
 
-> **Context**: DeckFM — AI avatars that present, narrate and podcast your decks. A live avatar presents PowerPoint slides with Q&A, a batch pipeline renders narrated videos, and a two-avatar generator turns documents into podcast-style videos.
+> **Context**: Oz Radio — AI avatars that present, narrate and podcast your decks. A live avatar presents PowerPoint slides with Q&A, a batch pipeline renders narrated videos, and a two-avatar generator turns documents into podcast-style videos.
 
 ## System Overview
 
-DeckFM is a web-based application that allows users to upload PowerPoint presentations and have a photorealistic AI avatar present them with multilingual text-to-speech. The system supports:
+Oz Radio is a web-based application that allows users to upload PowerPoint presentations and have a photorealistic AI avatar present them with multilingual text-to-speech. The system supports:
 
 - **Real-time presentation** — avatar speaks as user navigates slides via WebRTC (VoiceLive API)
 - **Batch video generation** — pre-render full presentation video (Batch Avatar Synthesis API)
@@ -375,7 +375,7 @@ See [SECURITY.md](../SECURITY.md) for the operator checklist.
 ## Directory Structure
 
 ```
-deckfm/
+oz-radio/
 ├── AGENT.md                           ← Project overview & deliverables
 ├── Dockerfile                         ← Multi-stage Docker build
 ├── azure.yaml                         ← Azure Developer CLI (azd) config

@@ -1,11 +1,11 @@
 # AI enablement series
 
-A three-level, avatar-narrated introduction to modern AI, built for DeckFM.
+A three-level, avatar-narrated introduction to modern AI, built for Oz Radio.
 Each deck is a native, editable PowerPoint (16:9, white "Build" style with
 blue and amber accents) whose speaker notes are written to be **read aloud
 verbatim** by the avatar: plain sentences, no URLs, acronyms expanded on first
 use. Every slide has a title, short bullets, an original diagram drawn with
-native shapes, a footer (`DeckFM · AI enablement · <Level>`) and a slide number.
+native shapes, a footer (`Oz Radio · AI enablement · <Level>`) and a slide number.
 
 | File | Level | Title | Slides | Notes (words) | Narration at 150 wpm |
 |---|---|---|---|---|---|
@@ -60,7 +60,7 @@ Fonts: everything uses Calibri. The app container renders slides with
 LibreOffice, which substitutes the metric-compatible Carlito font, so line
 breaks match PowerPoint. Builds are static (no animations).
 
-## Seed the series in DeckFM
+## Seed the series in Oz Radio
 
 Signed in as an admin:
 

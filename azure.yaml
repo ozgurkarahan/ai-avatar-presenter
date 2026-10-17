@@ -1,6 +1,6 @@
-name: deckfm
+name: oz-radio
 metadata:
-  template: deckfm@0.0.1
+  template: oz-radio@0.0.1
 services:
   backend:
     project: .

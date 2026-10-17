@@ -1,12 +1,14 @@
-# 🎙️ DeckFM
+# 🎙️ Oz Radio
 
 > **AI avatars that present, narrate and podcast your decks**
 
+*Formerly DeckFM.*
+
 **Turn PowerPoint decks into AI-presented training** — a photorealistic avatar presents your slides live, renders narrated videos, or hosts a two-avatar podcast, in multiple languages. Built on Azure AI Speech (Voice Live + Batch Avatar), Azure OpenAI and Azure Container Apps.
 
-**▶ [Try the live avatar demo](https://ozgurkarahan.com/deckfm/)** — no sign-in needed (narration-only, time-boxed, capped daily) · [More of my work](https://ozgurkarahan.com/)
+**▶ [Try the live avatar demo](https://ozgurkarahan.com/deckfm/)** — no sign-in needed (narration with voice questions, time-boxed, capped daily) · [More of my work](https://ozgurkarahan.com/)
 
-[![GitHub](https://img.shields.io/badge/GitHub-ozgurkarahan%2Fdeckfm-181717.svg?logo=github)](https://github.com/ozgurkarahan/deckfm)
+[![GitHub](https://img.shields.io/badge/GitHub-ozgurkarahan%2Foz--radio-181717.svg?logo=github)](https://github.com/ozgurkarahan/oz-radio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB.svg?logo=react&logoColor=white)](https://react.dev/)
@@ -16,8 +18,8 @@
 
 ## 🧭 What's inside
 
-DeckFM bundles complementary features, each exposed as its own entry in the top nav
-(`DeckFM | Home · Live · Decks · Search · Playlists | Video: Create · Library | Podcast: Create · Library`):
+Oz Radio bundles complementary features, each exposed as its own entry in the top nav
+(`Oz Radio | Home · Live · Decks · Search · Playlists | Video: Create · Library | Podcast: Create · Library`):
 
 | Feature | Route | What it does |
 |---|---|---|
@@ -57,7 +59,7 @@ Every nav link has a hover tooltip; links that require sign-in show a 🔒 for a
 
 | Home | Narrated slide video | Two-avatar podcast |
 |---|---|---|
-| ![DeckFM home page with the tagline, the hosts Sofia and Lucas and a "Watch the live demo" button](docs/screenshots/home.png) | ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: two photo-avatar hosts and subtitles in a top band above the slide](docs/screenshots/podcast-frame.png) |
+| ![Oz Radio home page with the tagline, the hosts Sofia and Lucas and a "Watch the live demo" button](docs/screenshots/home.png) | ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: two photo-avatar hosts and subtitles in a top band above the slide](docs/screenshots/podcast-frame.png) |
 
 | Published video library | Decks | Slide viewer |
 |---|---|---|
@@ -172,8 +174,8 @@ The included PowerShell script starts both backend and frontend with a single co
 
 ```powershell
 # 1. Clone the repository
-git clone https://github.com/ozgurkarahan/deckfm.git
-cd deckfm
+git clone https://github.com/ozgurkarahan/oz-radio.git
+cd oz-radio
 
 # 2. Copy and configure environment variables
 cp demos/backend/.env.example demos/backend/.env
@@ -289,7 +291,7 @@ The project uses a multi-stage Dockerfile: Node.js builds the frontend, Python s
 
 ```bash
 # Build the image
-docker build -t deckfm .
+docker build -t oz-radio .
 
 # Run the container locally (AUTH_MODE=disabled = local only, never expose it)
 docker run -p 127.0.0.1:8000:8000 \
@@ -302,7 +304,7 @@ docker run -p 127.0.0.1:8000:8000 \
   -e AZURE_OPENAI_KEY=<your-key> \
   -e AZURE_OPENAI_CHAT_DEPLOYMENT=gpt-4.1 \
   -e AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-small \
-  deckfm
+  oz-radio
 ```
 
 The container includes LibreOffice and Poppler for full slide rendering support. The app runs on port **8000** with Gunicorn (4 workers).
@@ -343,7 +345,7 @@ azd up
 Find your object ID with `az ad signed-in-user show --query id -o tsv`. After the first `azd up`, add the app's FQDN redirect URI to the app registration if you did not know it up front.
 
 The Bicep templates in `infra/` provision:
-- **Azure Container App** with managed identity + **Container Registry**
+- **Azure Container App** with managed identity + **Container Registry** (`azd deploy` pushes the image to the `oz-radio/backend-<env>` repository)
 - **Azure Cosmos DB** (Serverless) for presentation persistence
 - **Azure Blob Storage** for slide images and PPTX files
 - **Azure AI Services** (Speech/Avatar) and **Azure OpenAI** with model deployments
@@ -374,7 +376,7 @@ The app can be embedded in Microsoft Teams as a **Static Tab**:
 Then sideload `teams-app-package.zip` in Teams:
 1. Open **Teams → Apps → Manage your apps → Upload an app**
 2. Select **Upload a custom app** and choose the generated `.zip`
-3. The app appears as a personal tab — "DeckFM"
+3. The app appears as a personal tab — "Oz Radio"
 
 **Teams features:**
 - Automatic theme adaptation (light, dark, high-contrast)
@@ -516,7 +518,7 @@ npx playwright test tests/decks.spec.ts tests/playlists.spec.ts --project=chromi
 
 ### Live browser E2E (real Azure, real avatar)
 
-`tests/e2e-live.spec.ts` drives real Chromium against a local backend wired to real Speech / Voice Live / OpenAI: deck upload → avatar (WebRTC video + audio) → "Present all" with playback-driven advance, raise hand (fake-mic voice question, Ask now, typed), French narration, the anonymous public demo (countdown, 2-question cap) and a short podcast render + frame checks. It is **skipped unless `DECKFM_LIVE_E2E=1`**, so CI and the mocked suites never touch Azure. Needs `az login` with data-plane access to the Speech/AI Services and OpenAI resources in `demos/backend/.env`, LibreOffice, and ffmpeg/ffprobe (`DECKFM_E2E_TOOL_DIRS` when not on `PATH`).
+`tests/e2e-live.spec.ts` drives real Chromium against a local backend wired to real Speech / Voice Live / OpenAI: deck upload → avatar (WebRTC video + audio) → "Present all" with playback-driven advance, raise hand (fake-mic voice question, Ask now, typed), French narration, the anonymous public demo (countdown, 2-question cap) and a short podcast render + frame checks. It is **skipped unless `OZ_RADIO_LIVE_E2E=1`**, so CI and the mocked suites never touch Azure. Needs `az login` with data-plane access to the Speech/AI Services and OpenAI resources in `demos/backend/.env`, LibreOffice, and ffmpeg/ffprobe (`OZ_RADIO_E2E_TOOL_DIRS` when not on `PATH`).
 
 - `tests/e2e_live_server.py` runs the real app with an in-memory Cosmos stand-in (no Cosmos/Blob locally) and `AUTH_MODE=easyauth`.
 - `demos/frontend/vite.e2e-live.config.ts` plays the Container Apps Easy Auth front door: the admin instance injects the signed-in principal headers on `/api` and `/ws`, the anonymous instance injects none.
@@ -527,22 +529,22 @@ $ev = "$PWD\test-results\e2e-live"
 python tests/e2e_live_audio.py $ev
 python tests/e2e_live_server.py --port 8000                                  # shell 1
 cd demos/frontend
-$env:DECKFM_E2E_PRINCIPAL = python ../../tests/e2e_live_server.py --print-principal
+$env:OZ_RADIO_E2E_PRINCIPAL = python ../../tests/e2e_live_server.py --print-principal
 npx vite --config vite.e2e-live.config.ts --port 5199 --strictPort            # shell 2 (admin)
-npx vite --config vite.e2e-live.config.ts --port 5198 --strictPort            # shell 3 (anonymous, no DECKFM_E2E_PRINCIPAL)
-$env:DECKFM_LIVE_E2E = "1"; $env:DECKFM_E2E_EVIDENCE = $ev
-$env:AI_PRESENTER_BASE_URL = "http://localhost:5199"; $env:DECKFM_E2E_ANON_URL = "http://localhost:5198"
+npx vite --config vite.e2e-live.config.ts --port 5198 --strictPort            # shell 3 (anonymous, no OZ_RADIO_E2E_PRINCIPAL)
+$env:OZ_RADIO_LIVE_E2E = "1"; $env:OZ_RADIO_E2E_EVIDENCE = $ev
+$env:AI_PRESENTER_BASE_URL = "http://localhost:5199"; $env:OZ_RADIO_E2E_ANON_URL = "http://localhost:5198"
 npx playwright test tests/e2e-live.spec.ts --project=chromium --workers=1    # --grep "@admin|@demo|@podcast"
 ```
 
-Evidence (screenshots, WebSocket / data-channel / analyser timelines as JSON, podcast frames) is written to `DECKFM_E2E_EVIDENCE`.
+Evidence (screenshots, WebSocket / data-channel / analyser timelines as JSON, podcast frames) is written to `OZ_RADIO_E2E_EVIDENCE`.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-deckfm/
+oz-radio/
 ├── demos/
 │   ├── backend/                  # FastAPI backend (Python 3.12)
 │   │   ├── app.py                # Live routes (/api/upload, /api/slides, /api/qa, /ws/voice, /ws/voice/demo) + agent chat

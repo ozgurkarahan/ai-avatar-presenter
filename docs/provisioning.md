@@ -1,11 +1,11 @@
-# Provisioning DeckFM on Azure
+# Provisioning Oz Radio on Azure
 
 > **Last verified:** 2026-10 against the repo (`azure.yaml`, `infra/`, `hooks/`, `Dockerfile`, `demos/backend/`).
 > The steps are documented from the code and must be validated on a fresh environment
 > (clean subscription and app registration). Report anything that doesn't match.
 > Coding agents should follow [`BOOTSTRAP.md`](../BOOTSTRAP.md). It points to the sections below.
 
-DeckFM ships as **one Azure Container App** plus its backing services. They
+Oz Radio ships as **one Azure Container App** plus its backing services. They
 are provisioned with the Azure Developer CLI (`azd`) and Bicep (`infra/`).
 Everything here comes from `azure.yaml`, `infra/`, `hooks/` and `Dockerfile`.
 Placeholders look like `<this>`. Never commit real IDs or secrets.
@@ -148,7 +148,7 @@ The app FQDN isn't known before the first provision. Create the registration fir
 
 **Portal:** *Microsoft Entra ID → App registrations → New registration*.
 
-1. Name it `DeckFM (<env-name>)`. Supported account types: **single tenant**.
+1. Name it `Oz Radio (<env-name>)`. Supported account types: **single tenant**.
 2. Platform **Web**. Redirect URI: `https://<app-fqdn>/.auth/login/aad/callback`. Leave it empty if you don't know the FQDN yet.
 3. *Authentication* → enable **ID tokens** (implicit and hybrid flows).
 4. *Certificates & secrets* → **New client secret**. Copy it straight into `azd env set` (below). Note the expiry date and plan a rotation.
@@ -157,11 +157,11 @@ The app FQDN isn't known before the first provision. Create the registration fir
 **CLI equivalent** (the secret never appears on screen):
 
 ```powershell
-$appId = az ad app create --display-name "DeckFM (<env-name>)" --sign-in-audience AzureADMyOrg `
+$appId = az ad app create --display-name "Oz Radio (<env-name>)" --sign-in-audience AzureADMyOrg `
           --enable-id-token-issuance true --query appId -o tsv
 az ad sp create --id $appId | Out-Null                       # enterprise app in your tenant
 azd env set AUTH_CLIENT_ID $appId
-azd env set AUTH_CLIENT_SECRET (az ad app credential reset --id $appId --append --display-name deckfm-easyauth --query password -o tsv)
+azd env set AUTH_CLIENT_SECRET (az ad app credential reset --id $appId --append --display-name oz-radio-easyauth --query password -o tsv)
 azd env set AUTH_TENANT_ID (az account show --query tenantId -o tsv)   # optional; defaults to the subscription tenant
 ```
 
@@ -188,7 +188,8 @@ azd env set ALLOWED_OBJECT_IDS <oid-1>,<oid-2>
 
 Values live in `.azure/<env>/.env`. That folder is git-ignored and **holds the client secret in plain text**.
 `infra/main.parameters.json` maps them to Bicep parameters. azd sets `AZURE_ENV_NAME`, `AZURE_LOCATION` and
-`AZURE_SUBSCRIPTION_ID` when you run `azd env new` / the first `azd up`, and sets `SERVICE_BACKEND_IMAGE_NAME` after a deploy.
+`AZURE_SUBSCRIPTION_ID` when you run `azd env new` / the first `azd up`, and sets `SERVICE_BACKEND_IMAGE_NAME` after a deploy
+(`<acr>.azurecr.io/oz-radio/backend-<env>:azd-deploy-<timestamp>`; the repository follows the `name` in `azure.yaml`).
 
 | Variable | Req. | Default | Description |
 |---|---|---|---|
@@ -237,7 +238,7 @@ If provisioning fails with *invalid character after object key:value pair*, the 
 
 ### 4.1 Custom photo avatars (optional)
 
-Without configuration DeckFM offers the stock video avatars (`lisa`, `harry`, `max`, `meg`, `jeff`, `lori`).
+Without configuration Oz Radio offers the stock video avatars (`lisa`, `harry`, `max`, `meg`, `jeff`, `lori`).
 To add your own photo avatars (custom avatars created in Azure AI Speech), set `CUSTOM_AVATARS_JSON` to a JSON
 array. Each item (validated by `demos/backend/services/avatar_registry.py`; invalid items are skipped with a log warning):
 
@@ -269,7 +270,7 @@ azd env set HIDE_STOCK_AVATARS true
 - **Thumbnails** go in `demos/backend/static/avatars/`. The folder is **git-ignored** (avatar photos are never committed),
   so a fresh clone has none: copy them in on the machine that runs `azd deploy`. They are **baked into the image**
   (`.dockerignore` keeps the folder in the build context). After adding or changing one, run `azd deploy`.
-- **Speech resource.** A custom avatar exists only in the Speech resource where it was created. Point DeckFM at it with
+- **Speech resource.** A custom avatar exists only in the Speech resource where it was created. Point Oz Radio at it with
   `USE_EXTERNAL_AI_SERVICES=true` plus `EXTERNAL_AI_SERVICES_ENDPOINT`, `EXTERNAL_AI_SERVICES_REGION` and
   `EXTERNAL_AI_SERVICES_RESOURCE_ID` ([§1](#1-what-gets-deployed), [§2.2](#22-permissions)). All Speech traffic
   (Voice Live, avatar, batch renders, question transcription) then goes to that resource, so its region must meet [§2.4](#24-region).
@@ -329,7 +330,7 @@ Before the first `azd deploy`, the app runs a placeholder `containerapps-hellowo
 4. **Seed content (optional):** the repo ships an avatar-narrated **AI enablement** series in `content/ai-enablement/`
    (Beginner, Practitioner and Expert decks plus a 5-slide public-demo cut). Upload, publish, build the
    *AI enablement path* playlist and mark only the demo cut *Live demo* by following
-   [content/ai-enablement/README.md › Seed the series in DeckFM](../content/ai-enablement/README.md#seed-the-series-in-deckfm).
+   [content/ai-enablement/README.md › Seed the series in Oz Radio](../content/ai-enablement/README.md#seed-the-series-in-oz-radio).
 5. **Publish** the decks, videos and podcasts that anonymous visitors should see. Everything is **unpublished by default**.
 
 ### 6.2 Public live demo (optional, off by default)
@@ -404,7 +405,7 @@ See [teams-integration.md](teams-integration.md).
 
 Run this in a **real browser** (Edge/Chrome) on the network your users are on.
 
-- [ ] `curl -s <app-url>/api/health` returns `{"status":"ok","service":"deckfm"}`.
+- [ ] `curl -s <app-url>/api/health` returns `{"status":"ok","service":"oz-radio"}`.
 - [ ] `curl -s <app-url>/api/me` (anonymous) returns `"authenticated": false` and `"auth_mode": "easyauth"`.
 - [ ] `az containerapp auth show -n <app-name> -g <rg> -o json` shows the platform enabled, `unauthenticatedClientAction: AllowAnonymous` and the Microsoft identity provider with your client ID.
 - [ ] Sign in. `/api/me` now shows `"authenticated": true, "is_admin": true`.

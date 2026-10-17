@@ -72,7 +72,7 @@ def test_deck_structure(filename):
         assert s["notes"], f"{filename} slide {i}: empty speaker notes"
         words = len(s["notes"].split())
         assert lo <= words <= hi, f"{filename} slide {i}: {words} words outside {lo}-{hi}"
-        assert "DeckFM \u00b7 AI enablement \u00b7" in s["body"], f"{filename} slide {i}: footer missing"
+        assert "Oz Radio \u00b7 AI enablement \u00b7" in s["body"], f"{filename} slide {i}: footer missing"
         assert f"{i} / {count}" in s["body"], f"{filename} slide {i}: slide number missing"
         for needle in ("http://", "https://", "(words)"):
             assert needle not in s["notes"], f"{filename} slide {i}: notes contain {needle!r}"

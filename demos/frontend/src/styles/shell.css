@@ -131,11 +131,11 @@
     overflow-y: auto;
     background: var(--c-bg);
     border-top: var(--bw) solid var(--c-rule);
-    animation: deckfm-sheet var(--dur-slow) var(--ease);
+    animation: ozradio-sheet var(--dur-slow) var(--ease);
   }
 }
 
-@keyframes deckfm-sheet {
+@keyframes ozradio-sheet {
   from {
     opacity: 0;
     transform: translateY(-8px);

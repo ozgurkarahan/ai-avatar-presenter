@@ -262,8 +262,8 @@ def build_deck(filename: str, spec: dict) -> Path:
     _add_title_slide(prs, *slides[0])
     for s in slides[1:]:
         _add_content_slide(prs, *s)
-    prs.core_properties.author = "DeckFM"
-    prs.core_properties.last_modified_by = "DeckFM"
+    prs.core_properties.author = "Oz Radio"
+    prs.core_properties.last_modified_by = "Oz Radio"
     prs.core_properties.title = spec["title"]
     out = OUT / f"{filename}.pptx"
     prs.save(out)

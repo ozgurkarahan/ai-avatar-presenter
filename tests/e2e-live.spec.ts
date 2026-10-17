@@ -1,6 +1,6 @@
 /**
  * LIVE end-to-end suite: real Chromium, real local backend, real Azure Speech /
- * Voice Live / OpenAI. Skipped unless DECKFM_LIVE_E2E=1 (CI and the mocked
+ * Voice Live / OpenAI. Skipped unless OZ_RADIO_LIVE_E2E=1 (CI and the mocked
  * regression runs never touch Azure).
  *
  * Setup (see tests/e2e_live_server.py and tests/e2e_live_audio.py):
@@ -8,27 +8,27 @@
  *   python tests/e2e_live_server.py --port 8000            # backend, AUTH_MODE=easyauth
  *   # Easy Auth front door: admin (principal injected) on 5199, anonymous on 5198.
  *   cd demos/frontend
- *   $env:DECKFM_E2E_PRINCIPAL = python ../../tests/e2e_live_server.py --print-principal
+ *   $env:OZ_RADIO_E2E_PRINCIPAL = python ../../tests/e2e_live_server.py --print-principal
  *   npx vite --config vite.e2e-live.config.ts --port 5199 --strictPort
- *   (new shell, no DECKFM_E2E_PRINCIPAL) npx vite --config vite.e2e-live.config.ts --port 5198 --strictPort
- *   $env:DECKFM_LIVE_E2E='1'; $env:AI_PRESENTER_BASE_URL='http://localhost:5199'
- *   $env:DECKFM_E2E_ANON_URL='http://localhost:5198'
- *   $env:DECKFM_E2E_EVIDENCE='<evidence-dir>'
+ *   (new shell, no OZ_RADIO_E2E_PRINCIPAL) npx vite --config vite.e2e-live.config.ts --port 5198 --strictPort
+ *   $env:OZ_RADIO_LIVE_E2E='1'; $env:AI_PRESENTER_BASE_URL='http://localhost:5199'
+ *   $env:OZ_RADIO_E2E_ANON_URL='http://localhost:5198'
+ *   $env:OZ_RADIO_E2E_EVIDENCE='<evidence-dir>'
  *   npx playwright test tests/e2e-live.spec.ts --project=chromium --workers=1
  *
  * Tags: @admin (A/B/C: deck flow, raise hand, French), @demo (D), @podcast (E/F).
  * Evidence (screenshots, WS/data-channel/analyser timelines, podcast frames)
- * goes to DECKFM_E2E_EVIDENCE.
+ * goes to OZ_RADIO_E2E_EVIDENCE.
  */
 import { test, expect, type Browser, type BrowserContext, type Page, type APIRequestContext } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const LIVE = process.env.DECKFM_LIVE_E2E === '1';
+const LIVE = process.env.OZ_RADIO_LIVE_E2E === '1';
 const BASE_URL = process.env.AI_PRESENTER_BASE_URL ?? 'http://localhost:5173';
-const EVIDENCE = path.resolve(process.env.DECKFM_E2E_EVIDENCE ?? 'test-results/e2e-live');
-const WAV = path.resolve(process.env.DECKFM_E2E_QUESTION_WAV ?? path.join(EVIDENCE, 'question-en.wav'));
+const EVIDENCE = path.resolve(process.env.OZ_RADIO_E2E_EVIDENCE ?? 'test-results/e2e-live');
+const WAV = path.resolve(process.env.OZ_RADIO_E2E_QUESTION_WAV ?? path.join(EVIDENCE, 'question-en.wav'));
 const CONTENT = path.resolve(__dirname, '..', 'content', 'ai-enablement');
 const DEMO_DECK = path.join(CONTENT, 'ai-enablement-demo-beginner.pptx');
 const FULL_DECK = path.join(CONTENT, 'ai-enablement-1-beginner.pptx');
@@ -38,9 +38,9 @@ const LOUD_DB = -50;
 // Easy Auth is emulated by two Vite instances (demos/frontend/vite.e2e-live.config.ts):
 // the admin one injects the signed-in principal headers on /api and /ws, the
 // anonymous one injects nothing.
-const ANON_URL = process.env.DECKFM_E2E_ANON_URL ?? 'http://localhost:5198';
+const ANON_URL = process.env.OZ_RADIO_E2E_ANON_URL ?? 'http://localhost:5198';
 
-test.skip(!LIVE, 'Live E2E: set DECKFM_LIVE_E2E=1 (real Azure, see header)');
+test.skip(!LIVE, 'Live E2E: set OZ_RADIO_LIVE_E2E=1 (real Azure, see header)');
 test.use({
   launchOptions: {
     args: [
@@ -818,7 +818,7 @@ async function script(api: APIRequestContext, documentId: string, level: string 
 }
 
 function tool(name: 'ffmpeg' | 'ffprobe'): string {
-  for (const dir of (process.env.DECKFM_E2E_TOOL_DIRS ?? '').split(path.delimiter).filter(Boolean)) {
+  for (const dir of (process.env.OZ_RADIO_E2E_TOOL_DIRS ?? '').split(path.delimiter).filter(Boolean)) {
     const p = path.join(dir, process.platform === 'win32' ? `${name}.exe` : name);
     if (fs.existsSync(p)) return p;
   }

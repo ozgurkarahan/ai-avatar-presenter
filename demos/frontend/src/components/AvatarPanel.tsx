@@ -1279,13 +1279,13 @@ export default function AvatarPanel({
   useEffect(() => {
     if (!(import.meta.env.DEV || import.meta.env.MODE === 'test')) return;
     const w = window as any;
-    w.__deckfmTest = {
+    w.__ozRadioTest = {
       mediaConnected: () => { setConnected(true); setStatus('Avatar connected — ready to present'); },
       dataChannel: (payload: unknown) => playback.onDataChannelMessage(typeof payload === 'string' ? payload : JSON.stringify(payload)),
       audioLevel: (db: number) => { playback.setAnalyserAvailable(true); playback.onAudioLevel(db); },
       playback: () => playback.snapshot(),
     };
-    return () => { if (w.__deckfmTest) delete w.__deckfmTest; };
+    return () => { if (w.__ozRadioTest) delete w.__ozRadioTest; };
   }, [playback]);
 
   const host = (!isDemo && selectedAvatar ? avatars.find((a) => a.id === selectedAvatar) : undefined)

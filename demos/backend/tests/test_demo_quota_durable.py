@@ -140,7 +140,7 @@ def test_ws_maps_store_failure_to_busy(reason, client, monkeypatch):
 def test_slide_narration_fallbacks():
     from services.voice_proxy import slide_narration
 
-    assert slide_narration({"title": "AI Fundamentals", "body": "DeckFM - Demo", "notes": "Welcome."}) == "Welcome."
-    assert slide_narration({"title": "AI Fundamentals", "body": "DeckFM - Demo"}) == "AI Fundamentals. DeckFM - Demo"
+    assert slide_narration({"title": "AI Fundamentals", "body": "Oz Radio - Demo", "notes": "Welcome."}) == "Welcome."
+    assert slide_narration({"title": "AI Fundamentals", "body": "Oz Radio - Demo"}) == "AI Fundamentals. Oz Radio - Demo"
     assert slide_narration({"title": "Only title"}) == "Only title"
     assert slide_narration({}) == ""

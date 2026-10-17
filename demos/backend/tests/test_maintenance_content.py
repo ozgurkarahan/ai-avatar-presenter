@@ -35,6 +35,7 @@ class FakeStore:
 
     def __init__(self):
         self.docs: dict[str, dict] = {}
+        self.blobs: dict[str, bytes] = {}
 
     def get_presentation(self, pid):
         d = self.docs.get(pid)
@@ -81,6 +82,18 @@ class FakeStore:
 
     def playlists_referencing_deck(self, deck_id):
         return [p for p in self.list_playlists() if any(s["deck_id"] == deck_id for s in p.get("steps", []))]
+
+    # Blob side (rebrand-decks)
+    def upload_slide_image(self, pid, idx, png):
+        self.blobs[f"{pid}/{idx}.png"] = png
+        return f"https://acct.blob/{pid}/{idx}.png"
+
+    def get_slide_image_url(self, pid, idx, expiry_minutes=60):
+        return None
+
+    def upload_pptx(self, pid, filename, data):
+        self.blobs[f"{pid}/{filename}"] = data
+        return f"https://acct.blob/{pid}/{filename}"
 
 
 class FakeLibrary:
@@ -674,3 +687,194 @@ def test_deck_search_set_deck_title_merges_only_the_title():
     assert calls["search"]["filter"] == "deck_id eq 'd'"
     assert calls["merge"] == [{"id": "d-0", "deck_title": "Under the hood · Expert"},
                               {"id": "d-1", "deck_title": "Under the hood · Expert"}]
+
+
+# ---------------------------------------------------------------------------
+# Media re-render (--force) + media-only purge
+# ---------------------------------------------------------------------------
+def test_render_podcast_force_renders_a_replacement(env, monkeypatch):
+    seen = _fake_podcast_pipeline(monkeypatch, env)
+    first = asyncio.run(mc.render_podcast(env.cfg, "beginner"))
+    seen.clear()
+    assert asyncio.run(mc.render_podcast(env.cfg, "beginner", dry_run=True, force=True))["action"] == "would render"
+    again = asyncio.run(mc.render_podcast(env.cfg, "beginner", force=True))
+    assert again["action"] == "rendered" and again["replaces"] == first["job_id"] and "job" in seen
+    assert again["job_id"] != first["job_id"] and len(env.plib.items) == 2
+
+
+def test_render_video_force_renders_a_replacement(env, monkeypatch):
+    _fake_video_pipeline(monkeypatch, env)
+    first = asyncio.run(mc.render_video(env.cfg, "demo-en"))
+    again = asyncio.run(mc.render_video(env.cfg, "demo-en", force=True))
+    assert again["action"] == "rendered" and again["replaces"] == first["job_id"]
+    assert {i["title"] for i in env.vlib.items.values()} == {mc.VIDEOS["demo-en"].title}
+
+
+def _playlists_snapshot(env):
+    return json.dumps(sorted(env.store.list_playlists(), key=lambda p: p["id"]), sort_keys=True)
+
+
+def test_purge_media_only_retires_superseded_items_and_keeps_playlists(env, tmp_path):
+    _seed_all_new(env)
+    env.store.docs["pl_broken000001"] = {"id": "pl_broken000001", "source": "playlist", "title": "Old path",
+                                         "status": "broken", "steps": []}
+    env.plib.add("job-0dd00001", mc.PODCASTS["beginner"].title)  # superseded by the seeded re-render
+    env.vlib.add("sv-0dd00001", mc.VIDEOS["demo-fr"].title)
+    before = _playlists_snapshot(env)
+    deck_count = len(env.store.list_decks())
+    result = _purge(env, tmp_path, deck_titles=[], podcast_ids=["job-0dd00001"], video_ids=["sv-0dd00001"])
+    assert result["errors"] == [] and result["playlists"] == [] and result["decks"] == []
+    assert "job-0dd00001" not in env.plib.items and "sv-0dd00001" not in env.vlib.items
+    assert len(env.plib.items) == len(mc.PODCASTS) and len(env.vlib.items) == len(mc.VIDEOS)
+    assert _playlists_snapshot(env) == before and len(env.store.list_decks()) == deck_count
+
+
+def test_purge_refuses_the_last_published_copy_of_a_new_item(env, tmp_path):
+    _seed_all_new(env)
+    only = next(j for j, i in env.plib.items.items() if i["title"] == mc.PODCASTS["expert"].title)
+    with pytest.raises(mc.MaintenanceError, match="refusing to delete new item"):
+        _purge(env, tmp_path, deck_titles=[], podcast_ids=[only], video_ids=[])
+    assert only in env.plib.items
+
+
+# ---------------------------------------------------------------------------
+# rebrand-decks (in place, same deck ids)
+# ---------------------------------------------------------------------------
+LEGACY_BRAND = "Legacy Brand"
+
+
+class FakeIndex:
+    def __init__(self):
+        self.calls: list[list] = []
+
+    def index_deck(self, slides):
+        self.calls.append(list(slides))
+        return len(slides)
+
+
+def _rebrand_env(env, monkeypatch, tmp_path, images=None):
+    from routers import decks as dr
+    from services import pptx_parser as pp
+
+    asyncio.run(mc.seed(env.cfg))
+    ids = _deck_ids(env.store)
+    for spec in mc.SEED_DECKS:
+        text = mc._slide_text(mc._deck_path(spec.file).read_bytes())
+        doc = env.store.docs[ids[spec.slug]]
+        doc["slide_count"] = len(text)
+        doc["slides"] = [{"index": i, "title": t["title"], "body": t["body"].replace("Oz Radio", LEGACY_BRAND),
+                          "notes": t["notes"], "image_url": f"https://acct.blob/{doc['id']}/{i}.png?sig=OLD",
+                          "translated_notes": {"fr-FR": f"traduction {i}"}} for i, t in enumerate(text)]
+    renders: list[str] = []
+
+    def fake_parse(content, filename, libreoffice_path="soffice"):
+        renders.append(filename)
+        text = mc._slide_text(content)
+        imgs = images(len(text)) if images else [(i, f"PNG {filename} {i}".encode()) for i in range(len(text))]
+        return pp.PresentationData(id=str(uuid.uuid4()), filename=filename, slide_count=len(text),
+                                   slides=[pp.SlideData(index=i, **t) for i, t in enumerate(text)],
+                                   slide_images=imgs, pptx_bytes=content)
+
+    monkeypatch.setattr(pp, "parse_pptx", fake_parse)
+    monkeypatch.setattr(dr, "SLIDES_DIR", tmp_path / "slides")
+    index = FakeIndex()
+    monkeypatch.setattr(mc, "_deck_search", lambda cfg: index)
+
+    def no_delete(*a, **k):
+        raise AssertionError("rebrand-decks must never delete")
+
+    for name in ("delete_presentation", "delete_slide_images", "delete_playlist"):
+        monkeypatch.setattr(env.store, name, no_delete)
+    return ids, renders, index
+
+
+def test_rebrand_decks_overwrites_images_and_text_in_place(env, monkeypatch, tmp_path):
+    ids, renders, index = _rebrand_env(env, monkeypatch, tmp_path)
+    before = json.loads(json.dumps(env.store.docs))
+    playlists = _playlists_snapshot(env)
+    report = mc.rebrand_decks(env.cfg)
+    assert report["errors"] == [] and {d["action"] for d in report["decks"]} == {"rebranded"}
+    assert _deck_ids(env.store) == ids and _playlists_snapshot(env) == playlists
+    total = 0
+    for spec in mc.SEED_DECKS:
+        deck_id = ids[spec.slug]
+        old, new = before[deck_id], env.store.docs[deck_id]
+        for key in ("id", "title", "filename", "language", "published", "live_demo", "slide_count"):
+            assert new[key] == old[key], key
+        assert new["published"] is True and new["live_demo"] is spec.live_demo
+        assert [s["notes"] for s in new["slides"]] == [s["notes"] for s in old["slides"]]
+        assert [s["translated_notes"] for s in new["slides"]] == [s["translated_notes"] for s in old["slides"]]
+        assert all(LEGACY_BRAND not in s["body"] and "Oz Radio" in s["body"] for s in new["slides"])
+        assert new["images_version"] == 1 and len(new["source_sha256"]) == 64
+        assert [s["image_url"] for s in new["slides"]] == [
+            f"/api/slides/{deck_id}/{i}.png?v=1" for i in range(new["slide_count"])]
+        for i in range(new["slide_count"]):
+            png = env.store.blobs[f"{deck_id}/{i}.png"]
+            assert png == f"PNG {spec.file} {i}".encode()
+            assert (tmp_path / "slides" / deck_id / f"{i}.png").read_bytes() == png
+        total += new["slide_count"]
+    assert len(env.store.blobs) == total and sorted(renders) == sorted(s.file for s in mc.SEED_DECKS)
+    indexed = {c[0].deck_id: c for c in index.calls}
+    assert set(indexed) == set(ids.values())
+    beginner = indexed[ids["ai-enablement-1-beginner"]]
+    assert beginner[0].deck_title == mc.DISPLAY_TITLES["ai-enablement-1-beginner"]
+    assert all("Oz Radio" in s.body for s in beginner)
+    assert "sig=" not in json.dumps(report)
+
+    # Idempotent: nothing is re-rendered or rewritten on a second run.
+    snapshot = json.dumps(env.store.docs, sort_keys=True)
+    again = mc.rebrand_decks(env.cfg)
+    assert again["errors"] == [] and {d["action"] for d in again["decks"]} == {"already"}
+    assert len(renders) == len(mc.SEED_DECKS) and json.dumps(env.store.docs, sort_keys=True) == snapshot
+
+
+def test_rebrand_decks_dry_run_writes_nothing(env, monkeypatch, tmp_path):
+    _, renders, index = _rebrand_env(env, monkeypatch, tmp_path)
+    before = json.dumps(env.store.docs, sort_keys=True)
+    report = mc.rebrand_decks(env.cfg, dry_run=True)
+    assert report["errors"] == [] and {d["action"] for d in report["decks"]} == {"would rebrand"}
+    assert all(d["text_changes"] > 0 for d in report["decks"])
+    assert renders == [] and env.store.blobs == {} and index.calls == []
+    assert json.dumps(env.store.docs, sort_keys=True) == before
+
+
+def test_rebrand_decks_aborts_a_deck_whose_notes_or_slide_count_differ(env, monkeypatch, tmp_path):
+    ids, renders, _ = _rebrand_env(env, monkeypatch, tmp_path)
+    notes_id, count_id = ids["ai-enablement-2-practitioner"], ids["ai-enablement-demo-beginner-fr"]
+    env.store.docs[notes_id]["slides"][3]["notes"] += " (edited)"
+    env.store.docs[count_id]["slides"].pop()
+    env.store.docs[count_id]["slide_count"] -= 1
+    before = {i: json.dumps(env.store.docs[i], sort_keys=True) for i in (notes_id, count_id)}
+    report = mc.rebrand_decks(env.cfg)
+    actions = {d["deck_id"]: d for d in report["decks"]}
+    assert actions[notes_id]["action"] == "aborted" and "slides [4]" in actions[notes_id]["error"]
+    assert actions[count_id]["action"] == "aborted" and "slide count" in actions[count_id]["error"]
+    assert len(report["errors"]) == 2
+    assert sum(d["action"] == "rebranded" for d in report["decks"]) == len(mc.SEED_DECKS) - 2
+    for i in (notes_id, count_id):
+        assert json.dumps(env.store.docs[i], sort_keys=True) == before[i]
+        assert not any(k.startswith(f"{i}/") for k in env.store.blobs)
+
+
+def test_rebrand_decks_refuses_placeholder_renders(env, monkeypatch, tmp_path):
+    from services.pptx_parser import _fallback_placeholders
+
+    _rebrand_env(env, monkeypatch, tmp_path, images=_fallback_placeholders)
+    report = mc.rebrand_decks(env.cfg, only={"ai-enablement-demo-beginner"})
+    assert [d["action"] for d in report["decks"]] == ["aborted"]
+    assert "placeholders" in report["decks"][0]["error"] and env.store.blobs == {}
+
+
+def test_rebrand_decks_reports_missing_decks(env, monkeypatch, tmp_path):
+    report = mc.rebrand_decks(env.cfg, dry_run=True)
+    assert len(report["errors"]) == len(mc.SEED_DECKS)
+    assert {d["error"] for d in report["decks"]} == {"deck not found (run seed first)"}
+
+
+def test_cli_rebrand_decks_dry_run_single_deck(env, monkeypatch, tmp_path, capsys):
+    _rebrand_env(env, monkeypatch, tmp_path)
+    monkeypatch.setattr(mc, "_cfg", lambda: env.cfg)
+    assert mc.main(["rebrand-decks", "--deck", "ai-enablement-1-beginner", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "would rebrand" in out and out.count('"deck_id"') == 1 and env.store.blobs == {}
+

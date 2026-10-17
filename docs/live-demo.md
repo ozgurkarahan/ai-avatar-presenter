@@ -1,6 +1,6 @@
 # Public live avatar demo
 
-DeckFM's live avatar (Azure Voice Live + real-time WebRTC avatar) is normally
+Oz Radio's live avatar (Azure Voice Live + real-time WebRTC avatar) is normally
 **admin-only** (`/ws/voice`): an earlier deployment that let anonymous visitors
 stream Voice Live ran up a runaway bill. The *public live demo* lets anonymous
 visitors watch the avatar **narrate a deck an admin has already chosen**, with
@@ -31,7 +31,7 @@ hard, server-side cost and abuse guardrails. It is **off by default**.
 ### Message flow
 
 ```
-Browser                         DeckFM backend                         Azure Voice Live
+Browser                         Oz Radio backend                       Azure Voice Live
   | WS /ws/voice/demo?deck_id=…   |                                        |
   |------------------------------>| kill switch, UUID, Origin, deck        |
   |                               | published+live_demo  (else 4403,       |
@@ -129,7 +129,7 @@ are never forwarded to Voice Live; the avatar only ever speaks server-generated
 text.
 
 ```
-Browser                              DeckFM backend                       Azure
+Browser                              Oz Radio backend                     Azure
   |-- qa.begin {request_id, slide} ->| enabled? deck? one in flight?      |
   |                                  | ≥30 s left? session + daily quota  |
   |<-- qa.ready {max_audio_ms,       |--- speak(invite) ----------------->| (avatar)

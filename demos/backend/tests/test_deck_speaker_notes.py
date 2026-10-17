@@ -135,3 +135,12 @@ def test_translate_notes_unknown_deck(client, easyauth, store):
     r = client.post("/api/decks/4f9f2a7e-1c2d-4e5f-8a9b-0c1d2e3f4a5b/translate-notes",
                     json={"target_language": "fr-FR"}, headers=easyauth())
     assert r.status_code == 404
+
+
+def test_rebranded_deck_image_urls_are_cache_busted(client, easyauth, store):
+    # `rebrand-decks` overwrites slide PNGs under the same names and bumps images_version.
+    store.docs[DECK_PUB]["images_version"] = 2
+    anon = client.get(f"/api/decks/{DECK_PUB}").json()["slides"][0]
+    assert anon["image_url"] == f"/api/slides/{DECK_PUB}/0.png?v=2"
+    admin = client.get(f"/api/decks/{DECK_PUB}", headers=easyauth()).json()["slides"][1]
+    assert admin["image_url"] == f"/api/slides/{DECK_PUB}/1.png?v=2"

@@ -183,7 +183,7 @@
   height: 7px;
   border-radius: 50%;
   background: var(--c-clay);
-  animation: deckfm-pulse 1.4s ease-in-out infinite;
+  animation: ozradio-pulse 1.4s ease-in-out infinite;
 }
 
 .live-pill--idle {
@@ -195,7 +195,7 @@
   animation: none;
 }
 
-@keyframes deckfm-pulse {
+@keyframes ozradio-pulse {
   50% {
     opacity: 0.25;
   }
@@ -436,10 +436,10 @@
   border: 2px solid var(--c-line-strong);
   border-top-color: var(--c-clay);
   border-radius: 50%;
-  animation: deckfm-spin 0.8s linear infinite;
+  animation: ozradio-spin 0.8s linear infinite;
 }
 
-@keyframes deckfm-spin {
+@keyframes ozradio-spin {
   to {
     transform: rotate(360deg);
   }
@@ -495,7 +495,7 @@
   border-radius: 2px;
   background: var(--c-clay);
   transform-origin: center;
-  animation: deckfm-wave 1s ease-in-out infinite;
+  animation: ozradio-wave 1s ease-in-out infinite;
 }
 
 .waveform > span:nth-child(2) { animation-delay: 0.15s; }
@@ -509,7 +509,7 @@
   background: var(--c-line-strong);
 }
 
-@keyframes deckfm-wave {
+@keyframes ozradio-wave {
   0%, 100% { transform: scaleY(0.35); }
   50% { transform: scaleY(1); }
 }
@@ -572,7 +572,7 @@
   border: 2px dashed var(--c-clay);
   border-radius: 50%;
   opacity: 0.5;
-  animation: deckfm-spin 40s linear infinite;
+  animation: ozradio-spin 40s linear infinite;
   pointer-events: none;
 }
 

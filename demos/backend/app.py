@@ -1,4 +1,4 @@
-"""DeckFM — FastAPI Backend Application."""
+"""Oz Radio — FastAPI Backend Application."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI):
     store = PresentationStore(config)
     DEMO_QUOTA.set_store(store)  # durable demo budget (survives restarts / scale-to-zero)
     auth.log_startup_warnings()
-    logger.info("DeckFM backend started. Region: %s", config.speech_region)
+    logger.info("Oz Radio backend started. Region: %s", config.speech_region)
     if store.available:
         logger.info("Persistence enabled (Cosmos DB + Blob Storage)")
     elif store.cosmos_available:
@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
 _docs_enabled = auth.auth_mode() == "disabled"
 
 app = FastAPI(
-    title="DeckFM",
+    title="Oz Radio",
     description="AI-powered avatar presentation assistant with multilingual TTS",
     version="0.1.0",
     lifespan=lifespan,
@@ -276,7 +276,7 @@ class TranslateNotesResponse(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "deckfm"}
+    return {"status": "ok", "service": "oz-radio"}
 
 
 @app.get("/api/avatars")
@@ -1335,7 +1335,7 @@ AGENT_TOOLS_SCHEMA = [
 ]
 
 AGENT_SYSTEM_PROMPT = """\
-You are the DeckFM Assistant — an AI-powered avatar presentation helper.
+You are the Oz Radio Assistant — an AI-powered avatar presentation helper.
 
 ## Your Capabilities (via tools)
 - **translate_slide_notes**: Translate text (e.g., speaker notes) to French, Spanish, or English.
@@ -1481,20 +1481,20 @@ async def teams_config():
     return HTMLResponse(content="""<!DOCTYPE html>
 <html>
 <head>
-    <title>DeckFM — Tab Configuration</title>
+    <title>Oz Radio — Tab Configuration</title>
     <script src="https://res.cdn.office.net/teams-js/2.7.1/js/MicrosoftTeams.min.js"></script>
 </head>
 <body style="font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f5f5;">
     <div style="text-align:center;">
-        <h2>DeckFM</h2>
-        <p>Click Save to add DeckFM to this meeting.</p>
+        <h2>Oz Radio</h2>
+        <p>Click Save to add Oz Radio to this meeting.</p>
     </div>
     <script>
         (async () => {
             await microsoftTeams.app.initialize();
             microsoftTeams.pages.config.registerOnSaveHandler((saveEvent) => {
                 microsoftTeams.pages.config.setConfig({
-                    suggestedDisplayName: "DeckFM",
+                    suggestedDisplayName: "Oz Radio",
                     entityId: "presenter-meeting",
                     contentUrl: window.location.origin,
                     websiteUrl: window.location.origin

@@ -52,7 +52,7 @@ def main() -> None:
         r = requests.post(
             f"https://{region}.tts.speech.microsoft.com/cognitiveservices/v1",
             headers={"Authorization": f"Bearer {token}", "Content-Type": "application/ssml+xml",
-                     "X-Microsoft-OutputFormat": "riff-16khz-16bit-mono-pcm", "User-Agent": "deckfm-e2e"},
+                     "X-Microsoft-OutputFormat": "riff-16khz-16bit-mono-pcm", "User-Agent": "oz-radio-e2e"},
             data=ssml.encode("utf-8"), timeout=30)
         r.raise_for_status()
         with wave.open(io.BytesIO(r.content)) as w:

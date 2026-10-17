@@ -272,7 +272,7 @@ def compose_podcast(
     extras: list[Path] = []
     if intro:
         intro_card = out_dir / "intro.mp4"
-        _render_card(intro_card, "DeckFM", INTRO_SEC)
+        _render_card(intro_card, "Oz Radio", INTRO_SEC)
         extras.append(intro_card)
 
     body_concat = out_dir / "body.mp4"
@@ -761,7 +761,7 @@ def _resolve_slides(
 def _fallback_slide(document: Optional[Document], out_dir: Path) -> Path:
     out = out_dir / "_fallback_slide.png"
     if not out.exists():
-        _make_fallback_slide(out, (document.title if document else "") or "DeckFM")
+        _make_fallback_slide(out, (document.title if document else "") or "Oz Radio")
     return out
 
 

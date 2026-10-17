@@ -353,6 +353,12 @@ def get_deck(
         raise HTTPException(status_code=404, detail="Deck not found")
 
     blob_ok = bool(store.available)
+    # Bumped by `maintenance.content rebrand-decks` when slide PNGs are overwritten in place;
+    # signed blob URLs already differ per request, stable local URLs get `?v=`.
+    version = int(doc.get("images_version") or 0)
+
+    def _bust(url: str) -> str:
+        return f"{url}?v={version}" if version and "?" not in url else url
 
     def _image_url(s: dict, i: int) -> str:
         idx = int(s.get("index", i))
@@ -363,10 +369,10 @@ def get_deck(
             except Exception:
                 url = None
             if url:
-                return url
+                return _bust(url)
         if public:
-            return f"/api/slides/{deck_id}/{idx}.png"
-        return s.get("image_url") or f"/api/slides/{deck_id}/{idx}.png"
+            return _bust(f"/api/slides/{deck_id}/{idx}.png")
+        return _bust(s.get("image_url") or f"/api/slides/{deck_id}/{idx}.png")
 
     raw_slides = [(i, s) for i, s in enumerate(doc.get("slides") or []) if isinstance(s, dict)]
     summary = _doc_to_summary(doc)

@@ -1,8 +1,8 @@
 {
-  "name": "deckfm",
+  "name": "oz-radio",
   "version": "1.0.0",
   "private": true,
-  "description": "DeckFM — AI avatars that present, narrate and podcast your decks. Root package holds the Playwright UI tests.",
+  "description": "Oz Radio — AI avatars that present, narrate and podcast your decks. Root package holds the Playwright UI tests.",
   "main": "index.js",
   "directories": {
     "doc": "docs"
@@ -14,16 +14,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ozgurkarahan/deckfm.git"
+    "url": "git+https://github.com/ozgurkarahan/oz-radio.git"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/ozgurkarahan/deckfm/issues"
+    "url": "https://github.com/ozgurkarahan/oz-radio/issues"
   },
-  "homepage": "https://github.com/ozgurkarahan/deckfm#readme",
+  "homepage": "https://github.com/ozgurkarahan/oz-radio#readme",
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.5.2"

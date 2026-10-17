@@ -1,4 +1,4 @@
-# DeckFM — Documentation Index
+# Oz Radio — Documentation Index
 
 A quick, opinionated map of what's in `docs/`. Start with whichever bucket matches what you're trying to do.
 
@@ -52,7 +52,7 @@ PNGs are rendered from draw.io sources in [`diagrams/`](diagrams/).
 
 - Start here: [provisioning.md](provisioning.md) (humans) or [BOOTSTRAP.md](../BOOTSTRAP.md) (coding agents)
 - All features ship in a single Container App provisioned with `azd up` (see [README › Azure Deployment](../README.md#️-azure-deployment))
-- Build & roll: `azd deploy`, or manually `az acr build -r <acr-name> -t ai-presenter:<tag> .` + `az containerapp update -n ca-<token> -g <resource-group> --image ...`
+- Build & roll: `azd deploy`, or manually `az acr build -r <acr-name> -t oz-radio/backend-<env>:<tag> .` + `az containerapp update -n ca-<token> -g <resource-group> --image ...`
 - Auth: `azd up` requires `AUTH_CLIENT_ID`, `AUTH_CLIENT_SECRET` and `ALLOWED_OBJECT_IDS` (Microsoft Entra ID Easy Auth + allowlist); keep `AUTH_MODE=easyauth` in Azure.
 - Public live demo: off by default; enable with `azd env set PUBLIC_DEMO_ENABLED true` (see [live-demo.md](live-demo.md#enable-it)). Voice Q&A in the demo is a second opt-in, `DEMO_QA_ENABLED` (see [provisioning.md §6.3](provisioning.md#63-voice-qa-in-the-public-demo-demo_qa_enabled)).
 - Custom photo avatars: `CUSTOM_AVATARS_JSON` (+ `HIDE_STOCK_AVATARS`), thumbnails baked into the image (see [provisioning.md §4.1](provisioning.md#41-custom-photo-avatars-optional)).

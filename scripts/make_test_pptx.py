@@ -53,11 +53,11 @@ for i, (title, body) in enumerate(SLIDES, start=1):
     f = slide.shapes.add_textbox(Inches(0.8), Inches(6.8), Inches(11.5), Inches(0.5))
     ff = f.text_frame
     fp = ff.paragraphs[0]
-    fp.text = f"DeckFM — Demo · Slide {i} / {len(SLIDES)}"
+    fp.text = f"Oz Radio — Demo · Slide {i} / {len(SLIDES)}"
     fp.runs[0].font.size = Pt(12)
     fp.runs[0].font.color.rgb = RGBColor(0x90, 0xA4, 0xC0)
 
-prs.core_properties.author = "DeckFM"
-prs.core_properties.last_modified_by = "DeckFM"
+prs.core_properties.author = "Oz Radio"
+prs.core_properties.last_modified_by = "Oz Radio"
 prs.save(str(OUT))
 print(f"wrote {OUT}  ({OUT.stat().st_size/1024:.1f} KB, {len(SLIDES)} slides)")

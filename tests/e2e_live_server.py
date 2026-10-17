@@ -119,7 +119,7 @@ def _install_fake_cosmos() -> None:
 
 
 def _prepend_tools_to_path() -> None:
-    extra = [p for p in (os.environ.get("DECKFM_E2E_TOOL_DIRS") or "").split(os.pathsep) if p]
+    extra = [p for p in (os.environ.get("OZ_RADIO_E2E_TOOL_DIRS") or "").split(os.pathsep) if p]
     if extra:
         os.environ["PATH"] = os.pathsep.join(extra + [os.environ.get("PATH", "")])
 

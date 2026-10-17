@@ -351,10 +351,20 @@ export async function postProgress(playlistId: string, body: ProgressPostInput):
   return r.json();
 }
 
-const USER_ID_KEY = 'deckfm.userId';
+const USER_ID_KEY = 'oz-radio.userId';
+// Pre-rename key: migrated once so returning users keep their playlist progress.
+const LEGACY_USER_ID_KEY = 'deckfm.userId';
 export function getOrCreateUserId(): string {
   try {
     let id = localStorage.getItem(USER_ID_KEY);
+    if (!id) {
+      const legacy = localStorage.getItem(LEGACY_USER_ID_KEY);
+      if (legacy) {
+        localStorage.setItem(USER_ID_KEY, legacy);
+        localStorage.removeItem(LEGACY_USER_ID_KEY);
+        id = legacy;
+      }
+    }
     if (!id) {
       id = 'u_' + crypto.randomUUID();
       localStorage.setItem(USER_ID_KEY, id);

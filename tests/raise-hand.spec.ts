@@ -4,7 +4,7 @@ import { avatar, mockApi, mockVoice, type VoiceMock, type VoiceMockOptions } fro
 /**
  * WS4 — raise-hand voice Q&A. Chromium's fake microphone feeds the capture
  * worklet; the fake voice socket answers the qa.* contract; avatar turns are
- * finished through the dev-only window.__deckfmTest hook.
+ * finished through the dev-only window.__ozRadioTest hook.
  */
 
 test.use({
@@ -108,7 +108,7 @@ test.describe('Raise hand — admin', () => {
     expect(voice.ofType('qa.begin')).toHaveLength(0);
 
     await page.evaluate((id) => {
-      const t = (window as any).__deckfmTest;
+      const t = (window as any).__ozRadioTest;
       t.dataChannel({ event: { eventType: 'EVENT_TYPE_TURN_END', turnID: id } });
       t.audioLevel(-90);
     }, voice.items[0]);
@@ -136,7 +136,7 @@ test.describe('Raise hand — admin', () => {
     // Audio still loud → no qa.begin yet.
     await page.waitForTimeout(500);
     expect(voice.ofType('qa.begin')).toHaveLength(0);
-    await page.evaluate(() => (window as any).__deckfmTest.audioLevel(-90));
+    await page.evaluate(() => (window as any).__ozRadioTest.audioLevel(-90));
     await expect.poll(() => voice.ofType('qa.begin').length).toBe(1);
     expect(voice.ofType('qa.begin')[0]).toMatchObject({ mode: 'now', slide: 0 });
     await avatar.finishTurn(page, voice.items[voice.items.length - 1]);
@@ -197,7 +197,7 @@ test.describe('Raise hand — public demo', () => {
     await page.getByTestId('raise-hand').click();
     await expect(page.getByTestId('qa-state')).toHaveText('Hand raised — after this slide');
     await page.evaluate((id) => {
-      const t = (window as any).__deckfmTest;
+      const t = (window as any).__ozRadioTest;
       t.dataChannel({ event: { eventType: 'EVENT_TYPE_TURN_END', turnID: id } });
       t.audioLevel(-90);
     }, voice.items[0]);
@@ -306,7 +306,7 @@ test.describe('Raise hand — playlist deck switch', () => {
     const voice = await openPlaylist(page);
     await avatar.startTurn(page, voice.items[0]);
     await page.getByTestId('ask-now').click();
-    await page.evaluate(() => (window as any).__deckfmTest.audioLevel(-90));
+    await page.evaluate(() => (window as any).__ozRadioTest.audioLevel(-90));
     await expect.poll(() => voice.ofType('qa.begin').length).toBe(1);
     await expect(page.getByTestId('qa-state')).toHaveText('The presenter is inviting your question…');
     const rid = voice.ofType('qa.begin')[0].request_id;
@@ -322,7 +322,7 @@ test.describe('Raise hand — playlist deck switch', () => {
   test('narration in progress: response.cancel + output_audio_buffer.clear, and the new deck waits for quiet', async ({ page }) => {
     const voice = await openPlaylist(page);
     await avatar.startTurn(page, voice.items[0]); // old deck audio still loud
-    const keepLoud = setInterval(() => { void page.evaluate(() => (window as any).__deckfmTest?.audioLevel(-20)).catch(() => {}); }, 100);
+    const keepLoud = setInterval(() => { void page.evaluate(() => (window as any).__ozRadioTest?.audioLevel(-20)).catch(() => {}); }, 100);
     try {
       await page.getByTestId('playlist-next-deck').click();
       await expect.poll(() => voice.ofType('context.switch').length).toBe(1);
@@ -333,7 +333,7 @@ test.describe('Raise hand — playlist deck switch', () => {
       expect(voice.ofType('response.create')).toHaveLength(1);
       await expect.poll(() => voice.ofType('response.create').length, { timeout: 5000 }).toBe(2);
       // The new turn began during residual audio: not "heard" from the old tail.
-      const snap = await page.evaluate(() => (window as any).__deckfmTest.playback());
+      const snap = await page.evaluate(() => (window as any).__ozRadioTest.playback());
       expect(snap).toMatchObject({ kind: 'slide', heard: false });
     } finally {
       clearInterval(keepLoud);

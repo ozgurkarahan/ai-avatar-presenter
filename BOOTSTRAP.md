@@ -1,6 +1,6 @@
-# BOOTSTRAP: deploying DeckFM (instructions for coding agents)
+# BOOTSTRAP: deploying Oz Radio (instructions for coding agents)
 
-> These are instructions for an AI coding agent deploying DeckFM to Azure.
+> These are instructions for an AI coding agent deploying Oz Radio to Azure.
 > The full runbook is [`docs/provisioning.md`](docs/provisioning.md); each step below
 > references its sections. Run the steps **in order**. Don't skip a gate.
 > The steps are documented from the repo and must be validated on a fresh environment;
@@ -77,7 +77,7 @@
     - Gate: `azd env get-value AZURE_CONTAINER_APP_URL` returns a URL.
 12. **Redirect URI.** Add `<AZURE_CONTAINER_APP_URL>/.auth/login/aad/callback` to the app registration ([§5](docs/provisioning.md#5-deploy)).
     `--web-redirect-uris` replaces the list, so keep the existing URIs.
-13. **Deploy.** Run `azd deploy`. Gate: `curl -s <url>/api/health` returns `{"status":"ok","service":"deckfm"}` (allow for a cold start).
+13. **Deploy.** Run `azd deploy`. Gate: `curl -s <url>/api/health` returns `{"status":"ok","service":"oz-radio"}` (allow for a cold start).
 14. **Smoke test ([§7](docs/provisioning.md#7-smoke-test-checklist)).** Run every item. Use a real browser for sign-in, upload, avatar video/audio, narration, raise-hand Q&A and a render.
     You can drive a browser with Playwright. The human must complete the interactive sign-in if MFA is required.
     If the avatar tile is black, follow [§9](docs/provisioning.md#9-troubleshooting) (TURN/relay). **Don't** change the ICE settings.

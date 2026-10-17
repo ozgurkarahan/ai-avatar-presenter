@@ -166,7 +166,7 @@ export default function HomePage() {
         <section className="home-section" aria-labelledby="home-episodes">
           <SectionHead
             className="home-section__head"
-            title={<span id="home-episodes">This week on DeckFM</span>}
+            title={<span id="home-episodes">This week on Oz Radio</span>}
             aside={pluralize(decks.length + videos.length + podcasts.length, 'episode')}
           />
           <EpisodeList label="Latest episodes">
@@ -196,7 +196,7 @@ export default function HomePage() {
       )}
 
       <section className="home-section" aria-labelledby="home-sections">
-        <SectionHead className="home-section__head" title={<span id="home-sections">Inside DeckFM</span>} aside="Six ways in" />
+        <SectionHead className="home-section__head" title={<span id="home-sections">Inside Oz Radio</span>} aside="Six ways in" />
         <div className="home-departments">
           {DEPARTMENTS.map((d) => (
             <Link key={d.to} to={d.to} className="home-dept">

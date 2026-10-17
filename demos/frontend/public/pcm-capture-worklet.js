@@ -1,4 +1,4 @@
-// AudioWorklet for DeckFM voice questions: downsamples the mic input to
+// AudioWorklet for Oz Radio voice questions: downsamples the mic input to
 // 16 kHz mono PCM16 and posts ~20 ms chunks with their RMS (float domain).
 class PcmCaptureProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -48,4 +48,4 @@ class PcmCaptureProcessor extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor('deckfm-pcm-capture', PcmCaptureProcessor);
+registerProcessor('ozradio-pcm-capture', PcmCaptureProcessor);

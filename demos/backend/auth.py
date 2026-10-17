@@ -1,4 +1,4 @@
-"""Authentication / authorization for the DeckFM backend.
+"""Authentication / authorization for the Oz Radio backend.
 
 Hybrid exposure model:
 - ``AUTH_MODE=easyauth`` (default): trust the Azure Container Apps Easy Auth

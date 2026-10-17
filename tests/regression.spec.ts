@@ -26,6 +26,9 @@ async function expectHealthy(page: Page, errors: string[]) {
   expect(text.length).toBeGreaterThan(20);
 }
 
+// Pre-rename localStorage key that getOrCreateUserId() migrates.
+const LEGACY_USER_ID_KEY = 'deckfm.userId';
+
 const ROUTES = [
   '/', '/live', '/decks', '/decks/deck-live/present', '/search', '/playlists', '/playlists/pl-1',
   '/podcast', '/podcast/library', '/video', '/video/library',
@@ -194,6 +197,34 @@ test.describe('Regression — search, libraries, playlists', () => {
     await expect(steps.first()).toHaveAttribute('aria-current', 'step');
     await expect(steps.nth(1)).not.toHaveAttribute('aria-current', 'step');
     await expect(page.getByText('Deck 1 of 2')).toBeVisible();
+  });
+
+  test('playlist: the pre-rename user id is migrated once to oz-radio.userId', async ({ page }) => {
+    await open(page, 'admin', '/');
+    await page.evaluate((k) => { localStorage.clear(); localStorage.setItem(k, 'u_legacy-123'); }, LEGACY_USER_ID_KEY);
+    const progressUser = async () => {
+      const req = page.waitForRequest((r) => r.method() === 'GET' && /\/api\/playlists\/pl-1\/progress\?/.test(r.url()));
+      await page.goto('/playlists/pl-1');
+      return new URL((await req).url()).searchParams.get('user_id');
+    };
+    expect(await progressUser()).toBe('u_legacy-123');
+    const stored = () => page.evaluate((k) => ({ next: localStorage.getItem('oz-radio.userId'), old: localStorage.getItem(k) }), LEGACY_USER_ID_KEY);
+    expect(await stored()).toEqual({ next: 'u_legacy-123', old: null });
+    // A stale legacy key must never override the migrated id.
+    await page.evaluate((k) => localStorage.setItem(k, 'u_other'), LEGACY_USER_ID_KEY);
+    expect(await progressUser()).toBe('u_legacy-123');
+    expect((await stored()).next).toBe('u_legacy-123');
+  });
+
+  test('playlist: a first-time user gets a fresh id under oz-radio.userId', async ({ page }) => {
+    await open(page, 'admin', '/');
+    await page.evaluate(() => localStorage.clear());
+    const req = page.waitForRequest((r) => r.method() === 'GET' && /\/api\/playlists\/pl-1\/progress\?/.test(r.url()));
+    await page.goto('/playlists/pl-1');
+    const userId = new URL((await req).url()).searchParams.get('user_id');
+    expect(userId).toMatch(/^u_[0-9a-f-]{36}$/);
+    expect(await page.evaluate(() => localStorage.getItem('oz-radio.userId'))).toBe(userId);
+    expect(await page.evaluate((k) => localStorage.getItem(k), LEGACY_USER_ID_KEY)).toBeNull();
   });
 });
 

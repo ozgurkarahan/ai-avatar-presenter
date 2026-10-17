@@ -123,7 +123,7 @@ export async function mockApi(page: Page, role: Role, opts: MockApiOptions = {})
 
 // ── Fake Voice Live WebSocket (/ws/voice, /ws/voice/demo) ─────────────────
 // Simulates the backend proxy: Voice Live response events (no WebRTC: the test
-// drives the avatar data channel / audio levels through window.__deckfmTest)
+// drives the avatar data channel / audio levels through window.__ozRadioTest)
 // plus the qa.* / context.* / demo.* messages of the raise-hand contract.
 
 export interface VoiceMockOptions {
@@ -231,16 +231,16 @@ export async function mockVoice(page: Page, opts: VoiceMockOptions = {}): Promis
   return mock;
 }
 
-/** Test hook helpers (window.__deckfmTest is only installed by the Vite dev build). */
+/** Test hook helpers (window.__ozRadioTest is only installed by the Vite dev build). */
 export const avatar = {
   async connected(page: Page) {
-    await page.waitForFunction(() => !!(window as any).__deckfmTest);
-    await page.evaluate(() => (window as any).__deckfmTest.mediaConnected());
+    await page.waitForFunction(() => !!(window as any).__ozRadioTest);
+    await page.evaluate(() => (window as any).__ozRadioTest.mediaConnected());
   },
   /** Plays a turn to its end: speech heard, TURN_START/TURN_END on the data channel, then silence. */
   async finishTurn(page: Page, itemId: string) {
     await page.evaluate((id) => {
-      const t = (window as any).__deckfmTest;
+      const t = (window as any).__ozRadioTest;
       t.dataChannel({ event: { eventType: 'EVENT_TYPE_TURN_START', turnID: id } });
       t.audioLevel(-20);
       t.dataChannel({ event: { eventType: 'EVENT_TYPE_TURN_END', turnID: id } });
@@ -249,7 +249,7 @@ export const avatar = {
   },
   async startTurn(page: Page, itemId: string) {
     await page.evaluate((id) => {
-      const t = (window as any).__deckfmTest;
+      const t = (window as any).__ozRadioTest;
       t.dataChannel({ event: { eventType: 'EVENT_TYPE_TURN_START', turnID: id } });
       t.audioLevel(-20);
     }, itemId);
