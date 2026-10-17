@@ -1296,7 +1296,10 @@ export default function AvatarPanel({
   // The server's hard cap starts when the demo socket opens (connection setup
   // included), so the countdown is shown from that moment — not only once the
   // video connects — and rounds up so 0:00 coincides with the cutoff.
-  const demoSecondsLeft = isDemo && demoEndsAt ? Math.max(0, Math.ceil((demoEndsAt - demoNow) / 1000)) : null;
+  // Clamped to the session cap: ceil() plus clock skew could briefly show 5:01.
+  const demoSecondsLeft = isDemo && demoEndsAt
+    ? Math.min(demoSecondsRef.current, Math.max(0, Math.ceil((demoEndsAt - demoNow) / 1000)))
+    : null;
 
   // Narration estimate: remaining slides' narration length × measured pace.
   const slideCount = presentation.slide_count;

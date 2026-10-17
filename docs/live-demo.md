@@ -19,7 +19,7 @@ hard, server-side cost and abuse guardrails. It is **off by default**.
 3. On `/decks/<deck_id>/present`, a visitor who is not an admin sees
    **▶ Try the live demo** (instead of "Sign in to try the live avatar") when
    the demo is enabled and the deck is a live demo. The Home and Decks pages show
-   a *Try the live avatar demo →* link and a *Live demo* badge.
+   a *Watch the live demo* button and a *Live demo* badge.
 4. The browser opens `wss://<host>/ws/voice/demo?deck_id=<uuid>` and negotiates
    WebRTC exactly like the admin flow. The visitor can only press
    **Present this slide**, **Present all** (auto-advances after each narration)
@@ -252,7 +252,7 @@ azd provision            # or: azd up
 
 Then, signed in as an admin, open **Decks**, publish a deck and
 click **Live demo off** to switch it to **Live demo on**. Anonymous visitors now
-see *Try the live avatar demo →* on the Home/Decks pages.
+see *Watch the live demo* on the Home/Decks pages.
 
 To stop everything immediately: `azd env set PUBLIC_DEMO_ENABLED false` and
 re-provision (or edit the Container App environment variable in the portal).

@@ -426,7 +426,7 @@ Run this in a **real browser** (Edge/Chrome) on the network your users are on.
       az containerapp logs show -n <app-name> -g <rg> --type system --tail 50
       ```
 - [ ] If you configured a budget: `az consumption budget list --resource-group <rg> -o table` shows `budget-<env>`.
-- [ ] If you enabled the public demo: in a private window, **Try the live demo** narrates a live-demo deck and stops at `DEMO_SESSION_SECONDS`
+- [ ] If you enabled the public demo: in a private window, **Try the live demo** narrates a live-demo deck and stops at `DEMO_SESSION_SECONDS` (or `DEMO_QA_SESSION_SECONDS` when demo Q&A is on)
       (`DEMO_QA_SESSION_SECONDS` when demo Q&A is on).
 - [ ] If you enabled demo Q&A ([§6.3](#63-voice-qa-in-the-public-demo-demo_qa_enabled)): in the private window, raise a hand,
       ask one spoken question, hear the answer and see the deck resume. After `DEMO_QA_MAX_QUESTIONS` questions, **Raise hand** is disabled.
