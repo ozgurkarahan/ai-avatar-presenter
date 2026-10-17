@@ -418,3 +418,41 @@ def test_cli_dry_run_seed(env, monkeypatch, capsys):
     assert mc.main(["seed", "--dry-run"]) == 0
     out = capsys.readouterr().out
     assert "would upload" in out and env.store.docs == {}
+
+
+def test_publish_all_continues_past_a_failed_item(env, monkeypatch):
+    calls: list[str] = []
+
+    async def fake_podcast(cfg, name, *, dry_run=False, deck_dir=None):
+        calls.append(f"podcast:{name}")
+        if name == "practitioner":
+            raise mc.MaintenanceError("boom")
+        return {"name": name, "action": "rendered"}
+
+    async def fake_video(cfg, name, *, dry_run=False, deck_dir=None):
+        calls.append(f"video:{name}")
+        return {"name": name, "action": "rendered"}
+
+    monkeypatch.setattr(mc, "render_podcast", fake_podcast)
+    monkeypatch.setattr(mc, "render_video", fake_video)
+    summary = asyncio.run(mc.publish_all(env.cfg, skip={"video:practitioner"}))
+    assert summary["seed"]["playlist"]["action"] == "created"
+    assert calls == [f"podcast:{n}" for n in mc.PODCASTS] + ["video:demo-en", "video:demo-fr"]
+    assert [e["item"] for e in summary["errors"]] == ["podcast:practitioner"]
+    assert summary["videos"][-1] == {"name": "practitioner", "action": "skipped"}
+
+
+def test_logtail_redacts_signed_urls(tmp_path):
+    log = tmp_path / "x.log"
+    log.write_text("ok line\nGET https://acct.blob.core.windows.net/c/v.mp4?sv=2024&sig=ABC123 failed\n"
+                   "api key=SuperSecret1 here\n", encoding="utf-8")
+    out = "\n".join(mc.logtail(log, 10))
+    assert "ABC123" not in out and "SuperSecret1" not in out
+    assert "https://acct.blob.core.windows.net/c/v.mp4?<redacted>" in out and "ok line" in out
+    assert mc.logtail(tmp_path / "missing.log", 5)[0].startswith("(no log")
+
+
+def test_background_flag_parses():
+    args = mc.build_parser().parse_args(["--background", "/tmp/all.log", "all", "--skip", "video:practitioner"])
+    assert str(args.background).replace("\\", "/").endswith("tmp/all.log")
+    assert args.cmd == "all" and args.skip == ["video:practitioner"]

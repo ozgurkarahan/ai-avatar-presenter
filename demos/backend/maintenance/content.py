@@ -15,6 +15,12 @@ Usage (from the backend directory, ``/app`` in the image)::
     python -m maintenance.content render-video {demo-en,demo-fr,practitioner,all} [--dry-run]
     python -m maintenance.content purge --deck-title T ... --podcast-id job-... --video-id sv-... \\
         --record deleted.json [--allow-missing video:practitioner] [--dry-run]
+    python -m maintenance.content --background /tmp/all.log all [--skip video:practitioner]
+    python -m maintenance.content logtail /tmp/all.log -n 40
+
+``--background LOG`` detaches the job (new session) so a short
+``az containerapp exec`` call can start a long render; ``logtail`` prints the
+log with URL query strings redacted.
 
 Every command is idempotent: decks are matched by title, the playlist by name
 and podcasts/videos by library title (an existing item is only published).
@@ -539,6 +545,36 @@ def purge(cfg, *, deck_titles: list[str], podcast_ids: list[str], video_ids: lis
 
 
 # ---------------------------------------------------------------------------
+# Everything (one operator call)
+# ---------------------------------------------------------------------------
+async def publish_all(cfg, *, dry_run: bool = False, deck_dir: Optional[Path] = None,
+                      skip: frozenset[str] | set[str] = frozenset()) -> dict[str, Any]:
+    """Seed the decks, then render each podcast and video in turn.
+
+    Renders run one at a time (batch avatar synthesis is throttled per
+    resource); a failed item is reported and the next one still runs."""
+    summary: dict[str, Any] = {"seed": None, "podcasts": [], "videos": [], "errors": []}
+    try:
+        summary["seed"] = await seed(cfg, dry_run=dry_run, deck_dir=deck_dir)
+    except Exception as exc:  # noqa: BLE001
+        log.exception("seed failed")
+        summary["errors"].append({"item": "seed", "error": str(getattr(exc, "detail", exc))[:300]})
+    for kind, names, fn in (("podcast", PODCASTS, render_podcast), ("video", VIDEOS, render_video)):
+        for name in names:
+            key = f"{kind}:{name}"
+            if key in skip:
+                summary[f"{kind}s"].append({"name": name, "action": "skipped"})
+                continue
+            try:
+                summary[f"{kind}s"].append(await fn(cfg, name, dry_run=dry_run, deck_dir=deck_dir))
+            except Exception as exc:  # noqa: BLE001
+                log.exception("%s failed", key)
+                summary["errors"].append({"item": key, "error": str(getattr(exc, "detail", exc))[:300]})
+                _say(f"FAILED {key}: {exc}")
+    return summary
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def _print(obj: Any) -> None:
@@ -549,6 +585,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="python -m maintenance.content", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--deck-dir", type=Path, default=None, help="Directory holding the .pptx decks")
+    ap.add_argument("--background", type=Path, default=None, metavar="LOG",
+                    help="Detach (new session) and append all output to LOG; poll it with tail")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("inventory", help="List decks, playlists, podcasts and videos (no URLs)")
@@ -573,11 +611,67 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--allow-missing", action="append", default=[],
                    help="New item allowed to be absent, e.g. video:practitioner")
     p.add_argument("--dry-run", action="store_true")
+
+    p = sub.add_parser("all", help="seed, then every podcast, then every video (continues past failures)")
+    p.add_argument("--skip", action="append", default=[], help="e.g. video:practitioner")
+    p.add_argument("--dry-run", action="store_true")
+
+    p = sub.add_parser("logtail", help="Print the end of a log with URL query strings redacted")
+    p.add_argument("log", type=Path)
+    p.add_argument("-n", type=int, default=40)
     return ap
+
+
+_QUERY_RE = None
+
+
+def redact(line: str) -> str:
+    """Drop URL query strings (SAS tokens) and key-like values from a log line."""
+    import re
+
+    global _QUERY_RE
+    if _QUERY_RE is None:
+        _QUERY_RE = re.compile(r"(https?://[^\s?'\"]+)\?[^\s'\"]*")
+    line = _QUERY_RE.sub(r"\1?<redacted>", line)
+    return re.sub(r"(?i)((?:sig|key|token|secret|password)=)[^\s&'\"]+", r"\1<redacted>", line)
+
+
+def logtail(path: Path, n: int) -> list[str]:
+    if not path.is_file():
+        return [f"(no log at {path})"]
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-max(1, n):]
+    return [redact(line) for line in lines]
+
+
+def _detach(log_path: Path) -> None:
+    """Double-fork into a new session writing to ``log_path`` (POSIX only).
+
+    Lets an operator start a long render through a short-lived
+    ``az containerapp exec`` call and poll the log afterwards."""
+    import os
+
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    pid = os.fork()
+    if pid > 0:
+        print(f"started in background (pid {pid}); log: {log_path}", flush=True)
+        os._exit(0)
+    os.setsid()
+    if os.fork() > 0:
+        os._exit(0)
+    fd = os.open(str(log_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    devnull = os.open(os.devnull, os.O_RDONLY)
+    os.dup2(devnull, 0)
+    os.dup2(fd, 1)
+    os.dup2(fd, 2)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.cmd == "logtail":
+        print("\n".join(logtail(args.log, args.n)), flush=True)
+        return 0
+    if args.background:
+        _detach(args.background)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     for noisy in ("azure", "httpx", "openai", "urllib3"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
@@ -604,6 +698,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                            allow_missing=set(args.allow_missing), dry_run=args.dry_run)
             _print(result)
             if result["errors"]:
+                return 1
+        elif args.cmd == "all":
+            summary = asyncio.run(publish_all(cfg, dry_run=args.dry_run, deck_dir=args.deck_dir,
+                                              skip=set(args.skip)))
+            _print(summary)
+            if summary["errors"]:
                 return 1
     except MaintenanceError as exc:
         _say(f"ERROR: {exc}")
