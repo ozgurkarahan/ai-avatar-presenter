@@ -13,7 +13,7 @@ const PNG_1PX = Buffer.from(
 );
 
 export const DECKS = [
-  { deck_id: 'deck-live', title: 'climate-action', slide_count: 3, language: 'en-US', uploaded_at: '2026-10-14T21:51:41Z', tags: [], published: true, live_demo: true },
+  { deck_id: 'deck-live', title: 'ai-fundamentals', slide_count: 3, language: 'en-US', uploaded_at: '2026-10-14T21:51:41Z', tags: [], published: true, live_demo: true },
   { deck_id: 'deck-plain', title: 'ai-ethics', slide_count: 3, language: 'en-US', uploaded_at: '2026-10-14T21:51:46Z', tags: [], published: true, live_demo: false },
 ];
 
@@ -40,11 +40,11 @@ const AVATARS = [
 ];
 
 const VIDEO_ITEM = {
-  job_id: 'vid-1', title: 'low-carbon-materials', language: 'en-US', created_at: '2026-10-15T00:05:00Z',
+  job_id: 'vid-1', title: 'context-engineering-rag', language: 'en-US', created_at: '2026-10-15T00:05:00Z',
   thumbnail_url: null, duration_sec: 98, slide_count: 6, published: true,
 };
 const PODCAST_ITEM = {
-  job_id: 'pod-1', title: 'circular-economy', language: 'en-US', created_at: '2026-10-14T21:52:00Z',
+  job_id: 'pod-1', title: 'ai-agents-mcp', language: 'en-US', created_at: '2026-10-14T21:52:00Z',
   thumbnail_url: null, duration_sec: 114, speaker_names: ['Sofia', 'Lucas'], published: true,
 };
 const PLAYLIST = {
@@ -106,7 +106,7 @@ export async function mockApi(page: Page, role: Role, opts: MockApiOptions = {})
     if (p === '/api/playlists' && m === 'GET') return json([PLAYLIST]);
     if (p === '/api/playlists/pl-1') {
       return json({ ...PLAYLIST, steps: [
-        { order: 0, deck_id: 'deck-live', deck_title: 'climate-action', slide_count: 3, required: true },
+        { order: 0, deck_id: 'deck-live', deck_title: 'ai-fundamentals', slide_count: 3, required: true },
         { order: 1, deck_id: 'deck-plain', deck_title: 'ai-ethics', slide_count: 3, required: true },
       ] });
     }

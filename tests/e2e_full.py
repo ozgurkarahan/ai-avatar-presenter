@@ -160,7 +160,7 @@ def test_deck_search(client: httpx.Client, log: Log) -> None:
     log.header("STEP 3  DECK SEARCH (semantic Q&A)")
     queries = [
         ("Quels sont les équipements de protection individuelle ?", "fr-FR", "securite"),
-        ("How to reduce carbon emissions in cement production?", "en-US", "decarbon"),
+        ("How does retrieval-augmented generation ground answers?", "en-US", "context-engineering-rag"),
         ("¿Qué es el mantenimiento predictivo?", "es-ES", "ia-en-produccion"),
     ]
     for q, lang, expected_frag in queries:
@@ -190,7 +190,7 @@ def test_deck_search(client: httpx.Client, log: Log) -> None:
 # ---------------------------------------------------------------------------
 def test_playlists_manual(client: httpx.Client, log: Log, uploaded: dict) -> list[str]:
     log.header("STEP 4  PLAYLISTS CREATION (one per group)")
-    groups: dict[str, list[dict]] = {"A_safety_fr": [], "B_sustainability_en": [], "C_ai_es": []}
+    groups: dict[str, list[dict]] = {"A_safety_fr": [], "B_genai_en": [], "C_ai_es": []}
     for up in uploaded.values():
         groups.setdefault(up["group"], []).append(up)
     created_ids: list[str] = []
@@ -242,7 +242,7 @@ def test_playlists_ai_recommend(client: httpx.Client, log: Log) -> None:
     log.header("STEP 6  AI PLAYLIST RECOMMEND (GPT-4.1)")
     scenarios = [
         ("sécurité sur chantier et prévention des risques", "fr-FR", ["securite", "risques", "urgence"]),
-        ("decarbonization and low-carbon materials in construction", "en-US", ["decarbon", "low-carbon", "circular"]),
+        ("language models, RAG and AI agents with MCP", "en-US", ["ai-models", "context-engineering", "agents-mcp"]),
         ("inteligencia artificial en la industria y su ética", "es-ES", ["ia-industrial", "produccion", "etica"]),
     ]
     for topic, lang, expected_keywords in scenarios:

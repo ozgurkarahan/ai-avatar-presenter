@@ -1,13 +1,13 @@
 """
-Generate docs/samples/smart-glass-sample.pptx — a 5-slide demo deck for the podcast.
+Generate docs/samples/ai-agents-sample.pptx — a 5-slide demo deck for the podcast.
 
-Theme: dynamic electrochromic ("smart") glazing — a realistic, vendor-neutral
-technology story that works well for a dual-avatar podcast demo (Interviewer +
-Expert). Each slide has a title, bullet-friendly content, and speaker notes
-that the script-generation prompt can use.
+Theme: AI agents connected to tools through the Model Context Protocol (MCP) —
+a realistic, vendor-neutral technology story that works well for a dual-avatar
+podcast demo (Interviewer + Expert). Each slide has a title, bullet-friendly
+content, and speaker notes that the script-generation prompt can use.
 
 Run: python scripts/generate_sample_pptx.py
-Output: docs/samples/smart-glass-sample.pptx
+Output: docs/samples/ai-agents-sample.pptx
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Inches, Pt
 
-OUT = Path(__file__).resolve().parent.parent / "docs" / "samples" / "smart-glass-sample.pptx"
+OUT = Path(__file__).resolve().parent.parent / "docs" / "samples" / "ai-agents-sample.pptx"
 
 # Deep blue + cyan accent
 BRAND_BLUE = RGBColor(0x00, 0x33, 0x66)
@@ -28,74 +28,74 @@ CLOUD = RGBColor(0xF1, 0xF5, 0xF9)
 
 SLIDES = [
     {
-        "title": "Smart Glass — Dynamic Glazing for Net-Zero Buildings",
+        "title": "AI Agents — From Answers to Actions",
         "subtitle": "DeckFM — Demo · Innovation Podcast",
         "bullets": [
-            "Electrochromic glass that tints on demand",
-            "Reduces HVAC energy use by up to 20%",
-            "Commercially available for over a decade",
+            "Agents plan, call tools and observe results",
+            "Connected to data and apps through MCP",
+            "Humans stay in control of sensitive steps",
         ],
         "notes": (
-            "This is the opening slide. Introduce smart glass as a proven "
-            "dynamic glazing technology. Frame the conversation around decarbonising the "
-            "built environment, which is responsible for roughly 40% of global CO2 emissions."
+            "This is the opening slide. Introduce AI agents as the next step after "
+            "chat assistants. Frame the conversation around moving from answering "
+            "questions to completing multi-step tasks safely on behalf of users."
         ),
     },
     {
-        "title": "How Electrochromic Tinting Works",
+        "title": "How an Agent Loop Works",
         "bullets": [
-            "Five-layer ceramic coating on the inner glass surface",
-            "Low-voltage DC pulse migrates lithium ions between layers",
-            "Transition from clear (~60% VLT) to deeply tinted (~1% VLT) in minutes",
-            "No moving parts — solid-state switching rated for 100,000+ cycles",
+            "The model reads the goal, instructions and context",
+            "It chooses a tool and fills in the arguments",
+            "The harness runs the tool and returns the result",
+            "The loop repeats until the goal is met or a limit is hit",
         ],
         "notes": (
-            "This is the technical depth slide. The expert should explain the five-layer "
-            "stack and the ion migration principle. Keep the metaphor accessible — compare "
-            "it to a rechargeable battery where the 'charge state' is the tint level."
+            "This is the technical depth slide. The expert should explain the plan, act, "
+            "observe loop. Keep the metaphor accessible — compare it to a new colleague "
+            "who follows a checklist and reports back after each step."
         ),
     },
     {
-        "title": "Why It Matters — Energy & Comfort",
+        "title": "Why It Matters — MCP and Context",
         "bullets": [
-            "HVAC savings: 10–20% annual reduction vs. low-e glass",
-            "Lighting savings: 60% less artificial lighting near windows",
-            "Glare control without blinds or shades",
-            "LEED credits: up to 8 under v4.1",
+            "MCP: one open standard to expose tools and data",
+            "Build a server once, reuse it across AI clients",
+            "Context engineering keeps each step grounded",
+            "Least-privilege access by design",
         ],
         "notes": (
-            "The interviewer should ask about quantified impact here. Expert shares the key "
-            "metrics and grounds them in a relatable example, e.g., a typical 10,000 m² "
-            "commercial building saves enough energy to power 40 homes per year."
+            "The interviewer should ask why a protocol matters here. Expert explains that "
+            "the Model Context Protocol lets teams expose a tool once and reuse it from many "
+            "AI clients, and grounds it in a relatable example such as a ticketing system."
         ),
     },
     {
-        "title": "Deployment Case Study — European HQ Retrofit",
+        "title": "Deployment Case Study — Support Desk Agent",
         "bullets": [
-            "2,800 m² facade, 1,200 dynamic panes",
-            "Installed Q2 2024, fully integrated with BMS",
-            "Measured HVAC reduction: 18.4% year-one",
-            "Occupant satisfaction survey: +31 NPS",
+            "Three MCP tools: search knowledge base, read ticket, draft reply",
+            "Retrieval-augmented answers with citations",
+            "Every outgoing reply approved by a human agent",
+            "Quality tracked on a golden set before each release",
         ],
         "notes": (
-            "Talk about a real-world deployment. Keep it concrete — single building, "
-            "specific numbers, measured outcomes. The interviewer should pivot from "
-            "'how it works' to 'what it delivers' here."
+            "Talk about a realistic deployment. Keep it concrete — one team, a few tools, "
+            "measured outcomes. The interviewer should pivot from 'how it works' to "
+            "'what it delivers' here."
         ),
     },
     {
-        "title": "What's Next — AI-Driven Control",
+        "title": "What's Next — Responsible AI at Scale",
         "bullets": [
-            "ML models predict solar load 15 minutes ahead",
-            "Occupant preference learning per zone",
-            "Grid-aware tinting during peak pricing",
-            "Next-generation AI control systems arriving from 2026",
+            "Small and open-weight models for routine steps",
+            "Voice agents with speech-to-text and text-to-speech",
+            "Continuous evaluation and observability",
+            "Clear governance for every agent in production",
         ],
         "notes": (
-            "Wrap up with the forward-looking story. The expert should describe how AI "
-            "turns the glass from a passive product into an active part of the building's "
-            "energy strategy. End on a confident, inviting note about what this means "
-            "for the buildings of the future."
+            "Wrap up with the forward-looking story. The expert should describe how agents "
+            "become dependable services through evaluation, observability and governance. "
+            "End on a confident, inviting note about what this means "
+            "for the way teams will work."
         ),
     },
 ]

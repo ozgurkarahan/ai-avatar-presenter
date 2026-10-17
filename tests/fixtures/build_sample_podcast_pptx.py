@@ -12,78 +12,78 @@ OUT = Path(__file__).parent / "innovation-sample.pptx"
 
 SLIDES = [
     {
-        "title": "Sustainable Construction: Shaping a Low-Carbon Future",
+        "title": "AI in Production: From Demo to Dependable",
         "bullets": [
-            "Buildings drive over a third of energy-related CO2",
-            "Materials innovation is the biggest lever",
-            "Sustainability at the core of every product",
+            "Models are only one part of an AI product",
+            "Context and tools decide answer quality",
+            "Reliability is engineered, not assumed",
         ],
         "notes": (
-            "Welcome to this introduction to sustainable construction. "
-            "Buildings account for more than a third of global energy-related emissions, "
-            "from the materials used to build them to the energy used to heat and cool them. "
-            "In this short session we look at how materials innovation can shape the habitat and industries of tomorrow, "
-            "combining performance, well-being and care for the planet."
+            "Welcome to this introduction to AI in production. "
+            "A convincing demo takes an afternoon, but a dependable AI product takes careful engineering, "
+            "from the model you choose to the context you feed it and the tools it is allowed to call. "
+            "In this short session we look at the building blocks that turn a prototype into a service people trust, "
+            "combining quality, safety and cost control."
         ),
     },
     {
-        "title": "Four Families of Building Solutions",
+        "title": "Four Building Blocks of an AI Application",
         "bullets": [
-            "High-performance materials for industry",
-            "Construction products (boards, insulation, mortars)",
-            "Glazing for buildings and mobility",
-            "Distribution networks for professionals",
+            "Models: large, small and open-weight",
+            "Context: instructions, documents and memory",
+            "Tools: APIs and data exposed through MCP",
+            "Speech: speech-to-text and text-to-speech",
         ],
         "notes": (
-            "The building-materials sector can be seen as four complementary families of solutions. "
-            "High-performance materials serve industries such as aerospace, healthcare and mobility. "
-            "Construction products deliver boards, insulation and mortars for energy-efficient buildings. "
-            "Glazing solutions provide innovative glass for both buildings and vehicles. "
-            "And distribution networks bring these solutions to professionals through local branches."
+            "A modern AI application can be seen as four complementary building blocks. "
+            "Models range from large language models to small and open-weight models that run closer to the data. "
+            "Context engineering assembles instructions, retrieved documents and memory for each request. "
+            "Tools let the model act, often exposed through the Model Context Protocol. "
+            "And speech services turn the experience into a natural spoken conversation."
         ),
     },
     {
-        "title": "Innovation & R&D at Scale",
+        "title": "Grounding with Retrieval",
         "bullets": [
-            "Cross-disciplinary research centers",
-            "Thousands of researchers, hundreds of patents per year",
-            "Partnerships with universities and start-ups",
+            "Retrieval-augmented generation (RAG)",
+            "Hybrid search and semantic reranking",
+            "Every answer cites its sources",
         ],
         "notes": (
-            "Innovation is the engine of growth in this sector. "
-            "Leading manufacturers run cross-disciplinary research centers and collaborate with universities, "
-            "employing thousands of researchers who file hundreds of patents every year. "
-            "Open innovation programmes connect them with start-ups, "
-            "accelerating breakthroughs in low-carbon materials and digital construction."
+            "Grounding is the engine of answer quality. "
+            "Retrieval-augmented generation searches your own documents, "
+            "combining keyword and vector search with semantic reranking to find the best passages. "
+            "The model then answers from those passages and cites them, "
+            "which makes hallucinations easier to spot and answers easier to verify."
         ),
     },
     {
-        "title": "A 2030 Ambition",
+        "title": "Agents and the Harness Around Them",
         "bullets": [
-            "Net-zero carbon emissions by 2050",
-            "-33% CO2 by 2030 vs a 2017 baseline",
-            "Circular economy across all product lines",
+            "Agents plan, call tools and observe results",
+            "The harness adds memory, limits and logging",
+            "Humans approve sensitive actions",
         ],
         "notes": (
-            "A credible climate plan sets the direction for the decade ahead. "
-            "Many industrial players have committed to net-zero carbon emissions by 2050, "
-            "with an intermediate target of around minus 33 percent CO2 by 2030 compared to a 2017 baseline. "
-            "Circular economy principles are being embedded across every product family, "
-            "from recycled glass to reusable boards."
+            "Agents take AI from answering to acting. "
+            "An agent plans a task, calls tools, observes the results and loops until the goal is reached. "
+            "The harness around it provides memory, step limits, guardrails and detailed logging, "
+            "while a human stays in the loop for sensitive actions, "
+            "from sending an email to changing a record."
         ),
     },
     {
         "title": "Key Takeaways",
         "bullets": [
-            "Materials science is a climate lever",
-            "Measure carbon on every project",
-            "Design for reuse from day one",
+            "Pick the smallest model that does the job",
+            "Measure quality on every release",
+            "Design for responsible AI from day one",
         ],
         "notes": (
             "So what should you remember. "
-            "Materials science is one of the most powerful climate levers we have. "
-            "Whether you are building a hospital, a data center or an electric vehicle, "
-            "measure the carbon impact of every project and design for reuse from day one. "
+            "Choosing the smallest model that does the job is one of the most powerful levers we have. "
+            "Whether you are building a support assistant, a coding agent or a voice experience, "
+            "measure quality on every release and design for responsible AI from day one. "
             "Thank you for listening."
         ),
     },

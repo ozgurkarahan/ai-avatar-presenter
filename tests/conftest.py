@@ -19,12 +19,12 @@ FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "decks"
 
 # filename → (language, topic-specific query, expected top deck title substring)
 FIXTURES = [
-    ("climate-action.pptx",        "en-US", "carbon neutral net-zero emissions",     "climate-action"),
+    ("ai-fundamentals.pptx",       "en-US", "small language models open-weight",     "ai-fundamentals"),
     ("ai-ethics.pptx",             "en-US", "bias fairness machine learning",         "ai-ethics"),
     ("cloud-security.pptx",        "en-US", "zero trust identity cloud",              "cloud-security"),
     ("medical-devices.pptx",       "en-US", "medical device MDR classification",      "medical-devices"),
-    ("transition-energetique.pptx","fr-FR", "transition énergétique hydrogène",       "transition-energetique"),
-    ("innovacion-industrial.pptx", "es-ES", "innovación industrial gemelos digitales","innovacion-industrial"),
+    ("ia-generative-fr.pptx",      "fr-FR", "IA générative ingénierie du contexte",   "ia-generative-fr"),
+    ("agentes-ia-produccion.pptx", "es-ES", "agentes de IA protocolo MCP herramientas","agentes-ia-produccion"),
 ]
 
 

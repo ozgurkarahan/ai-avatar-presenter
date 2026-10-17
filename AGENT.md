@@ -88,7 +88,7 @@ To provision or deploy to Azure, follow [`BOOTSTRAP.md`](BOOTSTRAP.md). It gives
 | `demos/backend/auth.py` | Hybrid exposure model — Easy Auth principal parsing, `AUTH_MODE`, object-ID allowlist, `GET /api/me` |
 | `tests/e2e_full.py` | End-to-end runner — reset DB + upload 9 sample fixtures + decks / video / podcast smoke (30 checks); targets local dev (`AUTH_MODE=disabled`) via `AI_PRESENTER_BASE_URL` |
 | `tests/e2e_render.py` | Full render E2E for video (MP4) + podcast (MP3), with `--languages` flag for multi-locale sweep (30 checks in 3-lang mode) |
-| `tests/fixtures/samples/` | 9 coherent fixture decks in 3 thematic groups (Safety FR, Sustainability EN, AI ES) |
+| `tests/fixtures/samples/` | 9 coherent fixture decks in 3 thematic groups (Safety FR, Generative AI EN, AI in industry ES) |
 | `tests/test_playlists_api.py` | pytest for the playlists API incl. AI recommend |
 | `tests/playlists.spec.ts` | Playwright UI regressions for playlists |
 | `scripts/package-teams-app.ps1` | Package Teams app for sideloading |

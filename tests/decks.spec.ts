@@ -20,15 +20,15 @@ const BASE_URL = process.env.AI_PRESENTER_BASE_URL ?? 'http://localhost:5173';
 const FIXTURE_DIR = path.resolve(__dirname, 'fixtures', 'decks');
 
 const DECKS = [
-  { file: 'climate-action.pptx',        title: 'climate-action',        query: 'carbon neutral net-zero emissions' },
+  { file: 'ai-fundamentals.pptx',       title: 'ai-fundamentals',       query: 'small language models open-weight' },
   { file: 'ai-ethics.pptx',             title: 'ai-ethics',             query: 'bias fairness machine learning' },
   { file: 'cloud-security.pptx',        title: 'cloud-security',        query: 'zero trust identity cloud' },
   { file: 'medical-devices.pptx',       title: 'medical-devices',       query: 'medical device MDR classification' },
-  { file: 'transition-energetique.pptx',title: 'transition-energetique',query: '' },
-  { file: 'innovacion-industrial.pptx', title: 'innovacion-industrial', query: '' },
+  { file: 'ia-generative-fr.pptx',      title: 'ia-generative-fr',      query: '' },
+  { file: 'agentes-ia-produccion.pptx', title: 'agentes-ia-produccion', query: '' },
 ];
 
-// Titles are shown humanized ("climate-action" -> "Climate action"); match either form.
+// Titles are shown humanized ("ai-fundamentals" -> "AI fundamentals"); match either form.
 const titleRe = (slug: string) => new RegExp(slug.replace(/-/g, '[- ]'), 'i');
 
 // Helper: auto-accept native confirm() dialogs so delete works headlessly.

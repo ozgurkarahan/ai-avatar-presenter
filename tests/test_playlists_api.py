@@ -143,7 +143,7 @@ def test_delete_referenced_deck_without_force_returns_409(
 ) -> None:
     # Upload a throwaway deck we can delete, reference it in a playlist
     import pathlib
-    path = pathlib.Path(__file__).parent / "fixtures" / "decks" / "climate-action.pptx"
+    path = pathlib.Path(__file__).parent / "fixtures" / "decks" / "ai-fundamentals.pptx"
     with path.open("rb") as fh:
         r = client.post("/api/decks/upload", files={"file": ("deletable-ref.pptx", fh, "application/vnd.openxmlformats-officedocument.presentationml.presentation")})
     assert r.status_code == 200

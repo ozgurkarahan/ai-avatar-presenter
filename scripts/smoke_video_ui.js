@@ -8,7 +8,7 @@
 const { chromium } = require('@playwright/test');
 const path = require('path');
 
-const PPTX = process.argv[2] || path.resolve(__dirname, '..', 'tests', 'fixtures', 'samples', 'circular-economy.pptx');
+const PPTX = process.argv[2] || path.resolve(__dirname, '..', 'tests', 'fixtures', 'samples', 'ai-agents-mcp.pptx');
 const BASE = (process.env.AI_PRESENTER_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
 const URL = `${BASE}/video`;
 

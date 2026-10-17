@@ -192,7 +192,7 @@ Tested end-to-end with `tests/e2e_full.py` against the 9 fixture decks. Last run
 | Topic | Expected keyword group | GPT-4.1 result |
 |---|---|---|
 | "sécurité sur chantier et prévention des risques" (`fr-FR`) | `safety` group | `securite-bases → risques-chantier → intervention-urgence` ✅ ordered from basics to advanced |
-| "decarbonization and low-carbon materials" (`en-US`) | `sustainability` group | `decarbonization-intro → low-carbon-materials` ✅ |
+| "language models, RAG and AI agents with MCP" (`en-US`) | `genai` group | expected `ai-models-intro → context-engineering-rag → ai-agents-mcp` (fixture group refreshed — not re-run yet) |
 | "inteligencia artificial en la industria y su ética" (`es-ES`) | `ai` group | `ia-industrial-intro → ia-en-produccion → etica-ia-empresa` ✅ ordered from basics to advanced |
 
 ---
@@ -213,7 +213,7 @@ Tested end-to-end with `tests/e2e_full.py` against the 9 fixture decks. Last run
 `tests/fixtures/samples/` contains 9 coherent decks in 3 thematic groups:
 
 - **Group A — Safety (FR-FR):** `securite-bases`, `risques-chantier`, `intervention-urgence`
-- **Group B — Sustainability (EN-US):** `decarbonization-intro`, `low-carbon-materials`, `circular-economy`
+- **Group B — Generative AI (EN-US):** `ai-models-intro`, `context-engineering-rag`, `ai-agents-mcp`
 - **Group C — AI in industry (ES-ES):** `ia-industrial-intro`, `ia-en-produccion`, `etica-ia-empresa`
 
 Each deck: 5 slides, 2-sentence speaker notes, progresses from intro → deepening → application. Regenerate from
@@ -233,7 +233,7 @@ python tests/e2e_full.py --base-url $BASE
 # Expensive (~10 min + TTS tokens) — full video + podcast media render, English only
 python tests/e2e_render.py --base-url $BASE
 
-# Multi-language render sweep (~30 min) — fr-FR (Safety), en-US (Sustainability), es-ES (AI)
+# Multi-language render sweep (~30 min) — fr-FR (Safety), en-US (Generative AI), es-ES (AI in industry)
 python tests/e2e_render.py --base-url $BASE --languages fr-FR,en-US,es-ES
 ```
 

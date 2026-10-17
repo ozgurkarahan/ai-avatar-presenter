@@ -126,11 +126,11 @@ test.describe('Audience level — library chip', () => {
   test('podcast + video libraries show the level when set', async ({ page }) => {
     await mockApi(page, 'admin');
     await page.route('**/api/podcast/library', (r) => json(r, [{
-      job_id: 'pod-1', title: 'circular-economy', language: 'en-US', created_at: '2026-10-14T21:52:00Z',
+      job_id: 'pod-1', title: 'ai-agents-mcp', language: 'en-US', created_at: '2026-10-14T21:52:00Z',
       thumbnail_url: null, duration_sec: 114, speaker_names: ['Sofia', 'Lucas'], published: true, audience_level: 'beginner',
     }]));
     await page.route('**/api/video/library', (r) => json(r, [{
-      job_id: 'vid-1', title: 'low-carbon-materials', language: 'en-US', created_at: '2026-10-15T00:05:00Z',
+      job_id: 'vid-1', title: 'context-engineering-rag', language: 'en-US', created_at: '2026-10-15T00:05:00Z',
       thumbnail_url: null, duration_sec: 98, slide_count: 6, published: true, audience_level: 'expert',
     }, {
       job_id: 'vid-2', title: 'no-level', language: 'en-US', created_at: '2026-10-14T00:05:00Z',

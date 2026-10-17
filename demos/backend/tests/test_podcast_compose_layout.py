@@ -262,9 +262,9 @@ def test_public_catalog_does_not_expose_crop():
 # ---------------------------------------------------------------------------
 
 LONG = (
-    "Circular construction keeps materials at their highest value for as long as "
-    "possible, which means designing every building for disassembly, reuse and "
-    "repair rather than demolition. Supercalifragilisticexpialidocious-materials-passport-identifiers "
+    "Context engineering keeps every model request grounded for as long as "
+    "possible, which means designing every agent for retrieval, citation and "
+    "review rather than guesswork. Supercalifragilisticexpialidocious-retrieval-provenance-identifiers "
     "make that traceable."
 )
 
@@ -305,7 +305,7 @@ def test_ass_captions_confined_to_centre_zone(tmp_path):
             assert len(line) <= 40, line
     # All words survive (minus ASS-unsafe characters) and karaoke tags remain.
     words = " ".join(" ".join(_plain_lines(d)) for d in dialogues).split()
-    assert "Circular" in words and "traceable." in words
+    assert "Context" in words and "traceable." in words
     assert "\\k" in dialogues[0]
 
 
@@ -323,7 +323,7 @@ def test_ass_split_screen_only_zone(tmp_path):
 
 
 def test_wrap_is_balanced_and_bounded():
-    words = "The linear model is basically grab materials, make stuff, and then throw it away".split()
+    words = "The agent loop is basically read the goal, call a tool, and then check the result".split()
     lines = pc._wrap_words(words, 40)
     assert len(lines) == 2 or all(len(ln) > 1 for ln in lines)
     assert all(len(" ".join(ln)) <= 40 for ln in lines)

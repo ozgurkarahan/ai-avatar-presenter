@@ -13,21 +13,21 @@ from services.avatar import build_ssml, semantic_gesture_for
 def test_lisa_intro_uses_baseline_opening_gesture() -> None:
     assert semantic_gesture_for(
         "lisa",
-        "Welcome to this decarbonization overview.",
+        "Welcome to this AI agents overview.",
         slide_index=0,
         intro=True,
     ) == "show-front-1"
 
 
 def test_lisa_numbered_steps_use_numeric_gestures() -> None:
-    assert semantic_gesture_for("lisa", "First, reduce energy demand.", slide_index=1) == "numeric1-left-1"
-    assert semantic_gesture_for("lisa", "Second, electrify processes.", slide_index=2) == "numeric2-left-1"
+    assert semantic_gesture_for("lisa", "First, reduce model latency.", slide_index=1) == "numeric1-left-1"
+    assert semantic_gesture_for("lisa", "Second, ground the answers.", slide_index=2) == "numeric2-left-1"
     assert semantic_gesture_for("lisa", "Third, optimize procurement.", slide_index=3) == "numeric3-left-1"
 
 
 def test_lisa_question_and_benefit_use_semantic_gestures() -> None:
     assert semantic_gesture_for("lisa", "Why is this challenge important?", slide_index=1) == "think-twice-1"
-    assert semantic_gesture_for("lisa", "The benefit is measurable CO2 reduction.", slide_index=2) == "thumbsup-left-1"
+    assert semantic_gesture_for("lisa", "The benefit is measurable latency reduction.", slide_index=2) == "thumbsup-left-1"
 
 
 def test_lisa_default_rotates_show_front_gestures() -> None:
@@ -47,7 +47,7 @@ def test_plan_gestures_emits_one_per_sentence_with_max() -> None:
 
     plan = plan_gestures(
         "lisa",
-        "First, energy efficiency. The benefit is measurable. Why does it matter?",
+        "First, context engineering. The benefit is measurable. Why does it matter?",
         slide_index=0,
         intro=True,
         max_gestures=3,
@@ -95,7 +95,7 @@ def test_plan_gestures_lisa_technical_sitting_uses_pointing() -> None:
 
 def test_build_ssml_aligns_gestures_to_sentences() -> None:
     ssml = build_ssml(
-        "Welcome here. The second step is energy efficiency.",
+        "Welcome here. The second step is context engineering.",
         "en-US",
         voice="en-US-Ava:DragonHDLatestNeural",
         gesture_names=["show-front-1", "numeric2-left-1"],
@@ -117,10 +117,10 @@ def test_build_ssml_rejects_unsafe_gesture_names() -> None:
 
 def test_build_ssml_injects_explicit_gesture_without_escaping_text() -> None:
     ssml = build_ssml(
-        "CO2 reduction & materials efficiency",
+        "Latency reduction & token efficiency",
         "en-US",
         voice="en-US-Ava:DragonHDLatestNeural",
         gesture_name="thumbsup-left-1",
     )
     assert "<bookmark mark='gesture.thumbsup-left-1'/>" in ssml
-    assert "CO2 reduction &amp; materials efficiency" in ssml
+    assert "Latency reduction &amp; token efficiency" in ssml
