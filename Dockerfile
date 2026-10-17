@@ -33,6 +33,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Includes demos/backend/static/avatars/ (custom avatar thumbnails, gitignored, optional)
 COPY demos/backend/ .
 
+# Public AI enablement decks for the operator content CLI (python -m maintenance.content).
+COPY content/ai-enablement/*.pptx ./maintenance/decks/
+
 # Copy built frontend into backend static directory. COPY merges into the existing
 # directory, so static/avatars/ from the previous step is preserved.
 COPY --from=frontend-build /frontend/dist ./static

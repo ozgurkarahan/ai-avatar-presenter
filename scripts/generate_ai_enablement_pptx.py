@@ -6,6 +6,7 @@ Outputs (content/ai-enablement/):
   ai-enablement-2-practitioner.pptx  12 slides  "Building with AI"
   ai-enablement-3-expert.pptx        12 slides  "Under the Hood"
   ai-enablement-demo-beginner.pptx    5 slides  ~3 minute public live-demo cut
+  ai-enablement-demo-beginner-fr.pptx 5 slides  same demo cut in French (fr-FR live demo)
 
 Every slide has a title (in the title placeholder, so DeckFM's parser picks it
 up), short bullets, an original diagram built only from native shapes
@@ -856,6 +857,85 @@ SLIDE_TEXT = {
             'bring your questions, whatever your starting point with artificial intelligence happens to be.'
         ),
     },
+    # French demo cut (fr-FR live demo): D.1-D.5 translated once with gpt-4.1,
+    # reviewed, then hard-coded here so the output stays deterministic.
+    'F.1': {
+        "title": 'Bonjour, je suis un présentateur IA',
+        "bullets": [
+            'Construit à partir d’un modèle de langage',
+            'Une voix générée en temps réel',
+            'Là pour expliquer l’IA simplement',
+        ],
+        "notes": (
+            'Bonjour. Je suis un système d’IA générative, qui vous présente en direct grâce à une voix '
+            'synthétique et un avatar animé. Tout ce que vous entendez en ce moment a été écrit par un modèle '
+            'de langage il y a quelques instants, puis transformé en audio par un autre système vocal. Pendant '
+            'les prochaines minutes, je vais vous montrer trois idées\u00a0: ce qu’est vraiment un modèle, ce qui '
+            'fait d’un agent plus qu’un simple chatbot, et comment ma voix et mon visage ont été créés. Aucun '
+            'bagage technique nécessaire, juste quelques minutes de votre attention.'
+        ),
+    },
+    'F.2': {
+        "title": 'Qu’est-ce qu’un modèle\u00a0?',
+        "bullets": [
+            'Entraîné sur d’énormes volumes de texte',
+            'Apprend des schémas, pas des faits',
+            'Prédit le mot suivant le plus probable',
+        ],
+        "notes": (
+            'Un modèle comme celui qui génère mes mots a été entraîné sur d’immenses quantités de textes, en '
+            'apprenant les schémas statistiques du langage plutôt qu’en mémorisant des faits comme une base de '
+            'données. Quand vous lui posez une question, il prédit le mot le plus probable, encore et encore, '
+            'jusqu’à former une réponse complète. C’est aussi pour cela qu’il peut sembler très sûr de lui tout '
+            'en se trompant parfois, ce qu’il faut garder en tête quand la précision compte vraiment.'
+        ),
+    },
+    'F.3': {
+        "title": 'Qu’est-ce qu’un agent\u00a0?',
+        "bullets": [
+            'Un modèle qui peut aussi agir',
+            'Utilise des outils\u00a0: recherche, agenda, fichiers',
+            'Travaille en boucle jusqu’au bout',
+        ],
+        "notes": (
+            'Un simple modèle ne produit que des mots. Un agent, c’est un modèle connecté à des outils, comme un '
+            'moteur de recherche ou un agenda, qu’il peut réellement utiliser. Il fonctionne en boucle\u00a0: il '
+            'réfléchit à l’étape suivante, agit en appelant un outil, regarde le résultat, et recommence jusqu’à '
+            'ce que la tâche soit vraiment terminée. Cette boucle fait toute la différence entre un système qui '
+            'ne fait que parler et un système capable d’agir pour vous.'
+        ),
+    },
+    'F.4': {
+        "title": 'Comment fonctionne ma voix',
+        "bullets": [
+            'La reconnaissance vocale vous entend',
+            'La synthèse vocale me donne une voix',
+            'Un avatar ajoute un visage animé',
+        ],
+        "notes": (
+            'Cette présentation combine plusieurs technologies vocales. La reconnaissance vocale transforme vos '
+            'paroles en texte lisible par un modèle. La synthèse vocale prend les mots générés et les transforme '
+            'en la voix naturelle que vous entendez. Une couche avatar anime ensuite un visage synthétique pour '
+            'suivre cette voix. Quand tout cela est assez rapide pour un échange en direct, on parle de voix en '
+            'temps réel, et c’est exactement ce qui me fait fonctionner en ce moment.'
+        ),
+    },
+    'F.5': {
+        "title": 'Merci de votre attention — allez plus loin',
+        "bullets": [
+            'C’était la version express',
+            'Le deck débutant complet\u00a0: douze sujets',
+            'Posez-nous vos questions, à tout moment',
+        ],
+        "notes": (
+            'C’était la version en trois minutes. La session complète pour débutants couvre douze sujets en '
+            'détail, comme les modèles de raisonnement, les tokens et les fenêtres de contexte, les modèles '
+            'ouverts ou fermés, et l’usage responsable. Deux autres sessions vont encore plus loin\u00a0: une pour '
+            'les praticiens qui construisent avec l’IA, et une pour les experts qui veulent comprendre les '
+            'mécanismes. Merci de votre attention, et n’hésitez pas à poser vos questions, quel que soit votre '
+            'niveau de départ avec l’intelligence artificielle.'
+        ),
+    },
 }
 
 
@@ -1684,42 +1764,79 @@ def d_governance(s):
 # --------------------------------------------------------------------------
 # Diagrams: Demo cut
 # --------------------------------------------------------------------------
-def v_title_demo(s):
+# Diagram labels for the demo cut, per language (EN is the reviewed original).
+DEMO_LABELS = {
+    "en": {
+        "D.1": ("language model", "realtime voice", "avatar"),
+        "D.2": ("Training\ntext", "Model", "Prediction", "next likely word",
+                "Patterns, not facts: it can sound sure and still be wrong"),
+        "D.3": ("Think", "Act", "call a tool", "Observe", "look at result", "repeat until done"),
+        "D.4": ("Your\nvoice", "Speech\nto text", "Model", "Text to\nspeech", "Avatar",
+                "Fast enough for live back-and-forth = realtime voice"),
+        "D.5": ("You are here", "3-minute demo", "Full AI enablement series",
+                "3 decks:\nBeginner \u00b7 Practitioner \u00b7 Expert",
+                "Bring your questions, whatever your starting point"),
+    },
+    # Translated once with gpt-4.1, then reviewed and shortened to fit the boxes.
+    "fr": {
+        "D.1": ("mod\u00e8le de langage", "voix temps r\u00e9el", "avatar"),
+        "D.2": ("Textes\nd\u2019entra\u00eenement", "Mod\u00e8le", "Pr\u00e9diction", "mot suivant probable",
+                "Des sch\u00e9mas, pas des faits\u00a0: il peut sembler s\u00fbr et se tromper"),
+        "D.3": ("R\u00e9fl\u00e9chir", "Agir", "appeler un outil", "Observer", "lire le r\u00e9sultat",
+                "r\u00e9p\u00e9ter jusqu\u2019au bout"),
+        "D.4": ("Votre\nvoix", "Voix en\ntexte", "Mod\u00e8le", "Texte en\nvoix", "Avatar",
+                "Assez rapide pour un \u00e9change en direct = voix temps r\u00e9el"),
+        "D.5": ("Vous \u00eates ici", "d\u00e9mo de 3 minutes", "S\u00e9rie compl\u00e8te AI enablement",
+                "3 decks\u00a0:\nD\u00e9butant \u00b7 Praticien \u00b7 Expert",
+                "Venez avec vos questions, quel que soit votre niveau"),
+    },
+}
+
+
+def v_title_demo(s, lang="en"):
     shape(s, MSO_SHAPE.OVAL, 8.0, 1.85, 2.8, 2.8, kind="blue", name="avatar")
     shape(s, MSO_SHAPE.OVAL, 8.95, 2.3, 0.9, 0.9, fill=AZURE, line=None)
     shape(s, MSO_SHAPE.ROUND_2_SAME_RECTANGLE, 8.55, 3.35, 1.7, 1.05, fill=AZURE, line=None)
     bubble(s, 10.95, 1.75, 1.55, 1.0)
-    for i, label in enumerate(("language model", "realtime voice", "avatar")):
-        pill(s, 7.65 + i * 1.65, 5.15, 1.55, 0.45, label, kind="blue" if i < 2 else "solid", size=13)
+    size = 13 if lang == "en" else 12
+    for i, label in enumerate(DEMO_LABELS[lang]["D.1"]):
+        pill(s, 7.65 + i * 1.65, 5.15, 1.55, 0.45, label, kind="blue" if i < 2 else "solid", size=size)
 
 
-def d_demo_model(s):
-    card(s, 5.7, 3.05, 1.75, 1.2, "Training\ntext", kind="neutral", size=16)
+def d_demo_model(s, lang="en"):
+    training, model, prediction, prediction_sub, takeaway = DEMO_LABELS[lang]["D.2"]
+    card(s, 5.7, 3.05, 1.75, 1.2, training, kind="neutral", size=16 if lang == "en" else 14)
     shape(s, MSO_SHAPE.ISOSCELES_TRIANGLE, 7.55, 2.95, 1.4, 1.0, fill=AZURE_SOFT, line=AZURE_LINE, rotation=90,
           name="funnel")
-    card(s, 9.05, 2.85, 1.6, 1.6, "Model", kind="solid", size=17, shape_type=MSO_SHAPE.OVAL)
+    card(s, 9.05, 2.85, 1.6, 1.6, model, kind="solid", size=17, shape_type=MSO_SHAPE.OVAL)
     arrow(s, 10.7, 3.65, 11.0, 3.65, width=2.25)
-    card(s, 11.05, 3.05, 1.5, 1.2, "Prediction", "next likely word", kind="neutral", size=15, sub_size=12)
-    outcome(s, "Patterns, not facts: it can sound sure and still be wrong", y=5.3)
+    card(s, 11.05, 3.05, 1.5, 1.2, prediction, prediction_sub, kind="neutral", size=15, sub_size=12)
+    outcome(s, takeaway, y=5.3)
 
 
-def d_demo_agent(s):
-    loop3(s, [("Think", None), ("Act", "call a tool"), ("Observe", "look at result")])
+def d_demo_agent(s, lang="en"):
+    think, act, act_sub, observe, observe_sub, note = DEMO_LABELS[lang]["D.3"]
+    loop3(s, [(think, None), (act, act_sub), (observe, observe_sub)], center_note=note)
 
 
-def d_demo_voice(s):
-    flow(s, [("Your\nvoice", None, "neutral"), ("Speech\nto text", None, "blue"), ("Model", None, "solid"),
-             ("Text to\nspeech", None, "blue"), ("Avatar", None, "solid")],
-         x0=5.7, x1=12.5, y=3.3, h=1.15, gap=0.35, size=15)
-    outcome(s, "Fast enough for live back-and-forth = realtime voice", y=5.2, kind="amber")
+def d_demo_voice(s, lang="en"):
+    voice, stt, model, tts, avatar, takeaway = DEMO_LABELS[lang]["D.4"]
+    flow(s, [(voice, None, "neutral"), (stt, None, "blue"), (model, None, "solid"),
+             (tts, None, "blue"), (avatar, None, "solid")],
+         x0=5.7, x1=12.5, y=3.3, h=1.15, gap=0.35, size=15 if lang == "en" else 14)
+    outcome(s, takeaway, y=5.2, kind="amber")
 
 
-def d_demo_next(s):
-    card(s, 5.8, 3.05, 2.3, 1.4, "You are here", "3-minute demo", kind="neutral", size=17)
+def d_demo_next(s, lang="en"):
+    here, here_sub, series, series_sub, takeaway = DEMO_LABELS[lang]["D.5"]
+    card(s, 5.8, 3.05, 2.3, 1.4, here, here_sub, kind="neutral", size=17)
     shape(s, MSO_SHAPE.RIGHT_ARROW, 8.35, 3.38, 1.0, 0.75, fill=AZURE, line=None, name="next arrow")
-    card(s, 9.6, 2.5, 2.95, 2.5, "Full AI enablement series", "3 decks:\nBeginner \u00b7 Practitioner \u00b7 Expert",
-         kind="solid", size=19, sub_size=13)
-    outcome(s, "Bring your questions, whatever your starting point", y=5.55, kind="amber")
+    card(s, 9.6, 2.5, 2.95, 2.5, series, series_sub, kind="solid", size=19, sub_size=13)
+    outcome(s, takeaway, y=5.55, kind="amber")
+
+
+def _fr(fn):
+    return lambda s: fn(s, lang="fr")
 
 
 DIAGRAMS = {
@@ -1733,6 +1850,8 @@ DIAGRAMS = {
     "3.6": d_licence_pyramid, "3.7": d_planner, "3.8": d_compaction, "3.9": d_mcp_security,
     "3.10": d_injection, "3.11": d_barge_in, "3.12": d_governance,
     "D.1": v_title_demo, "D.2": d_demo_model, "D.3": d_demo_agent, "D.4": d_demo_voice, "D.5": d_demo_next,
+    "F.1": _fr(v_title_demo), "F.2": _fr(d_demo_model), "F.3": _fr(d_demo_agent), "F.4": _fr(d_demo_voice),
+    "F.5": _fr(d_demo_next),
 }
 
 
@@ -1783,6 +1902,16 @@ DECKS = [
         "tagline": "A quick, live look at how AI works",
         "eyebrows": ["Live demo", "Models", "Agents", "Speech", "Go deeper"],
         "ids": [f"D.{i}" for i in range(1, 6)],
+    },
+    {
+        "file": "ai-enablement-demo-beginner-fr.pptx",
+        "level": "Démo débutant",
+        "title": "AI enablement \u2014 Démo débutant (environ 3 minutes)",
+        "series": "DeckFM \u00b7 AI enablement \u00b7 Démo en direct",
+        "audience": "Débutant \u00b7 démo de trois minutes",
+        "tagline": "Un aperçu rapide de l’IA, en direct",
+        "eyebrows": ["Démo en direct", "Modèles", "Agents", "Voix", "Pour aller plus loin"],
+        "ids": [f"F.{i}" for i in range(1, 6)],
     },
 ]
 

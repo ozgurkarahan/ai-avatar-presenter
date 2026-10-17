@@ -13,6 +13,7 @@ native shapes, a footer (`DeckFM · AI enablement · <Level>`) and a slide numbe
 | `ai-enablement-2-practitioner.pptx` | Practitioner — builds with AI tools | Building with AI | 12 | 1,501 | ~10.0 min |
 | `ai-enablement-3-expert.pptx` | Expert — wants the internals | Under the Hood | 12 | 1,639 | ~10.9 min |
 | `ai-enablement-demo-beginner.pptx` | Public live demo | Beginner demo cut | 5 | 380 | ~2.5 min |
+| `ai-enablement-demo-beginner-fr.pptx` | Public live demo (French) | Démo débutant | 5 | 414 | ~2.8 min |
 
 Narration time is an estimate (words ÷ 150 words per minute) and excludes
 slide transitions; the actual speaking rate depends on the selected voice.
@@ -28,7 +29,9 @@ slide transitions; the actual speaking rate depends on the selected voice.
   patterns, compaction and regression evals, MCP security, tool poisoning and
   prompt injection, barge-in and turn detection, governance.
 - **Demo cut** — model, agent and voice in five slides for the anonymous
-  public live demo.
+  public live demo. The `-fr` file is the same cut in French (titles,
+  bullets, diagram labels and notes translated once with gpt-4.1, reviewed and
+  hard-coded in the generator), for a French (`fr-FR`) live demo.
 
 Sources, the slides they support, and caveats (original diagrams; model names
 are examples as of 2026) are in [SOURCES.md](SOURCES.md).
@@ -40,7 +43,7 @@ pip install python-pptx
 python scripts/generate_ai_enablement_pptx.py
 ```
 
-The generator rewrites all four files in this folder. Output is deterministic
+The generator rewrites all five files in this folder. Output is deterministic
 (fixed document properties and ZIP timestamps), so an unchanged script produces
 byte-identical decks. Slide text and speaker notes live in `SLIDE_TEXT` inside
 the script; edit them there, never in PowerPoint, then regenerate and run:
@@ -50,7 +53,7 @@ python -m pytest demos/backend/tests/test_ai_enablement_decks.py -q
 ```
 
 The test checks slide counts, titles, non-empty notes, a word band per level,
-the demo cut's total (≤ 420 words), footers and slide numbers, the absence of
+the demo cuts' totals (≤ 420 words each), that the French cut mirrors the English one, footers and slide numbers, the absence of
 secret-like strings, and that the committed files match the generator.
 
 Fonts: everything uses Calibri. The app container renders slides with
@@ -64,7 +67,8 @@ Signed in as an admin:
 1. **Upload.** Open **Decks** and upload each PPTX. Decks uploaded from the
    page get the language `en-US` (the upload default), which is correct for
    this series. With the API, send `language=en-US` with
-   `POST /api/decks/upload`.
+   `POST /api/decks/upload`. Upload `ai-enablement-demo-beginner-fr.pptx` with
+   `language=fr-FR` so the live demo narrates its French notes.
 2. **Publish.** Click **Publish** on each deck's row (Decks page) so anonymous
    visitors can browse it (`POST /api/decks/{deck_id}/publish
    {"published": true}`).
@@ -77,8 +81,8 @@ Signed in as an admin:
    **"AI enablement path"** with the steps in this order: *AI, Demystified*
    (Beginner) → *Building with AI* (Practitioner) → *Under the Hood* (Expert).
    The playlist player presents the decks back to back.
-5. **Live demo (demo cut only).** After publishing
-   `ai-enablement-demo-beginner.pptx`, click **Live demo off** on its row so it
+5. **Live demo (demo cuts only).** After publishing
+   `ai-enablement-demo-beginner.pptx` (and the `-fr` cut), click **Live demo off** on its row so it
    reads **Live demo on** (`POST /api/decks/{deck_id}/live-demo
    {"enabled": true}`). Anonymous visitors then see **▶ Try the live demo** on
    its present page when the public demo is enabled
@@ -88,3 +92,17 @@ Signed in as an admin:
    If the chosen voice speaks more slowly, raise the session limit rather than
    lengthening the notes. Only the demo cut should be a live demo; its notes
    are public by design.
+
+### Operator seeding (maintenance CLI)
+
+The same steps can be run non-interactively inside the app container with
+the app's own managed identity (no sign-in), e.g. through
+`az containerapp exec`:
+
+```bash
+python -m maintenance.content seed --dry-run   # plan only
+python -m maintenance.content seed             # upload, publish, translate, live demo, playlist
+```
+
+It is idempotent (decks are matched by title, the playlist by name). See
+`demos/backend/maintenance/content.py` for podcast/video rendering and purge.

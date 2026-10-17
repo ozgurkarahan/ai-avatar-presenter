@@ -24,8 +24,10 @@ EXPECTED = {
     "ai-enablement-2-practitioner.pptx": (12, (105, 150)),
     "ai-enablement-3-expert.pptx": (12, (115, 160)),
     "ai-enablement-demo-beginner.pptx": (5, (55, 100)),
+    "ai-enablement-demo-beginner-fr.pptx": (5, (55, 100)),
 }
 DEMO_FILE = "ai-enablement-demo-beginner.pptx"
+DEMO_FR_FILE = "ai-enablement-demo-beginner-fr.pptx"
 DEMO_MAX_WORDS = 420  # ~3 minutes at 150 wpm, within the 180 s public demo session
 
 FORBIDDEN = ("api_key", "apikey", "password", "secret=", "sig=", "accountkey")
@@ -76,8 +78,9 @@ def test_deck_structure(filename):
             assert needle not in s["notes"], f"{filename} slide {i}: notes contain {needle!r}"
 
 
-def test_demo_cut_fits_three_minutes():
-    _, slides = _slides(DECK_DIR / DEMO_FILE)
+@pytest.mark.parametrize("filename", [DEMO_FILE, DEMO_FR_FILE])
+def test_demo_cut_fits_three_minutes(filename):
+    _, slides = _slides(DECK_DIR / filename)
     total = sum(len(s["notes"].split()) for s in slides)
     assert total <= DEMO_MAX_WORDS, f"demo cut notes are {total} words (> {DEMO_MAX_WORDS})"
 
@@ -104,3 +107,28 @@ def test_committed_decks_match_generator(generator):
             f"{filename} is stale; run python scripts/generate_ai_enablement_pptx.py"
         )
         assert [s["title"] for s in committed] == [generator.SLIDE_TEXT[sid]["title"] for sid in deck["ids"]]
+
+
+def test_french_demo_cut_mirrors_english(generator):
+    """Same 5-slide structure as the EN demo cut, but fully translated."""
+    en_prs, en = _slides(DECK_DIR / DEMO_FILE)
+    fr_prs, fr = _slides(DECK_DIR / DEMO_FR_FILE)
+    assert len(fr) == len(en) == 5
+    assert (fr_prs.slide_width, fr_prs.slide_height) == (en_prs.slide_width, en_prs.slide_height)
+    for i, (e, f) in enumerate(zip(en, fr), start=1):
+        assert f["title"] != e["title"], f"slide {i}: title not translated"
+        assert f["notes"] != e["notes"], f"slide {i}: notes not translated"
+        assert len(f["body"]) > 0
+    fr_text = " ".join(s["title"] + " " + s["notes"] for s in fr)
+    for word in (" vous ", "modèle", "agent", "voix"):
+        assert word in fr_text, f"French demo cut lacks {word!r}"
+    en_ids = next(d for d in generator.DECKS if d["file"] == DEMO_FILE)["ids"]
+    fr_ids = next(d for d in generator.DECKS if d["file"] == DEMO_FR_FILE)["ids"]
+    for e_id, f_id in zip(en_ids, fr_ids):
+        assert len(generator.SLIDE_TEXT[f_id]["bullets"]) == len(generator.SLIDE_TEXT[e_id]["bullets"])
+    # The diagrams use translated labels too (no leftover English diagram text).
+    fr_lines = {line.strip() for s in fr for line in s["body"].splitlines()}
+    for leftover in generator.DEMO_LABELS["en"]["D.2"] + generator.DEMO_LABELS["en"]["D.3"]:
+        if leftover in generator.DEMO_LABELS["fr"]["D.2"] + generator.DEMO_LABELS["fr"]["D.3"]:
+            continue  # identical in both languages
+        assert leftover.split("\n")[0] not in fr_lines, f"English label {leftover!r} in French deck"

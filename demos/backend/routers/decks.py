@@ -21,7 +21,7 @@ import logging
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
@@ -198,10 +198,19 @@ async def upload_deck(
     except zipfile.BadZipFile:
         raise HTTPException(status_code=400, detail="Corrupted .pptx file")
     DAILY_QUOTA.consume(principal.user_id)
+    return ingest_deck_bytes(content, file.filename, language, cfg)
 
+
+def ingest_deck_bytes(
+    content: bytes, filename: str, language: Optional[str], cfg: AzureConfig,
+) -> UploadResponse:
+    """Parse, render, store and index an already-validated .pptx.
+
+    Shared by the upload route and the operator maintenance CLI
+    (``maintenance.content``), so both produce identical catalog decks."""
     # Parse + render slides
     try:
-        presentation = parse_pptx(content, safe_filename(file.filename, "deck.pptx"), cfg.libreoffice_path or "soffice")
+        presentation = parse_pptx(content, safe_filename(filename, "deck.pptx"), cfg.libreoffice_path or "soffice")
     except Exception:
         log.exception("PPTX parse failed")
         raise HTTPException(status_code=400, detail="Failed to parse .pptx")
@@ -407,6 +416,17 @@ async def translate_deck_notes(
     ``slides[].translated_notes[lang]`` cache in Cosmos) so the Decks present
     page narrates in the selected language. Already-cached languages return
     instantly without consuming quota."""
+    return await translate_deck_notes_for(
+        deck_id, req.target_language, cfg, charge=lambda: DAILY_QUOTA.consume(principal.user_id),
+    )
+
+
+async def translate_deck_notes_for(
+    deck_id: str, lang: str, cfg: AzureConfig, *, charge: Optional[Callable[[], None]] = None,
+) -> TranslateDeckNotesResponse:
+    """Translate + cache one deck's notes; ``charge`` runs only when work is needed.
+
+    Shared by the admin route and the operator maintenance CLI."""
     require_id(deck_id, UUID_RE, "Deck")
     store = _store(cfg)
     if not store or not store.cosmos_available:
@@ -415,7 +435,6 @@ async def translate_deck_notes(
     if not doc or doc.get("source") != "deck":
         raise HTTPException(status_code=404, detail="Deck not found")
 
-    lang = req.target_language
     result: dict[str, str] = {}
     pending: list[tuple[int, str]] = []
     for i, s in enumerate(doc.get("slides") or []):
@@ -436,7 +455,8 @@ async def translate_deck_notes(
 
     if not cfg.openai_endpoint:
         raise HTTPException(status_code=503, detail="Translation service not configured")
-    DAILY_QUOTA.consume(principal.user_id)
+    if charge is not None:
+        charge()
     client = get_openai_client(cfg)
     sem = asyncio.Semaphore(_TRANSLATE_CONCURRENCY)
 

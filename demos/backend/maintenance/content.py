@@ -1,0 +1,616 @@
+"""DeckFM content maintenance CLI (operator job, runs inside the app container).
+
+Seeds the AI enablement catalog, renders podcasts/videos for it and purges
+retired content, reusing the routers' own code paths (catalog upload,
+publish, translate-notes, live demo, playlists, podcast/video render workers
+and library deletes) with the app's managed identity. Nothing goes through
+HTTP or Easy Auth, so no principal is created or impersonated; the per-user
+daily request quota (an HTTP-layer limit) is not consumed by these jobs.
+
+Usage (from the backend directory, ``/app`` in the image)::
+
+    python -m maintenance.content inventory [--json out.json]
+    python -m maintenance.content seed [--dry-run]
+    python -m maintenance.content render-podcast {beginner,practitioner,expert,demo-fr,all} [--dry-run]
+    python -m maintenance.content render-video {demo-en,demo-fr,practitioner,all} [--dry-run]
+    python -m maintenance.content purge --deck-title T ... --podcast-id job-... --video-id sv-... \\
+        --record deleted.json [--allow-missing video:practitioner] [--dry-run]
+
+Every command is idempotent: decks are matched by title, the playlist by name
+and podcasts/videos by library title (an existing item is only published).
+Output never contains signed URLs.
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import logging
+import shutil
+import sys
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+log = logging.getLogger("maintenance.content")
+
+# Decks ship in the image at maintenance/decks/ (Dockerfile); locally they are
+# read from the repository's content/ai-enablement/.
+DECK_DIRS = (
+    Path(__file__).resolve().parent / "decks",
+    BACKEND_DIR.parent.parent / "content" / "ai-enablement",
+)
+
+INTERVIEWER = ("Sofia", "photo_female", "female")
+EXPERT = ("Lucas", "photo_male", "male")
+
+# language -> gender -> HD voice (must be in services.voice_catalog)
+VOICES = {
+    "en-US": {"female": "en-US-Ava:DragonHDLatestNeural", "male": "en-US-Andrew:DragonHDLatestNeural"},
+    "fr-FR": {"female": "fr-FR-Vivienne:DragonHDLatestNeural", "male": "fr-FR-Remy:DragonHDLatestNeural"},
+}
+
+
+@dataclass(frozen=True)
+class DeckSeed:
+    file: str
+    language: str
+    live_demo: bool = False
+    translate_to: tuple[str, ...] = ()
+
+    @property
+    def title(self) -> str:
+        return Path(self.file).stem
+
+
+SEED_DECKS: tuple[DeckSeed, ...] = (
+    DeckSeed("ai-enablement-1-beginner.pptx", "en-US", translate_to=("fr-FR",)),
+    DeckSeed("ai-enablement-2-practitioner.pptx", "en-US", translate_to=("fr-FR",)),
+    DeckSeed("ai-enablement-3-expert.pptx", "en-US", translate_to=("fr-FR",)),
+    DeckSeed("ai-enablement-demo-beginner.pptx", "en-US", live_demo=True, translate_to=("fr-FR",)),
+    DeckSeed("ai-enablement-demo-beginner-fr.pptx", "fr-FR", live_demo=True, translate_to=("en-US",)),
+)
+
+PLAYLIST_TITLE = "AI enablement path"
+PLAYLIST_DESCRIPTION = (
+    "From first principles to production internals: AI, Demystified (Beginner), "
+    "Building with AI (Practitioner), then Under the Hood (Expert)."
+)
+PLAYLIST_STEPS = (
+    "ai-enablement-1-beginner",
+    "ai-enablement-2-practitioner",
+    "ai-enablement-3-expert",
+)
+
+
+@dataclass(frozen=True)
+class PodcastSpec:
+    deck: str
+    language: str
+    style: str
+    audience_level: str
+    length: str = "medium"
+    num_turns: int = 8
+
+    @property
+    def title(self) -> str:
+        return Path(self.deck).stem
+
+
+PODCASTS: dict[str, PodcastSpec] = {
+    "beginner": PodcastSpec("ai-enablement-1-beginner.pptx", "en-US", "explainer", "beginner"),
+    "practitioner": PodcastSpec("ai-enablement-2-practitioner.pptx", "en-US", "casual", "practitioner"),
+    "expert": PodcastSpec("ai-enablement-3-expert.pptx", "en-US", "debate", "expert"),
+    "demo-fr": PodcastSpec("ai-enablement-demo-beginner-fr.pptx", "fr-FR", "casual", "beginner"),
+}
+
+
+@dataclass(frozen=True)
+class VideoSpec:
+    deck: str
+    language: str
+    avatar: str
+    gender: str
+    audience_level: str
+    style: str = "explainer"
+
+    @property
+    def title(self) -> str:
+        return Path(self.deck).stem
+
+    @property
+    def voice(self) -> str:
+        return VOICES[self.language][self.gender]
+
+
+VIDEOS: dict[str, VideoSpec] = {
+    "demo-en": VideoSpec("ai-enablement-demo-beginner.pptx", "en-US", "photo_female", "female", "beginner"),
+    "demo-fr": VideoSpec("ai-enablement-demo-beginner-fr.pptx", "fr-FR", "photo_male", "male", "beginner"),
+    "practitioner": VideoSpec("ai-enablement-2-practitioner.pptx", "en-US", "photo_female", "female",
+                              "practitioner"),
+}
+
+
+class MaintenanceError(RuntimeError):
+    pass
+
+
+def _say(msg: str) -> None:
+    print(f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def _cfg():
+    from config import load_config
+
+    return load_config()
+
+
+def _deck_path(name: str, deck_dir: Optional[Path] = None) -> Path:
+    dirs = (Path(deck_dir),) if deck_dir else DECK_DIRS
+    for d in dirs:
+        p = d / name
+        if p.is_file():
+            return p
+    raise MaintenanceError(f"deck file {name} not found in {[str(d) for d in dirs]}")
+
+
+def _staged_copy(src: Path, kind: str) -> Path:
+    """Copy a deck under data/uploads/<kind>/ like the upload routes do."""
+    tmp_dir = Path("data/uploads") / kind
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    dst = tmp_dir / f"{uuid.uuid4().hex}{src.suffix.lower()}"
+    shutil.copyfile(src, dst)
+    return dst
+
+
+def _strip_urls(item: dict) -> dict:
+    return {k: v for k, v in item.items() if not k.endswith("_url")}
+
+
+# ---------------------------------------------------------------------------
+# Inventory
+# ---------------------------------------------------------------------------
+def inventory(cfg) -> dict[str, Any]:
+    from routers import decks as dr
+    from routers import podcast as pr
+    from routers import video as vr
+
+    out: dict[str, Any] = {"captured_at": datetime.now(timezone.utc).isoformat()}
+    store = dr._store(cfg)
+    if not store or not store.cosmos_available:
+        raise MaintenanceError("Cosmos DB unavailable")
+    out["decks"] = [dr._doc_to_summary(d).model_dump() for d in store.list_decks()
+                    if isinstance(d, dict) and d.get("id")]
+    out["playlists"] = [
+        {"id": p.get("id"), "title": p.get("title"), "status": p.get("status", "active"),
+         "steps": [{"deck_id": s.get("deck_id"), "deck_title": s.get("deck_title"), "order": s.get("order")}
+                   for s in sorted(p.get("steps") or [], key=lambda s: s.get("order", 0))]}
+        for p in store.list_playlists()
+    ]
+    plib, vlib = pr._get_library(cfg), vr._get_library(cfg)
+    out["podcasts"] = [_strip_urls(i) for i in plib.list()] if plib.available else []
+    out["videos"] = [_strip_urls(i) for i in vlib.list()] if vlib.available else []
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Seed decks + playlist
+# ---------------------------------------------------------------------------
+async def seed(cfg, *, dry_run: bool = False, deck_dir: Optional[Path] = None) -> dict[str, Any]:
+    from routers import decks as dr
+    from routers import playlists as plr
+
+    store = dr._store(cfg)
+    if not store or not store.cosmos_available:
+        raise MaintenanceError("Cosmos DB unavailable")
+    by_title: dict[str, dict] = {}
+    for d in store.list_decks():
+        if isinstance(d, dict) and d.get("id"):
+            by_title.setdefault(dr._doc_to_summary(d).title, d)
+
+    report: dict[str, Any] = {"decks": [], "playlist": None, "dry_run": dry_run}
+    ids: dict[str, Optional[str]] = {}
+    for spec in SEED_DECKS:
+        path = _deck_path(spec.file, deck_dir)
+        entry: dict[str, Any] = {"title": spec.title, "language": spec.language}
+        doc = by_title.get(spec.title)
+        if doc:
+            deck_id = doc["id"]
+            entry["action"] = "exists"
+            if (doc.get("language") or "en-US") != spec.language:
+                entry["warning"] = f"existing deck language is {doc.get('language')}"
+        elif dry_run:
+            deck_id = None
+            entry["action"] = "would upload"
+        else:
+            content = path.read_bytes()
+            if content[:4] != b"PK\x03\x04":
+                raise MaintenanceError(f"{path} is not a .pptx")
+            _say(f"upload {spec.file} ({spec.language})")
+            resp = await asyncio.to_thread(dr.ingest_deck_bytes, content, spec.file, spec.language, cfg)
+            deck_id = resp.deck_id
+            entry.update(action="uploaded", slide_count=resp.slide_count, indexed_slides=resp.indexed_slides)
+        entry["deck_id"] = deck_id
+        ids[spec.title] = deck_id
+
+        if deck_id and not dry_run:
+            current = store.get_presentation(deck_id) or {}
+            if current.get("published") is not True:
+                dr.publish_deck(deck_id, dr.PublishRequest(published=True), cfg=cfg)
+                entry["published"] = "now"
+            else:
+                entry["published"] = "already"
+            for lang in spec.translate_to:
+                tr = await dr.translate_deck_notes_for(deck_id, lang, cfg)
+                entry.setdefault("translated", {})[lang] = "cached" if tr.cached else f"{len(tr.translated_notes)} slides"
+            if spec.live_demo:
+                current = store.get_presentation(deck_id) or {}
+                if current.get("live_demo") is not True:
+                    dr.set_live_demo(deck_id, dr.LiveDemoRequest(enabled=True), cfg=cfg)
+                    entry["live_demo"] = "now"
+                else:
+                    entry["live_demo"] = "already"
+        _say(f"deck {spec.title}: {entry['action']}")
+        report["decks"].append(entry)
+
+    existing = [p for p in store.list_playlists()
+                if p.get("title") == PLAYLIST_TITLE and p.get("status", "active") != "broken"]
+    if existing:
+        report["playlist"] = {"id": existing[0].get("id"), "action": "exists"}
+    elif dry_run or any(not ids.get(t) for t in PLAYLIST_STEPS):
+        report["playlist"] = {"action": "would create", "steps": list(PLAYLIST_STEPS)}
+    else:
+        body = plr.PlaylistCreate(
+            title=PLAYLIST_TITLE,
+            description=PLAYLIST_DESCRIPTION,
+            steps=[plr.PlaylistStepIn(deck_id=ids[t], order=i) for i, t in enumerate(PLAYLIST_STEPS)],
+        )
+        created = plr.create_playlist(body, cfg=cfg)
+        report["playlist"] = {"id": created.id, "action": "created",
+                              "steps": [s.deck_title for s in created.steps]}
+    _say(f"playlist {PLAYLIST_TITLE!r}: {report['playlist']['action']}")
+    return report
+
+
+# ---------------------------------------------------------------------------
+# Podcasts
+# ---------------------------------------------------------------------------
+def _podcast_roles(language: str):
+    from services import avatar_registry
+    from services.podcast_models import RenderRoles, RoleConfig
+    from services.voice_catalog import is_allowed_voice
+
+    roles = RenderRoles(
+        interviewer=RoleConfig(display_name=INTERVIEWER[0], avatar=INTERVIEWER[1],
+                               voice=VOICES[language][INTERVIEWER[2]]),
+        expert=RoleConfig(display_name=EXPERT[0], avatar=EXPERT[1], voice=VOICES[language][EXPERT[2]]),
+    )
+    for role in (roles.interviewer, roles.expert):
+        if not avatar_registry.is_known(role.avatar) or avatar_registry.get(role.avatar).id != role.avatar:
+            raise MaintenanceError(f"avatar {role.avatar!r} is not registered (CUSTOM_AVATARS_JSON)")
+        if not is_allowed_voice(role.voice):
+            raise MaintenanceError(f"voice {role.voice!r} is not allowed")
+    return roles
+
+
+def _existing(lib, title: str) -> Optional[dict]:
+    items = [i for i in lib.list() if i.get("title") == title]
+    return items[0] if items else None
+
+
+async def render_podcast(cfg, name: str, *, dry_run: bool = False, deck_dir: Optional[Path] = None) -> dict:
+    from routers import podcast as pr
+    from services.podcast_ingest import ingest_file
+    from services.podcast_models import (
+        JobOutputs, JobProgress, JobState, PodcastJob, Script, ScriptRequest,
+    )
+    from services.podcast_script import generate_script_stream
+
+    spec = PODCASTS[name]
+    path = _deck_path(spec.deck, deck_dir)
+    roles = _podcast_roles(spec.language)
+    lib = pr._get_library(cfg)
+    if not lib.available:
+        raise MaintenanceError("podcast library storage unavailable")
+    plan = {"name": name, "title": spec.title, "language": spec.language, "style": spec.style,
+            "audience_level": spec.audience_level,
+            "roles": {"interviewer": roles.interviewer.model_dump(), "expert": roles.expert.model_dump()}}
+    found = _existing(lib, spec.title)
+    if found:
+        plan.update(action="exists", job_id=found["job_id"], published=found.get("published"))
+        if not found.get("published") and not dry_run:
+            lib.set_published(found["job_id"], True)
+            plan["published"] = True
+        _say(f"podcast {name}: exists ({found['job_id']})")
+        return plan
+    if dry_run:
+        plan["action"] = "would render"
+        return plan
+
+    _say(f"podcast {name}: ingest {spec.deck}")
+    staged = _staged_copy(path, "podcast")
+    doc = await asyncio.to_thread(ingest_file, staged, cfg.libreoffice_path or "soffice")
+    doc.title = spec.title
+    pr.DOCUMENTS[doc.id] = doc
+
+    _say(f"podcast {name}: script ({spec.language}, {spec.style}, {spec.audience_level})")
+    req = ScriptRequest(document_id=doc.id, language=spec.language, style=spec.style, length=spec.length,
+                        num_turns=spec.num_turns, audience_level=spec.audience_level)
+    turns = [t async for t in generate_script_stream(cfg, doc, req)]
+    if not turns:
+        raise MaintenanceError("script generation returned no turns")
+    pr._check_turns(turns)
+    script = Script(id=f"scr-{uuid.uuid4().hex[:8]}", document_id=doc.id, language=spec.language,
+                    style=spec.style, length=spec.length, audience_level=spec.audience_level, turns=turns)
+    pr.SCRIPTS[script.id] = script
+
+    now = pr._now()
+    job = PodcastJob(id=f"job-{uuid.uuid4().hex[:8]}", script_id=script.id, roles=roles,
+                     layout="split_screen_with_slides", music=True, intro=True, state=JobState.queued,
+                     progress=JobProgress(stage="queued", total=len(turns)), outputs=JobOutputs(),
+                     created_at=now, updated_at=now)
+    pr.JOBS[job.id] = job
+    _say(f"podcast {name}: render {job.id} ({len(turns)} turns)")
+    await pr._render_job_body(job.id, cfg)
+    if job.state != JobState.done or job.archive_state != "published":
+        raise MaintenanceError(f"podcast {job.id} failed: state={job.state.value} archive={job.archive_state}")
+    if not lib.set_published(job.id, True):
+        raise MaintenanceError(f"podcast {job.id} rendered but publishing failed")
+    plan.update(action="rendered", job_id=job.id, published=True, turns=len(turns))
+    _say(f"podcast {name}: published {job.id}")
+    return plan
+
+
+# ---------------------------------------------------------------------------
+# Videos
+# ---------------------------------------------------------------------------
+async def render_video(cfg, name: str, *, dry_run: bool = False, deck_dir: Optional[Path] = None) -> dict:
+    from routers import video as vr
+    from security import MAX_NARRATION_CHARS, MAX_SLIDES_PER_RENDER
+    from services import avatar_registry
+    from services.video_ingest import ingest
+    from services.video_models import (
+        JobOutputs, JobProgress, JobState, ScriptRequest, VideoJob, VideoScript,
+    )
+    from services.video_script import generate_script_stream
+    from services.voice_catalog import is_allowed_voice
+
+    spec = VIDEOS[name]
+    path = _deck_path(spec.deck, deck_dir)
+    if not is_allowed_voice(spec.voice):
+        raise MaintenanceError(f"voice {spec.voice!r} is not allowed")
+    # The video worker picks the presenter from the voice (gender match); make
+    # sure that resolves to the requested photo avatar before spending a render.
+    resolved = avatar_registry.for_voice(spec.voice).id
+    if resolved != spec.avatar:
+        raise MaintenanceError(f"voice {spec.voice} resolves to avatar {resolved!r}, expected {spec.avatar!r}")
+    lib = vr._get_library(cfg)
+    if not lib.available:
+        raise MaintenanceError("video library storage unavailable")
+    plan = {"name": name, "title": spec.title, "language": spec.language, "voice": spec.voice,
+            "avatar": spec.avatar, "audience_level": spec.audience_level, "style": spec.style}
+    found = _existing(lib, spec.title)
+    if found:
+        plan.update(action="exists", job_id=found["job_id"], published=found.get("published"))
+        if not found.get("published") and not dry_run:
+            lib.set_published(found["job_id"], True)
+            plan["published"] = True
+        _say(f"video {name}: exists ({found['job_id']})")
+        return plan
+    if dry_run:
+        plan["action"] = "would render"
+        return plan
+
+    _say(f"video {name}: ingest {spec.deck}")
+    staged = _staged_copy(path, "video")
+    doc = await asyncio.to_thread(ingest, str(staged), spec.deck)
+    vr.DOCUMENTS[doc.doc_id] = doc
+
+    _say(f"video {name}: script ({spec.language}, {spec.audience_level})")
+    req = ScriptRequest(language=spec.language, style=spec.style, audience_level=spec.audience_level,
+                        voice=spec.voice)
+    narrations = [n async for n in generate_script_stream(cfg, doc, req)]
+    if not narrations:
+        raise MaintenanceError("script generation returned no narrations")
+    if len(narrations) > MAX_SLIDES_PER_RENDER:
+        raise MaintenanceError(f"too many slides (max {MAX_SLIDES_PER_RENDER})")
+    for n in narrations:
+        if len(n.narration or "") > MAX_NARRATION_CHARS or (n.voice and not is_allowed_voice(n.voice)):
+            raise MaintenanceError(f"slide {n.slide_index}: narration too long or voice not allowed")
+    vr.SCRIPTS[doc.doc_id] = VideoScript(
+        doc_id=doc.doc_id, language=spec.language, style=spec.style, audience_level=spec.audience_level,
+        voice=spec.voice, narrations=sorted(narrations, key=lambda n: n.slide_index),
+    )
+
+    now = vr._now()
+    job = VideoJob(job_id=f"sv-{uuid.uuid4().hex[:8]}", doc_id=doc.doc_id, state=JobState.queued,
+                   progress=JobProgress(stage="queued", total=len(narrations)), outputs=JobOutputs(),
+                   created_at=now, updated_at=now)
+    vr.JOBS[job.job_id] = job
+    _say(f"video {name}: render {job.job_id} ({len(narrations)} slides)")
+    await vr._render_job_body(job.job_id, cfg)
+    if job.state != JobState.done or job.archive_state != "published":
+        raise MaintenanceError(f"video {job.job_id} failed: state={job.state.value} archive={job.archive_state}")
+    if not lib.set_published(job.job_id, True):
+        raise MaintenanceError(f"video {job.job_id} rendered but publishing failed")
+    plan.update(action="rendered", job_id=job.job_id, published=True, slides=len(narrations))
+    _say(f"video {name}: published {job.job_id}")
+    return plan
+
+
+# ---------------------------------------------------------------------------
+# Purge
+# ---------------------------------------------------------------------------
+def missing_new_content(inv: dict, allow_missing: set[str]) -> list[str]:
+    """What of the new AI catalog is not yet present + published (empty = ready)."""
+    missing: list[str] = []
+    decks = {d["title"]: d for d in inv["decks"]}
+    for spec in SEED_DECKS:
+        d = decks.get(spec.title)
+        if not d or not d.get("published") or (spec.live_demo and not d.get("live_demo")):
+            missing.append(f"deck:{spec.title}")
+    if not any(p.get("title") == PLAYLIST_TITLE and p.get("status") != "broken" for p in inv["playlists"]):
+        missing.append(f"playlist:{PLAYLIST_TITLE}")
+    for kind, specs, items in (("podcast", PODCASTS, inv["podcasts"]), ("video", VIDEOS, inv["videos"])):
+        published = {i.get("title") for i in items if i.get("published")}
+        for name, spec in specs.items():
+            key = f"{kind}:{name}"
+            if spec.title not in published and key not in allow_missing:
+                missing.append(key)
+    return missing
+
+
+def purge(cfg, *, deck_titles: list[str], podcast_ids: list[str], video_ids: list[str],
+          record: Optional[Path], allow_missing: set[str], dry_run: bool = False) -> dict[str, Any]:
+    from routers import decks as dr
+    from routers import playlists as plr
+    from routers import podcast as pr
+    from routers import video as vr
+
+    protected = {s.title for s in SEED_DECKS}
+    clash = sorted(set(deck_titles) & protected)
+    if clash:
+        raise MaintenanceError(f"refusing to delete new AI decks: {clash}")
+    new_titles = {s.title for s in PODCASTS.values()} | {s.title for s in VIDEOS.values()}
+
+    inv = inventory(cfg)
+    missing = missing_new_content(inv, allow_missing)
+    if missing:
+        raise MaintenanceError(f"new content not ready, nothing deleted: {missing}")
+
+    decks = [d for d in inv["decks"] if d["title"] in set(deck_titles)]
+    not_found = sorted(set(deck_titles) - {d["title"] for d in decks})
+    deck_ids = {d["deck_id"] for d in decks}
+    playlists = [p for p in inv["playlists"]
+                 if p.get("status") == "broken" or any(s.get("deck_id") in deck_ids for s in p["steps"])]
+    if any(p.get("title") == PLAYLIST_TITLE and p.get("status") != "broken" for p in playlists):
+        raise MaintenanceError(f"{PLAYLIST_TITLE!r} references a deck slated for deletion")
+    podcasts = [i for i in inv["podcasts"] if i.get("job_id") in set(podcast_ids)]
+    videos = [i for i in inv["videos"] if i.get("job_id") in set(video_ids)]
+    for item in podcasts + videos:
+        if item.get("title") in new_titles:
+            raise MaintenanceError(f"refusing to delete new item {item.get('job_id')} ({item.get('title')})")
+    not_found += sorted(set(podcast_ids) - {i["job_id"] for i in podcasts})
+    not_found += sorted(set(video_ids) - {i["job_id"] for i in videos})
+
+    result: dict[str, Any] = {
+        "deleted_at": datetime.now(timezone.utc).isoformat(),
+        "dry_run": dry_run,
+        "playlists": [{"id": p["id"], "title": p.get("title"), "status": p.get("status"),
+                       "steps": [s.get("deck_title") for s in p["steps"]]} for p in playlists],
+        "decks": [{"deck_id": d["deck_id"], "title": d["title"], "language": d.get("language"),
+                   "published": d.get("published"), "live_demo": d.get("live_demo")} for d in decks],
+        "podcasts": [{"job_id": i["job_id"], "title": i.get("title"), "language": i.get("language"),
+                      "speaker_names": i.get("speaker_names")} for i in podcasts],
+        "videos": [{"job_id": i["job_id"], "title": i.get("title"), "language": i.get("language"),
+                    "voice": i.get("voice")} for i in videos],
+        "not_found": not_found,
+        "errors": [],
+    }
+    if not dry_run:
+        def _do(label: str, fn) -> None:
+            try:
+                fn()
+                _say(f"deleted {label}")
+            except Exception as exc:  # noqa: BLE001
+                detail = getattr(exc, "detail", None) or str(exc)
+                result["errors"].append({"item": label, "error": str(detail)[:300]})
+                _say(f"FAILED {label}: {detail}")
+
+        # Playlists first so the decks are no longer referenced (no forced delete).
+        for p in playlists:
+            _do(f"playlist {p['id']}", lambda p=p: plr.delete_playlist(p["id"], cfg=cfg))
+        for d in decks:
+            _do(f"deck {d['deck_id']} ({d['title']})", lambda d=d: dr.delete_deck(d["deck_id"], force=False, cfg=cfg))
+        for i in podcasts:
+            _do(f"podcast {i['job_id']}", lambda i=i: pr.delete_library_item(i["job_id"], cfg=cfg))
+        for i in videos:
+            _do(f"video {i['job_id']}", lambda i=i: vr.delete_library_item(i["job_id"], cfg=cfg))
+    if record:
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    return result
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+def _print(obj: Any) -> None:
+    print(json.dumps(obj, indent=2, ensure_ascii=False, default=str), flush=True)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(prog="python -m maintenance.content", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--deck-dir", type=Path, default=None, help="Directory holding the .pptx decks")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p = sub.add_parser("inventory", help="List decks, playlists, podcasts and videos (no URLs)")
+    p.add_argument("--json", type=Path, default=None)
+
+    p = sub.add_parser("seed", help="Upload/publish/translate the AI decks and create the playlist")
+    p.add_argument("--dry-run", action="store_true")
+
+    p = sub.add_parser("render-podcast", help="Render + publish an AI podcast")
+    p.add_argument("name", choices=[*PODCASTS, "all"])
+    p.add_argument("--dry-run", action="store_true")
+
+    p = sub.add_parser("render-video", help="Render + publish an AI video")
+    p.add_argument("name", choices=[*VIDEOS, "all"])
+    p.add_argument("--dry-run", action="store_true")
+
+    p = sub.add_parser("purge", help="Delete retired decks/podcasts/videos (+ their playlists)")
+    p.add_argument("--deck-title", action="append", default=[])
+    p.add_argument("--podcast-id", action="append", default=[])
+    p.add_argument("--video-id", action="append", default=[])
+    p.add_argument("--record", type=Path, default=None, help="Write the deletion record (JSON) here")
+    p.add_argument("--allow-missing", action="append", default=[],
+                   help="New item allowed to be absent, e.g. video:practitioner")
+    p.add_argument("--dry-run", action="store_true")
+    return ap
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    args = build_parser().parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    for noisy in ("azure", "httpx", "openai", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+    cfg = _cfg()
+    try:
+        if args.cmd == "inventory":
+            inv = inventory(cfg)
+            if args.json:
+                args.json.write_text(json.dumps(inv, indent=2, ensure_ascii=False), encoding="utf-8")
+            _print(inv)
+        elif args.cmd == "seed":
+            _print(asyncio.run(seed(cfg, dry_run=args.dry_run, deck_dir=args.deck_dir)))
+        elif args.cmd == "render-podcast":
+            names = list(PODCASTS) if args.name == "all" else [args.name]
+            _print([asyncio.run(render_podcast(cfg, n, dry_run=args.dry_run, deck_dir=args.deck_dir))
+                    for n in names])
+        elif args.cmd == "render-video":
+            names = list(VIDEOS) if args.name == "all" else [args.name]
+            _print([asyncio.run(render_video(cfg, n, dry_run=args.dry_run, deck_dir=args.deck_dir))
+                    for n in names])
+        elif args.cmd == "purge":
+            result = purge(cfg, deck_titles=args.deck_title, podcast_ids=args.podcast_id,
+                           video_ids=args.video_id, record=args.record,
+                           allow_missing=set(args.allow_missing), dry_run=args.dry_run)
+            _print(result)
+            if result["errors"]:
+                return 1
+    except MaintenanceError as exc:
+        _say(f"ERROR: {exc}")
+        return 2
+    _say("done")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
