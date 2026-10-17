@@ -6,7 +6,7 @@
 
 **Turn PowerPoint decks into AI-presented training** — a photorealistic avatar presents your slides live, renders narrated videos, or hosts a two-avatar podcast, in multiple languages. Built on Azure AI Speech (Voice Live + Batch Avatar), Azure OpenAI and Azure Container Apps.
 
-**▶ [Try the live avatar demo](https://ozgurkarahan.com/deckfm/)** — no sign-in needed (narration with voice questions, time-boxed, capped daily) · [More of my work](https://ozgurkarahan.com/)
+**▶ [Try the live avatar demo](https://ozgurkarahan.com/oz-radio/)** — no sign-in needed (narration with voice questions, time-boxed, capped daily) · [More of my work](https://ozgurkarahan.com/)
 
 [![GitHub](https://img.shields.io/badge/GitHub-ozgurkarahan%2Foz--radio-181717.svg?logo=github)](https://github.com/ozgurkarahan/oz-radio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
