@@ -1,87 +1,23 @@
-# Deploying DeckFM (Copilot Instance)
+# Deploying a parallel DeckFM instance
 
-## Overview
+> This page used to describe a "copilot" instance that reused existing Azure
+> OpenAI and AI Speech resources through `openAiAccountName` /
+> `aiServicesAccountName`. Those parameters no longer exist in `infra/`.
 
-This guide deploys a **parallel instance** of DeckFM to Azure with the "copilot" suffix.
-It creates its own Container App and Registry but **reuses the existing Azure OpenAI and AI Speech services**.
-
-## Prerequisites
-
-- Azure CLI (`az login` completed)
-- Azure Developer CLI (`azd`) installed
-- Access to the existing Azure OpenAI and AI Services resources
-
-## Deployment Steps
-
-### 1. Create the copilot environment
+To deploy a separate instance, follow **[provisioning.md](provisioning.md)** with a new azd environment:
 
 ```bash
-azd env new ai-presenter-copilot
-```
-
-### 2. Set required environment variables
-
-```bash
-azd env set AZURE_LOCATION swedencentral
-azd env set openAiAccountName <your-existing-openai-account-name>
-azd env set aiServicesAccountName <your-existing-ai-services-account-name>
-```
-
-Sign-in settings are required for every environment (the preprovision hook fails without them) — see [README › Azure Deployment](../README.md#-azure-deployment):
-
-```bash
-azd env set AUTH_CLIENT_ID <app-registration-client-id>
-azd env set AUTH_CLIENT_SECRET <app-registration-client-secret>
-azd env set ALLOWED_OBJECT_IDS <entra-object-id>[,<entra-object-id>...]
-```
-
-> **Note**: `openAiAccountName` and `aiServicesAccountName` must reference the **same existing** Azure resources used by the main deployment. No new AI resources are created.
-
-### 3. Deploy
-
-```bash
+azd env new <second-env-name>     # creates its own rg-<second-env-name>
+# set AUTH_* / ALLOWED_OBJECT_IDS etc. as in provisioning.md §3–§4
 azd up
 ```
 
-This provisions:
-- **New resources** (copilot-isolated):
-  - Resource Group: `rg-ai-presenter-copilot`
-  - Container App Environment + Container App
-  - Container Registry
-  - Log Analytics Workspace
-- **Shared resources** (existing, not duplicated):
-  - Azure OpenAI (GPT-4.1, text-embedding-3-small deployments)
-  - Azure AI Services / Speech (Avatar TTS, VoiceLive)
+- Every azd environment gets its **own** resource group: identity, ACR, Azure OpenAI, Cosmos DB, Storage, Log Analytics and Container App.
+- Azure OpenAI is always created per environment. Make sure you have enough quota for each environment ([provisioning.md §2.5](provisioning.md#25-quota)).
+- To **share** an existing Speech / AI Services resource (for example one hosting custom photo avatars), set
+  `USE_EXTERNAL_AI_SERVICES=true` and `EXTERNAL_AI_SERVICES_ENDPOINT` / `_REGION` / `_RESOURCE_ID`
+  ([provisioning.md §4](provisioning.md#4-azd-environment-variables)).
+- Each instance needs its redirect URI (`https://<app-fqdn>/.auth/login/aad/callback`). Add it to a separate app registration, or add it to the same one.
+- Teams packaging: `.\scripts\package-teams-app.ps1 -Hostname "<app-fqdn>"` (see [teams-integration.md](teams-integration.md)).
 
-### 4. Get the deployed URL
-
-```bash
-azd env get-values | Select-String "AZURE_CONTAINER_APP_URL"
-```
-
-## Resource Naming Convention
-
-| Resource | Name Pattern |
-|----------|-------------|
-| Resource Group | `rg-ai-presenter-copilot` |
-| Container App | `ca-<unique-token>` |
-| Container Registry | `cr<unique-token>` |
-| Log Analytics | `cae-<unique-token>-logs` |
-
-## Coexistence
-
-This deployment coexists with:
-- **Base deployment** (`ai-presenter`) — the original instance
-- **Claude deployment** (`ai-presenter-claude`) — parallel instance from Claude Code agent
-
-All three share the same Azure OpenAI and AI Speech resources.
-
-## Teams Integration
-
-After deployment, package the Teams app with the Container App URL:
-
-```powershell
-.\scripts\package-teams-app.ps1 -Hostname "<your-container-app-fqdn>"
-```
-
-Then sideload the generated `teams-app-package.zip` in Microsoft Teams.
+Coding agents: follow [BOOTSTRAP.md](../BOOTSTRAP.md).

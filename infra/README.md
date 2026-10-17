@@ -1,5 +1,8 @@
 # Infrastructure (azd + Bicep)
 
+> Step-by-step provisioning (prerequisites, Entra app, quota, smoke test, teardown):
+> [docs/provisioning.md](../docs/provisioning.md). Coding agents: [BOOTSTRAP.md](../BOOTSTRAP.md).
+
 `azd up` provisions everything into `rg-<AZURE_ENV_NAME>`:
 
 | Resource | Notes |
@@ -42,7 +45,8 @@ allowlist is forced empty, so nobody can act as admin.
 |---|---|---|
 | `ALLOWED_ORIGINS` | empty | Extra CORS / WebSocket origins (comma-separated); same-origin is always allowed. |
 | `AUTH_EXTRA_CLIENT_APPS` | empty | Extra client application IDs allowed to call the app with bearer tokens (e.g. Azure CLI `04b07795-8ddb-461a-bbee-02f9e1bf7b46` for scripted tests, which also needs pre-authorization on the app registration). Empty = only the app itself. |
-| `CUSTOM_AVATARS_JSON` | empty | JSON array of custom photo avatars. Thumbnails must exist in `demos/backend/static/avatars/` at build time. |
+| `CUSTOM_AVATARS_JSON` | empty | JSON array of custom photo avatars (`id`, `character`, `display_name`, `gender`, `thumbnail`, `default`, `kind`, optional `podcast_crop`). Thumbnails must exist in `demos/backend/static/avatars/` at build time. Photo avatars need the Speech resource that hosts them (`USE_EXTERNAL_AI_SERVICES`). See [`docs/provisioning.md` §4.1](../docs/provisioning.md#41-custom-photo-avatars-optional). |
+| `HIDE_STOCK_AVATARS` | `false` | When `true` **and** at least one custom avatar is configured, the stock avatars are hidden from every picker/catalog; stock ids still resolve, as aliases to a same-gender custom avatar. Ignored when `CUSTOM_AVATARS_JSON` is empty. |
 | `ENABLE_URL_INGEST` | `false` | Allow podcast URL ingestion. |
 | `MAX_VOICE_SESSIONS` / `MAX_VOICE_SESSION_SECONDS` | `2` / `900` | Live avatar limits. |
 | `DAILY_GENERATION_QUOTA` / `MAX_PENDING_RENDERS` | `50` / `3` | Cost guardrails. |
@@ -52,6 +56,9 @@ allowlist is forced empty, so nobody can act as admin.
 | `DEMO_DAILY_MINUTES` | `60` | Hard cap on total public-demo streaming minutes per UTC day (durable counter in Cosmos). |
 | `DEMO_MAX_SPEAKS` | `0` | Narrations per demo session; `0` = 2 × slide count (hard max 40). |
 | `DEMO_QUOTA_EXEMPT_IPS` | *(empty)* | Comma-separated client IPs/CIDRs (e.g. the owner's home IP) exempt from the demo daily quotas. Matched against the trusted proxy hop, so it cannot be spoofed via `X-Forwarded-For`; exempt sessions don't consume the visitors' budget but still respect `DEMO_MAX_CONCURRENT` and `DEMO_SESSION_SECONDS`. Keep it in the azd env, not in git. |
+| `DEMO_QA_ENABLED` | `false` | Raise-hand voice Q&A in the public demo (visitors ask by voice; STT + grounded answer from the deck, spoken by the avatar). Needs `PUBLIC_DEMO_ENABLED=true` too. When on, the demo session cap becomes `DEMO_QA_SESSION_SECONDS`. Enable only after the smoke test passes: see [`docs/provisioning.md` §6.3](../docs/provisioning.md#63-voice-qa-in-the-public-demo-demo_qa_enabled) and [`docs/live-demo.md`](../docs/live-demo.md#raise-hand-qa). |
+| `DEMO_QA_MAX_QUESTIONS` / `DEMO_QA_SESSION_SECONDS` | `2` / `300` | Questions per demo session (each `qa.begin` counts, even if cancelled) and the demo session cap used instead of `DEMO_SESSION_SECONDS` when demo Q&A is on. |
+| `DEMO_QA_DAILY_MAX` / `DEMO_QA_DAILY_PER_IP` | `40` / `6` | Demo questions per UTC day, globally and per client IP (durable in the same Cosmos `demo-quota-<day>` doc; fails closed). Exempt IPs skip these daily counters. |
 | `USE_EXTERNAL_AI_SERVICES` | `false` | Reuse an existing AI Services / Speech resource (e.g. one hosting custom photo avatars). |
 | `EXTERNAL_AI_SERVICES_ENDPOINT` / `_REGION` / `_RESOURCE_ID` | empty | Details of that resource (may be in another resource group of the same subscription). |
 | `ASSIGN_EXTERNAL_AI_SERVICES_ROLES` | `true` | Grant the app identity `Cognitive Services User`, `Cognitive Services Speech User` and `Foundry User` on the external resource. Requires Owner / User Access Administrator on its resource group; set `false` and assign them manually otherwise. |
@@ -61,13 +68,14 @@ allowlist is forced empty, so nobody can act as admin.
 | `BUDGET_START_DATE` | current month | `yyyy-MM-01`; pin it to the creation month if a later re-provision rejects a changed start date. |
 
 Values are strings in the azd environment; JSON values must be valid JSON
-(quote them for your shell), e.g. on PowerShell:
+with every inner `"` escaped (same single-quoted string in bash and PowerShell 7.3+), e.g.
 `azd env set EXTRA_TAGS_JSON '{\"CostCenter\":\"demo\"}'`.
 
 > **JSON values must be escaped.** azd substitutes env values verbatim into `main.parameters.json`, so every `"` inside `EXTRA_TAGS_JSON` / `CUSTOM_AVATARS_JSON` must be written as `\"` (backslash-quote), as in the examples, or provisioning fails with *invalid character after object key:value pair*.
 
-Demo counters are in-process; the Container App is capped at one replica, so
-they are global for the deployment (a restart resets the daily counters).
+Concurrency, rate-limit and per-user generation counters are in-process; the Container App is capped at one replica, so
+they are global for the deployment. The public-demo daily counters (sessions, minutes, questions)
+are durable in Cosmos (`demo-quota-<day>`), survive restarts and scale-to-zero, and fail closed.
 Per-IP counting uses the rightmost `X-Forwarded-For` entry, which is the one
 the Container Apps ingress appends; put no other proxy in front without
 revisiting that assumption.
