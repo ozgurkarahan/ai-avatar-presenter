@@ -6,6 +6,9 @@
 The catalog lives at `/decks` (e.g. `https://<your-app>.<env>.<region>.azurecontainerapps.io/decks`), next to
 the **Home** landing page (`/`) and the single-deck **Live** page (`/live`).
 
+Ready-made content: the **AI enablement series** (Beginner → Practitioner → Expert, plus a live-demo cut) and how to
+seed it as the "AI enablement path" playlist — see [content/ai-enablement/README.md](../content/ai-enablement/README.md).
+
 ---
 
 ## 1. Scope
