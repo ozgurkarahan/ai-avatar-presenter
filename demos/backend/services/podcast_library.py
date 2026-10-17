@@ -311,6 +311,30 @@ class PodcastLibrary:
             return None
         return self.get(job_id)
 
+    def set_title(self, job_id: str, title: str, *, document_title: Optional[str] = None) -> Optional[dict]:
+        """Rename a library item (and optionally its source document title)."""
+        title = (title or "").strip()
+        if not title:
+            return None
+        m = self._manifest(job_id)
+        if not m:
+            return None
+        for k in ("mp4_url", "mp3_url", "srt_url", "thumbnail_url", "scorm_url"):
+            m.pop(k, None)
+        m["title"] = title
+        if document_title is not None and document_title.strip():
+            m["document_title"] = document_title.strip()
+        try:
+            self._upload(
+                f"{LIBRARY_PREFIX}/{job_id}/{MANIFEST_NAME}",
+                json.dumps(m, indent=2).encode("utf-8"),
+                content_type="application/json",
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Library title update failed for %s: %s", job_id, exc)
+            return None
+        return self.get(job_id)
+
     def delete(self, job_id: str) -> bool:
         """Delete all blobs for a library item (validated ``{job_id}/`` prefix)."""
         if not valid_job_id(job_id):

@@ -55,6 +55,10 @@ class FakeStore:
         from services.storage import PresentationStore
         return PresentationStore.set_deck_live_demo(self, deck_id, enabled)  # type: ignore[arg-type]
 
+    def set_deck_title(self, deck_id, title):
+        from services.storage import PresentationStore
+        return PresentationStore.set_deck_title(self, deck_id, title)  # type: ignore[arg-type]
+
     def delete_presentation(self, pid):
         return self.docs.pop(pid, None) is not None
 
@@ -99,6 +103,14 @@ class FakeLibrary:
         self.items[job_id]["published"] = published
         return dict(self.items[job_id])
 
+    def set_title(self, job_id, title, *, document_title=None):
+        if job_id not in self.items:
+            return None
+        self.items[job_id]["title"] = title
+        if document_title:
+            self.items[job_id]["document_title"] = document_title
+        return dict(self.items[job_id])
+
     def delete(self, job_id):
         return self.items.pop(job_id, None) is not None
 
@@ -121,16 +133,16 @@ def env(monkeypatch, tmp_path):
 
     uploads: list[tuple[str, str]] = []
 
-    def fake_ingest(content, filename, language, cfg):
+    def fake_ingest(content, filename, language, cfg, *, title=None):
         assert content[:4] == b"PK\x03\x04"
         deck_id = str(uuid.uuid4())
         store.docs[deck_id] = {
-            "id": deck_id, "source": "deck", "filename": filename, "slide_count": 5,
+            "id": deck_id, "source": "deck", "filename": filename, "title": title, "slide_count": 5,
             "language": language or "en-US", "published": False, "live_demo": False,
             "slides": [{"index": 0, "title": "t", "notes": "n"}],
         }
         uploads.append((filename, language))
-        return dr.UploadResponse(deck_id=deck_id, title=filename.rsplit(".", 1)[0], slide_count=5,
+        return dr.UploadResponse(deck_id=deck_id, title=title or filename.rsplit(".", 1)[0], slide_count=5,
                                  indexed_slides=5)
 
     translations: list[tuple[str, str]] = []
@@ -166,15 +178,16 @@ def test_seed_uploads_publishes_translates_and_is_idempotent(env):
     assert dict(env.uploads)["ai-enablement-2-practitioner.pptx"] == "en-US"
     ids = _deck_ids(env.store)
     for spec in mc.SEED_DECKS:
-        doc = env.store.docs[ids[spec.title]]
+        doc = env.store.docs[ids[spec.slug]]
         assert doc["published"] is True
         assert doc["live_demo"] is spec.live_demo
+        assert doc["title"] == mc.DISPLAY_TITLES[spec.slug]
     assert {t for _, t in env.translations} == {"fr-FR", "en-US"}
     assert (ids["ai-enablement-demo-beginner-fr"], "en-US") in env.translations
     playlists = env.store.list_playlists()
     assert len(playlists) == 1 and playlists[0]["title"] == mc.PLAYLIST_TITLE
     steps = sorted(playlists[0]["steps"], key=lambda s: s["order"])
-    assert [s["deck_title"] for s in steps] == list(mc.PLAYLIST_STEPS)
+    assert [s["deck_title"] for s in steps] == [mc.DISPLAY_TITLES[t] for t in mc.PLAYLIST_STEPS]
     assert report["playlist"]["action"] == "created"
 
     # Second run: nothing new is uploaded or created.
@@ -235,7 +248,7 @@ def test_render_podcast_uses_photo_avatars_and_spec(env, monkeypatch):
     assert job.layout == "split_screen_with_slides"
     req = seen["req"]
     assert (req.language, req.style, req.audience_level, req.length) == ("en-US", "debate", "expert", "medium")
-    assert seen["doc_title"] == "ai-enablement-3-expert"
+    assert seen["doc_title"] == "Under the hood · Expert"
     assert out["action"] == "rendered" and env.plib.items[out["job_id"]]["published"] is True
 
     # Idempotent: an item with the same title is reused, not re-rendered.
@@ -301,7 +314,8 @@ def test_render_video_french_male_presenter(env, monkeypatch):
     assert script.voice.startswith("fr-FR-Remy") and script.language == "fr-FR"
     assert script.audience_level == "beginner"
     assert avatar_registry.for_voice(script.voice).id == "photo_male"
-    assert out["title"] == "ai-enablement-demo-beginner-fr"
+    assert out["title"] == "L’IA en trois minutes · Démo en direct"
+    assert env.vlib.items[out["job_id"]]["title"] == out["title"]
     assert env.vlib.items[out["job_id"]]["published"] is True
 
 
@@ -363,7 +377,7 @@ def test_purge_dry_run_then_delete(env, tmp_path):
     assert "pl_0123456789ab" not in env.store.docs
     assert "job-22d144ee" not in env.plib.items and "sv-b89d3ed5" not in env.vlib.items
     titles = {d["filename"].rsplit(".", 1)[0] for d in env.store.list_decks()}
-    assert titles == {s.title for s in mc.SEED_DECKS}
+    assert titles == {s.slug for s in mc.SEED_DECKS}
     assert [p["title"] for p in env.store.list_playlists()] == [mc.PLAYLIST_TITLE]
     record = json.loads((tmp_path / "deleted.json").read_text(encoding="utf-8"))
     assert {d["deck_id"] for d in record["decks"]} == set(OLD_DECKS.values())
@@ -456,3 +470,207 @@ def test_background_flag_parses():
     args = mc.build_parser().parse_args(["--background", "/tmp/all.log", "all", "--skip", "video:practitioner"])
     assert str(args.background).replace("\\", "/").endswith("tmp/all.log")
     assert args.cmd == "all" and args.skip == ["video:practitioner"]
+
+
+# ---------------------------------------------------------------------------
+# Display titles / retitle
+# ---------------------------------------------------------------------------
+LEGACY_PODCASTS = {"job-4e563815": "ai-enablement-1-beginner", "job-a71481bd": "ai-enablement-2-practitioner",
+                   "job-002473aa": "ai-enablement-3-expert", "job-2f1b33f2": "ai-enablement-demo-beginner-fr"}
+LEGACY_VIDEOS = {"sv-87a87b7e": "ai-enablement-demo-beginner", "sv-72e901b9": "ai-enablement-demo-beginner-fr",
+                 "sv-ba2ccb22": "ai-enablement-2-practitioner"}
+
+
+class FakeSearch:
+    def __init__(self):
+        self.calls: list[tuple[str, str]] = []
+
+    def set_deck_title(self, deck_id, title):
+        self.calls.append((deck_id, title))
+        return 3
+
+
+def _legacy(env, monkeypatch):
+    """Production state before retitle: slug titles everywhere."""
+    from routers import decks as dr
+
+    for spec in mc.SEED_DECKS:
+        deck_id = str(uuid.uuid4())
+        env.store.docs[deck_id] = {"id": deck_id, "source": "deck", "filename": spec.file, "slide_count": 5,
+                                   "language": spec.language, "published": True, "live_demo": spec.live_demo}
+    other = str(uuid.uuid4())
+    env.store.docs[other] = {"id": other, "source": "deck", "filename": "team-onboarding.pptx",
+                             "slide_count": 2, "language": "en-US", "published": True}
+    ids = _deck_ids(env.store)
+    env.store.docs["pl_0123456789ab"] = {
+        "id": "pl_0123456789ab", "source": "playlist", "title": mc.PLAYLIST_TITLE, "status": "active",
+        "steps": [{"deck_id": ids[t], "order": i, "deck_title": t} for i, t in enumerate(mc.PLAYLIST_STEPS)]}
+    for job_id, slug in LEGACY_PODCASTS.items():
+        env.plib.add(job_id, slug, document_title=slug)
+    for job_id, slug in LEGACY_VIDEOS.items():
+        env.vlib.add(job_id, slug, document_title=slug)
+    env.plib.add("job-0000beef", "Hand-made episode", document_title="notes")
+    search = FakeSearch()
+    monkeypatch.setattr(dr, "get_deck_search", lambda cfg, client: search)
+    monkeypatch.setattr(dr, "get_openai_client", lambda cfg: None)
+    return ids, other, search
+
+
+def _summary_titles(env):
+    from routers import decks as dr
+    return {dr._doc_to_summary(d).title for d in env.store.list_decks()}
+
+
+def test_display_titles_cover_every_seeded_item():
+    slugs = {s.slug for s in mc.SEED_DECKS}
+    assert set(mc.DISPLAY_TITLES) == slugs
+    for spec in (*mc.SEED_DECKS, *mc.PODCASTS.values(), *mc.VIDEOS.values()):
+        assert spec.title == mc.DISPLAY_TITLES[spec.slug] and spec.titles == {spec.slug, spec.title}
+    assert mc.DISPLAY_TITLES["ai-enablement-demo-beginner-fr"] == "L’IA en trois minutes · Démo en direct"
+
+
+def test_retitle_dry_run_writes_nothing(env, monkeypatch):
+    ids, other, search = _legacy(env, monkeypatch)
+    before = json.dumps(env.store.docs, sort_keys=True)
+    plib_before, vlib_before = json.dumps(env.plib.items), json.dumps(env.vlib.items)
+    report = mc.retitle(env.cfg, dry_run=True)
+    assert json.dumps(env.store.docs, sort_keys=True) == before
+    assert json.dumps(env.plib.items) == plib_before and json.dumps(env.vlib.items) == vlib_before
+    assert search.calls == []
+    assert {d["action"] for d in report["decks"]} == {"would rename"}
+    assert {(d["before"], d["after"]) for d in report["decks"]} == set(mc.DISPLAY_TITLES.items())
+    assert other not in {d["deck_id"] for d in report["decks"]}
+    assert report["playlists"][0]["action"] == "would update"
+    assert {i["job_id"] for i in report["podcasts"]} == set(LEGACY_PODCASTS)
+    assert {i["job_id"] for i in report["videos"]} == set(LEGACY_VIDEOS)
+    assert report["errors"] == []
+
+
+def test_retitle_applies_and_is_idempotent(env, monkeypatch):
+    ids, other, search = _legacy(env, monkeypatch)
+    report = mc.retitle(env.cfg)
+    assert report["errors"] == []
+    assert {d["action"] for d in report["decks"]} == {"renamed"}
+    assert _summary_titles(env) == set(mc.DISPLAY_TITLES.values()) | {"team-onboarding"}
+    for slug, deck_id in ids.items():
+        if slug in mc.DISPLAY_TITLES:
+            assert env.store.docs[deck_id]["filename"] == f"{slug}.pptx"
+    assert "title" not in env.store.docs[other]
+    assert sorted(search.calls) == sorted((ids[s], t) for s, t in mc.DISPLAY_TITLES.items())
+    steps = env.store.docs["pl_0123456789ab"]["steps"]
+    assert [s["deck_title"] for s in steps] == [mc.DISPLAY_TITLES[t] for t in mc.PLAYLIST_STEPS]
+    for job_id, slug in LEGACY_PODCASTS.items():
+        assert env.plib.items[job_id]["title"] == mc.DISPLAY_TITLES[slug]
+        assert env.plib.items[job_id]["document_title"] == mc.DISPLAY_TITLES[slug]
+    for job_id, slug in LEGACY_VIDEOS.items():
+        assert env.vlib.items[job_id]["title"] == mc.DISPLAY_TITLES[slug]
+    assert env.plib.items["job-0000beef"]["title"] == "Hand-made episode"
+
+    snapshot = (json.dumps(env.store.docs, sort_keys=True), json.dumps(env.plib.items), json.dumps(env.vlib.items))
+    again = mc.retitle(env.cfg)
+    assert again["errors"] == [] and again["playlists"] == []
+    assert {d["action"] for d in again["decks"] + again["podcasts"] + again["videos"]} == {"already"}
+    assert (json.dumps(env.store.docs, sort_keys=True), json.dumps(env.plib.items),
+            json.dumps(env.vlib.items)) == snapshot
+    assert "sig=" not in json.dumps(report) + json.dumps(again)
+
+
+def test_seed_and_renders_do_not_duplicate_retitled_content(env, monkeypatch):
+    _legacy(env, monkeypatch)
+    # Before retitle: slug-titled decks are recognised.
+    report = asyncio.run(mc.seed(env.cfg))
+    assert env.uploads == [] and {d["action"] for d in report["decks"]} == {"exists"}
+    assert report["playlist"]["action"] == "exists"
+    mc.retitle(env.cfg)
+    # After retitle: display-titled decks are recognised too.
+    report = asyncio.run(mc.seed(env.cfg))
+    assert env.uploads == [] and {d["action"] for d in report["decks"]} == {"exists"}
+    assert len(env.store.list_decks()) == len(mc.SEED_DECKS) + 1
+    seen = _fake_podcast_pipeline(monkeypatch, env)
+    assert asyncio.run(mc.render_podcast(env.cfg, "expert"))["action"] == "exists" and "job" not in seen
+    assert asyncio.run(mc.render_video(env.cfg, "practitioner"))["action"] == "exists"
+    assert mc.missing_new_content(mc.inventory(env.cfg), set()) == []
+
+
+def test_missing_new_content_accepts_slug_titles(env, monkeypatch):
+    _legacy(env, monkeypatch)
+    assert mc.missing_new_content(mc.inventory(env.cfg), set()) == []
+
+
+def test_cli_retitle_dry_run(env, monkeypatch, capsys):
+    _legacy(env, monkeypatch)
+    monkeypatch.setattr(mc, "_cfg", lambda: env.cfg)
+    assert mc.main(["retitle", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "would rename" in out and "sig=" not in out
+    assert all("title" not in d for d in env.store.list_decks())
+
+
+def test_deck_title_prefers_stored_title():
+    from routers import decks as dr
+    from services.storage import deck_title
+
+    assert deck_title({"id": "x", "filename": "ai-enablement-3-expert.pptx"}) == "ai-enablement-3-expert"
+    assert deck_title({"id": "x", "filename": "a.pptx", "title": "  Under the hood · Expert "}) == \
+        "Under the hood · Expert"
+    assert deck_title({"id": "x", "filename": "a.pptx", "title": ""}) == "a"
+    doc = {"id": str(uuid.uuid4()), "filename": "a.pptx", "title": "Nice title"}
+    assert dr._doc_to_summary(doc).title == "Nice title"
+
+
+@pytest.mark.parametrize("kind", ["podcast", "video"])
+def test_library_set_title_rewrites_manifest_without_urls(kind):
+    from config import load_config
+    from types import SimpleNamespace
+
+    if kind == "podcast":
+        from services.podcast_library import LIBRARY_PREFIX, PodcastLibrary as Lib
+        job = "job-4e563815"
+    else:
+        from services.video_library import LIBRARY_PREFIX, VideoLibrary as Lib
+        job = "sv-87a87b7e"
+    lib = Lib(load_config())
+    name = f"{LIBRARY_PREFIX}/{job}/manifest.json"
+    store = {name: json.dumps({"job_id": job, "title": "ai-enablement-1-beginner",
+                               "document_title": "ai-enablement-1-beginner", "published": True,
+                               "video_blob": f"{LIBRARY_PREFIX}/{job}/v.mp4"})}
+    lib._initialised = True
+    lib._blob = SimpleNamespace()
+    lib._upload = lambda n, data, content_type: store.__setitem__(n, data)  # type: ignore[assignment]
+    lib._read_json_blob = lambda n: json.loads(store[n]) if n in store else None  # type: ignore[assignment]
+    lib._sas = lambda blob, minutes=24 * 60: f"https://x/{blob}?sig=SECRET" if blob else None  # type: ignore
+
+    item = lib.set_title(job, "AI, demystified · Beginner")
+    assert item["title"] == "AI, demystified · Beginner"
+    saved = json.loads(store[name])
+    assert saved["title"] == "AI, demystified · Beginner"
+    assert saved["document_title"] == "ai-enablement-1-beginner" and saved["published"] is True
+    assert not any(k.endswith("_url") for k in saved) and b"sig=" not in store[name]
+
+    lib.set_title(job, "AI, demystified · Beginner", document_title="AI, demystified · Beginner")
+    assert json.loads(store[name])["document_title"] == "AI, demystified · Beginner"
+    assert lib.set_title(job, "   ") is None
+    assert lib.set_title("job-deadbeef" if kind == "podcast" else "sv-deadbeef", "x") is None
+
+
+def test_deck_search_set_deck_title_merges_only_the_title():
+    from types import SimpleNamespace
+    from services.deck_search import DeckSearchService
+
+    calls: dict = {}
+
+    class Client:
+        def search(self, **kw):
+            calls["search"] = kw
+            return [{"id": "d-0"}, {"id": "d-1"}]
+
+        def merge_documents(self, docs):
+            calls["merge"] = docs
+            return [SimpleNamespace(succeeded=True) for _ in docs]
+
+    svc = object.__new__(DeckSearchService)
+    svc._search_client = Client()
+    assert svc.set_deck_title("d", "Under the hood · Expert") == 2
+    assert calls["search"]["filter"] == "deck_id eq 'd'"
+    assert calls["merge"] == [{"id": "d-0", "deck_title": "Under the hood · Expert"},
+                              {"id": "d-1", "deck_title": "Under the hood · Expert"}]

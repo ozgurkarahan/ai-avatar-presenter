@@ -15,6 +15,7 @@ Usage (from the backend directory, ``/app`` in the image)::
     python -m maintenance.content render-video {demo-en,demo-fr,practitioner,all} [--dry-run]
     python -m maintenance.content purge --deck-title T ... --podcast-id job-... --video-id sv-... \\
         --record deleted.json [--allow-missing video:practitioner] [--dry-run]
+    python -m maintenance.content retitle [--dry-run]
     python -m maintenance.content --background /tmp/all.log all [--skip video:practitioner]
     python -m maintenance.content logtail /tmp/all.log -n 40
 
@@ -24,6 +25,8 @@ log with URL query strings redacted.
 
 Every command is idempotent: decks are matched by title, the playlist by name
 and podcasts/videos by library title (an existing item is only published).
+Titles match either the display title (``DISPLAY_TITLES``) or the original
+filename slug, so content seeded before ``retitle`` is never duplicated.
 Output never contains signed URLs.
 """
 from __future__ import annotations
@@ -63,16 +66,48 @@ VOICES = {
 }
 
 
+# Filename slug -> human-readable display title (decks, podcasts and videos).
+DISPLAY_TITLES: dict[str, str] = {
+    "ai-enablement-1-beginner": "AI, demystified · Beginner",
+    "ai-enablement-2-practitioner": "Building with AI · Practitioner",
+    "ai-enablement-3-expert": "Under the hood · Expert",
+    "ai-enablement-demo-beginner": "AI in three minutes · Live demo",
+    "ai-enablement-demo-beginner-fr": "L’IA en trois minutes · Démo en direct",
+}
+
+
+def display_title(slug: str) -> str:
+    return DISPLAY_TITLES.get(slug, slug)
+
+
+class _Titled:
+    """Mixin: ``slug`` (file stem), ``title`` (display) and both as ``titles``."""
+
+    _source: str
+
+    @property
+    def slug(self) -> str:
+        return Path(self._source).stem
+
+    @property
+    def title(self) -> str:
+        return display_title(self.slug)
+
+    @property
+    def titles(self) -> frozenset[str]:
+        return frozenset({self.slug, self.title})
+
+
 @dataclass(frozen=True)
-class DeckSeed:
+class DeckSeed(_Titled):
     file: str
     language: str
     live_demo: bool = False
     translate_to: tuple[str, ...] = ()
 
     @property
-    def title(self) -> str:
-        return Path(self.file).stem
+    def _source(self) -> str:  # type: ignore[override]
+        return self.file
 
 
 SEED_DECKS: tuple[DeckSeed, ...] = (
@@ -96,7 +131,7 @@ PLAYLIST_STEPS = (
 
 
 @dataclass(frozen=True)
-class PodcastSpec:
+class PodcastSpec(_Titled):
     deck: str
     language: str
     style: str
@@ -105,8 +140,8 @@ class PodcastSpec:
     num_turns: int = 8
 
     @property
-    def title(self) -> str:
-        return Path(self.deck).stem
+    def _source(self) -> str:  # type: ignore[override]
+        return self.deck
 
 
 PODCASTS: dict[str, PodcastSpec] = {
@@ -118,7 +153,7 @@ PODCASTS: dict[str, PodcastSpec] = {
 
 
 @dataclass(frozen=True)
-class VideoSpec:
+class VideoSpec(_Titled):
     deck: str
     language: str
     avatar: str
@@ -127,8 +162,8 @@ class VideoSpec:
     style: str = "explainer"
 
     @property
-    def title(self) -> str:
-        return Path(self.deck).stem
+    def _source(self) -> str:  # type: ignore[override]
+        return self.deck
 
     @property
     def voice(self) -> str:
@@ -225,7 +260,7 @@ async def seed(cfg, *, dry_run: bool = False, deck_dir: Optional[Path] = None) -
     for spec in SEED_DECKS:
         path = _deck_path(spec.file, deck_dir)
         entry: dict[str, Any] = {"title": spec.title, "language": spec.language}
-        doc = by_title.get(spec.title)
+        doc = by_title.get(spec.title) or by_title.get(spec.slug)
         if doc:
             deck_id = doc["id"]
             entry["action"] = "exists"
@@ -239,11 +274,12 @@ async def seed(cfg, *, dry_run: bool = False, deck_dir: Optional[Path] = None) -
             if content[:4] != b"PK\x03\x04":
                 raise MaintenanceError(f"{path} is not a .pptx")
             _say(f"upload {spec.file} ({spec.language})")
-            resp = await asyncio.to_thread(dr.ingest_deck_bytes, content, spec.file, spec.language, cfg)
+            resp = await asyncio.to_thread(dr.ingest_deck_bytes, content, spec.file, spec.language, cfg,
+                                           title=spec.title)
             deck_id = resp.deck_id
             entry.update(action="uploaded", slide_count=resp.slide_count, indexed_slides=resp.indexed_slides)
         entry["deck_id"] = deck_id
-        ids[spec.title] = deck_id
+        ids[spec.slug] = deck_id
 
         if deck_id and not dry_run:
             current = store.get_presentation(deck_id) or {}
@@ -305,8 +341,8 @@ def _podcast_roles(language: str):
     return roles
 
 
-def _existing(lib, title: str) -> Optional[dict]:
-    items = [i for i in lib.list() if i.get("title") == title]
+def _existing(lib, titles: frozenset[str] | set[str]) -> Optional[dict]:
+    items = [i for i in lib.list() if i.get("title") in titles]
     return items[0] if items else None
 
 
@@ -327,7 +363,7 @@ async def render_podcast(cfg, name: str, *, dry_run: bool = False, deck_dir: Opt
     plan = {"name": name, "title": spec.title, "language": spec.language, "style": spec.style,
             "audience_level": spec.audience_level,
             "roles": {"interviewer": roles.interviewer.model_dump(), "expert": roles.expert.model_dump()}}
-    found = _existing(lib, spec.title)
+    found = _existing(lib, spec.titles)
     if found:
         plan.update(action="exists", job_id=found["job_id"], published=found.get("published"))
         if not found.get("published") and not dry_run:
@@ -401,7 +437,7 @@ async def render_video(cfg, name: str, *, dry_run: bool = False, deck_dir: Optio
         raise MaintenanceError("video library storage unavailable")
     plan = {"name": name, "title": spec.title, "language": spec.language, "voice": spec.voice,
             "avatar": spec.avatar, "audience_level": spec.audience_level, "style": spec.style}
-    found = _existing(lib, spec.title)
+    found = _existing(lib, spec.titles)
     if found:
         plan.update(action="exists", job_id=found["job_id"], published=found.get("published"))
         if not found.get("published") and not dry_run:
@@ -416,6 +452,7 @@ async def render_video(cfg, name: str, *, dry_run: bool = False, deck_dir: Optio
     _say(f"video {name}: ingest {spec.deck}")
     staged = _staged_copy(path, "video")
     doc = await asyncio.to_thread(ingest, str(staged), spec.deck)
+    doc.title = spec.title
     vr.DOCUMENTS[doc.doc_id] = doc
 
     _say(f"video {name}: script ({spec.language}, {spec.audience_level})")
@@ -458,7 +495,7 @@ def missing_new_content(inv: dict, allow_missing: set[str]) -> list[str]:
     missing: list[str] = []
     decks = {d["title"]: d for d in inv["decks"]}
     for spec in SEED_DECKS:
-        d = decks.get(spec.title)
+        d = decks.get(spec.title) or decks.get(spec.slug)
         if not d or not d.get("published") or (spec.live_demo and not d.get("live_demo")):
             missing.append(f"deck:{spec.title}")
     if not any(p.get("title") == PLAYLIST_TITLE and p.get("status") != "broken" for p in inv["playlists"]):
@@ -467,7 +504,7 @@ def missing_new_content(inv: dict, allow_missing: set[str]) -> list[str]:
         published = {i.get("title") for i in items if i.get("published")}
         for name, spec in specs.items():
             key = f"{kind}:{name}"
-            if spec.title not in published and key not in allow_missing:
+            if not (spec.titles & published) and key not in allow_missing:
                 missing.append(key)
     return missing
 
@@ -479,11 +516,11 @@ def purge(cfg, *, deck_titles: list[str], podcast_ids: list[str], video_ids: lis
     from routers import podcast as pr
     from routers import video as vr
 
-    protected = {s.title for s in SEED_DECKS}
+    protected = {t for s in SEED_DECKS for t in s.titles}
     clash = sorted(set(deck_titles) & protected)
     if clash:
         raise MaintenanceError(f"refusing to delete new AI decks: {clash}")
-    new_titles = {s.title for s in PODCASTS.values()} | {s.title for s in VIDEOS.values()}
+    new_titles = {t for s in (*PODCASTS.values(), *VIDEOS.values()) for t in s.titles}
 
     inv = inventory(cfg)
     missing = missing_new_content(inv, allow_missing)
@@ -542,6 +579,125 @@ def purge(cfg, *, deck_titles: list[str], podcast_ids: list[str], video_ids: lis
         record.parent.mkdir(parents=True, exist_ok=True)
         record.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     return result
+
+
+# ---------------------------------------------------------------------------
+# Retitle (filename slug -> display title)
+# ---------------------------------------------------------------------------
+def _deck_search(cfg):
+    from routers import decks as dr
+
+    try:
+        return dr.get_deck_search(cfg, dr.get_openai_client(cfg))
+    except Exception:  # noqa: BLE001
+        log.exception("deck search unavailable")
+        return None
+
+
+def retitle(cfg, *, dry_run: bool = False) -> dict[str, Any]:
+    """Give slug-titled AI decks, podcasts and videos their display titles.
+
+    Also rewrites the denormalized ``deck_title`` of playlist steps and of the
+    deck's AI Search chunks, so search hits and playlists show the same title.
+    Idempotent: items already carrying a display title are reported as
+    ``already`` (their search chunks are re-synced, which is a no-op merge)."""
+    from routers import decks as dr
+    from routers import podcast as pr
+    from routers import video as vr
+    from services.storage import deck_title
+
+    store = dr._store(cfg)
+    if not store or not store.cosmos_available:
+        raise MaintenanceError("Cosmos DB unavailable")
+    display = set(DISPLAY_TITLES.values())
+    report: dict[str, Any] = {"dry_run": dry_run, "decks": [], "playlists": [], "podcasts": [], "videos": [],
+                              "errors": []}
+
+    def _fail(item: str, msg: str) -> None:
+        report["errors"].append({"item": item, "error": msg[:300]})
+        _say(f"FAILED {item}: {msg}")
+
+    final_titles: dict[str, str] = {}
+    search = None if dry_run else _deck_search(cfg)
+    for d in store.list_decks():
+        if not isinstance(d, dict) or not d.get("id"):
+            continue
+        current = deck_title(d)
+        target = DISPLAY_TITLES.get(current)
+        if target is None and current not in display:
+            continue
+        entry: dict[str, Any] = {"deck_id": d["id"], "before": current, "after": target or current}
+        if target is None:
+            entry["action"] = "already"
+        elif dry_run:
+            entry["action"] = "would rename"
+        elif store.set_deck_title(d["id"], target) is None:
+            entry["action"] = "failed"
+            _fail(f"deck {d['id']}", "title update failed")
+        else:
+            entry["action"] = "renamed"
+        if entry["action"] != "failed":
+            final_titles[d["id"]] = entry["after"]
+            if search is not None:
+                try:
+                    entry["search_chunks"] = search.set_deck_title(d["id"], entry["after"])
+                except Exception as exc:  # noqa: BLE001
+                    _fail(f"search {d['id']}", str(exc))
+        _say(f"deck {current!r} -> {entry['after']!r}: {entry['action']}")
+        report["decks"].append(entry)
+
+    for p in store.list_playlists():
+        stale = [s for s in p.get("steps") or []
+                 if s.get("deck_id") in final_titles and s.get("deck_title") != final_titles[s["deck_id"]]]
+        if not stale:
+            continue
+        entry = {"id": p.get("id"), "title": p.get("title"),
+                 "steps": [{"before": s.get("deck_title"), "after": final_titles[s["deck_id"]]} for s in stale]}
+        if dry_run:
+            entry["action"] = "would update"
+        else:
+            full = store.get_playlist(p["id"])
+            if not full:
+                entry["action"] = "failed"
+                _fail(f"playlist {p.get('id')}", "not found")
+            else:
+                for s in full.get("steps") or []:
+                    if s.get("deck_id") in final_titles:
+                        s["deck_title"] = final_titles[s["deck_id"]]
+                if store.save_playlist(full):
+                    entry["action"] = "updated"
+                else:
+                    entry["action"] = "failed"
+                    _fail(f"playlist {p.get('id')}", "save failed")
+        _say(f"playlist {p.get('title')!r}: {entry['action']}")
+        report["playlists"].append(entry)
+
+    for kind, lib in (("podcasts", pr._get_library(cfg)), ("videos", vr._get_library(cfg))):
+        if not lib.available:
+            _fail(kind, "library storage unavailable")
+            continue
+        for item in lib.list():
+            current = item.get("title") or ""
+            target = DISPLAY_TITLES.get(current)
+            doc_target = DISPLAY_TITLES.get(item.get("document_title") or "")
+            if target is None and doc_target is None:
+                if current in display:
+                    report[kind].append({"job_id": item.get("job_id"), "before": current, "after": current,
+                                         "action": "already"})
+                continue
+            entry = {"job_id": item.get("job_id"), "before": current, "after": target or current}
+            if doc_target:
+                entry["document_title"] = {"before": item.get("document_title"), "after": doc_target}
+            if dry_run:
+                entry["action"] = "would rename"
+            elif lib.set_title(item["job_id"], target or current, document_title=doc_target) is None:
+                entry["action"] = "failed"
+                _fail(f"{kind[:-1]} {item.get('job_id')}", "title update failed")
+            else:
+                entry["action"] = "renamed"
+            _say(f"{kind[:-1]} {item.get('job_id')} {current!r} -> {entry['after']!r}: {entry['action']}")
+            report[kind].append(entry)
+    return report
 
 
 # ---------------------------------------------------------------------------
@@ -610,6 +766,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--record", type=Path, default=None, help="Write the deletion record (JSON) here")
     p.add_argument("--allow-missing", action="append", default=[],
                    help="New item allowed to be absent, e.g. video:practitioner")
+    p.add_argument("--dry-run", action="store_true")
+
+    p = sub.add_parser("retitle", help="Rename slug-titled AI decks/podcasts/videos to display titles")
     p.add_argument("--dry-run", action="store_true")
 
     p = sub.add_parser("all", help="seed, then every podcast, then every video (continues past failures)")
@@ -696,6 +855,11 @@ def main(argv: Optional[list[str]] = None) -> int:
             result = purge(cfg, deck_titles=args.deck_title, podcast_ids=args.podcast_id,
                            video_ids=args.video_id, record=args.record,
                            allow_missing=set(args.allow_missing), dry_run=args.dry_run)
+            _print(result)
+            if result["errors"]:
+                return 1
+        elif args.cmd == "retitle":
+            result = retitle(cfg, dry_run=args.dry_run)
             _print(result)
             if result["errors"]:
                 return 1

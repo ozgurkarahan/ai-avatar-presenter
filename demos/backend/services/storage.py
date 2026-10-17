@@ -30,6 +30,16 @@ DEFAULT_SAS_MINUTES = 24 * 60
 PUBLIC_SAS_MINUTES = 15
 
 
+def deck_title(doc: dict) -> str:
+    """Display title of a catalog deck: the stored ``title`` (set by the operator
+    CLI or at upload) or, for older decks, the filename without extension."""
+    title = doc.get("title")
+    if isinstance(title, str) and title.strip():
+        return title.strip()
+    filename = doc.get("filename") or doc.get("id") or ""
+    return filename.rsplit(".", 1)[0] if filename else "Untitled"
+
+
 class PresentationStore:
     """Manages presentation persistence in Cosmos DB + Blob Storage."""
 
@@ -357,7 +367,7 @@ class PresentationStore:
             return []
         try:
             query = (
-                "SELECT c.id, c.filename, c.slide_count, c.language, "
+                "SELECT c.id, c.filename, c.title, c.slide_count, c.language, "
                 "c.uploaded_at, c.tags, c.source, c.published, c.live_demo FROM c WHERE c.source = 'deck'"
             )
             return list(self._cosmos_container.query_items(
@@ -409,6 +419,19 @@ class PresentationStore:
         if enabled and doc.get("published") is not True:
             raise ValueError("Deck must be published before enabling the live demo")
         doc["live_demo"] = bool(enabled)
+        if not self.save_presentation(doc):
+            return None
+        return doc
+
+    def set_deck_title(self, deck_id: str, title: str) -> dict | None:
+        """Set the display ``title`` of a catalog deck. Returns the updated doc."""
+        title = (title or "").strip()
+        if not title:
+            raise ValueError("Deck title must not be empty")
+        doc = self.get_presentation(deck_id)
+        if not doc or doc.get("source") != "deck":
+            return None
+        doc["title"] = title
         if not self.save_presentation(doc):
             return None
         return doc

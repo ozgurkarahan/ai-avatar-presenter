@@ -30,7 +30,7 @@ from auth import Principal, get_principal, require_admin
 from config import AzureConfig, load_config
 from security import DAILY_QUOTA, UUID_RE, read_upload_limited, require_id, safe_filename
 from services.pptx_parser import parse_pptx
-from services.storage import PUBLIC_SAS_MINUTES, PresentationStore
+from services.storage import PUBLIC_SAS_MINUTES, PresentationStore, deck_title
 from services.translation import get_openai_client, translate_text
 from services.deck_search import DeckSlide, get_deck_search
 
@@ -165,7 +165,7 @@ def _cached_translations(slide: dict) -> dict[str, str]:
 def _doc_to_summary(doc: dict) -> DeckSummary:
     return DeckSummary(
         deck_id=doc["id"],
-        title=_deck_title_from_filename(doc.get("filename") or doc["id"]),
+        title=deck_title(doc),
         slide_count=int(doc.get("slide_count") or 0),
         language=doc.get("language") or "en-US",
         uploaded_at=doc.get("uploaded_at") or "",
@@ -203,11 +203,13 @@ async def upload_deck(
 
 def ingest_deck_bytes(
     content: bytes, filename: str, language: Optional[str], cfg: AzureConfig,
+    *, title: Optional[str] = None,
 ) -> UploadResponse:
     """Parse, render, store and index an already-validated .pptx.
 
     Shared by the upload route and the operator maintenance CLI
-    (``maintenance.content``), so both produce identical catalog decks."""
+    (``maintenance.content``), so both produce identical catalog decks.
+    ``title`` overrides the filename-derived display title."""
     # Parse + render slides
     try:
         presentation = parse_pptx(content, safe_filename(filename, "deck.pptx"), cfg.libreoffice_path or "soffice")
@@ -240,12 +242,14 @@ def ingest_deck_bytes(
 
     # Persist metadata in Cosmos under source='deck'
     lang = (language or "").strip() or "en-US"
+    display_title = (title or "").strip() or _deck_title_from_filename(presentation.filename)
     tags: list[str] = []
     uploaded_at = datetime.now(timezone.utc).isoformat()
     doc = {
         "id": presentation.id,
         "source": "deck",
         "filename": presentation.filename,
+        "title": display_title,
         "slide_count": presentation.slide_count,
         "language": lang,
         "uploaded_at": uploaded_at,
@@ -276,11 +280,10 @@ def ingest_deck_bytes(
         openai_client = get_openai_client(cfg)
         search = get_deck_search(cfg, openai_client)
         if search:
-            deck_title = _deck_title_from_filename(presentation.filename)
             slides_for_index = [
                 DeckSlide(
                     deck_id=presentation.id,
-                    deck_title=deck_title,
+                    deck_title=display_title,
                     slide_index=s.index,
                     slide_title=s.title or f"Slide {s.index + 1}",
                     body=s.body or "",
@@ -298,7 +301,7 @@ def ingest_deck_bytes(
 
     return UploadResponse(
         deck_id=presentation.id,
-        title=_deck_title_from_filename(presentation.filename),
+        title=display_title,
         slide_count=presentation.slide_count,
         indexed_slides=indexed,
     )

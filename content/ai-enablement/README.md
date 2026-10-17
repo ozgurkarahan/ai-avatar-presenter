@@ -104,5 +104,10 @@ python -m maintenance.content seed --dry-run   # plan only
 python -m maintenance.content seed             # upload, publish, translate, live demo, playlist
 ```
 
-It is idempotent (decks are matched by title, the playlist by name). See
+It is idempotent (decks are matched by title, the playlist by name). Decks,
+podcasts and videos get human-readable display titles (`DISPLAY_TITLES` in
+`demos/backend/maintenance/content.py`, e.g. *AI, demystified · Beginner*);
+content seeded earlier under the filename slug is still recognised, and
+`python -m maintenance.content retitle [--dry-run]` renames it (Cosmos deck
+title, playlist steps, AI Search chunks and library manifests). See
 `demos/backend/maintenance/content.py` for podcast/video rendering and purge.

@@ -180,6 +180,23 @@ class DeckSearchService:
         return succeeded
 
     # ------------------------------------------------------------------
+    def set_deck_title(self, deck_id: str, title: str) -> int:
+        """Rewrite ``deck_title`` on every chunk of a deck (merge; no re-embedding)."""
+        results = self._search_client.search(
+            search_text="*",
+            filter=f"deck_id eq {odata_literal(deck_id)}",
+            select=["id"],
+            top=1000,
+        )
+        docs = [{"id": r["id"], "deck_title": title} for r in results]
+        if not docs:
+            return 0
+        result = self._search_client.merge_documents(docs)
+        succeeded = sum(1 for r in result if r.succeeded)
+        log.info("Deck search retitled %d/%d docs for deck %s", succeeded, len(docs), deck_id)
+        return succeeded
+
+    # ------------------------------------------------------------------
     def search(self, query: str, top_k: int = 5, language: Optional[str] = None) -> list[SearchHit]:
         """Hybrid search: vector + keyword. Returns top_k hits."""
         if not query.strip():
