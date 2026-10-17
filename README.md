@@ -53,15 +53,15 @@ Every nav link has a hover tooltip; links that require sign-in show a 🔒 for a
 
 **Live avatar demo** — anyone can try it on the decks marked *Live demo* (narration-only, time-boxed, no sign-in):
 
-![Live avatar demo: a photo avatar presents the current slide, with Speak, Present all and Stop controls and a countdown](docs/screenshots/live-demo.png)
+![Live avatar demo: Sofia, a photo avatar, presents the current slide, with a demo countdown, Present this slide and Stop controls](docs/screenshots/live-demo.png)
 
 | Home | Narrated slide video | Two-avatar podcast |
 |---|---|---|
-| ![DeckFM home page with the tagline and a "Try the live avatar demo" button](docs/screenshots/home.png) | ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: slide above two photo-avatar hosts with subtitles](docs/screenshots/podcast-frame.png) |
+| ![DeckFM home page with the tagline, the hosts Sofia and Lucas and a "Watch the live demo" button](docs/screenshots/home.png) | ![Narrated video frame: slide with a photo avatar narrating and burned-in subtitles](docs/screenshots/video-frame.png) | ![Podcast frame: two photo-avatar hosts and subtitles in a top band above the slide](docs/screenshots/podcast-frame.png) |
 
 | Published video library | Decks | Slide viewer |
 |---|---|---|
-| ![Video library with published videos](docs/screenshots/video-library.png) | ![Decks catalog with Live demo badges](docs/screenshots/decks.png) | ![Read-only slide viewer](docs/screenshots/slide-viewer.png) |
+| ![Video library with published videos](docs/screenshots/video-library.png) | ![Decks catalog with the live avatar demo banner and the published AI decks](docs/screenshots/decks.png) | ![Read-only slide viewer](docs/screenshots/slide-viewer.png) |
 
 The avatars shown are custom **photo avatars** (one portrait each, animated by Azure AI Speech). Out of the box the app uses the stock Azure avatars (Lisa, Harry, …); see [Custom photo avatars](#custom-photo-avatars-optional).
 
