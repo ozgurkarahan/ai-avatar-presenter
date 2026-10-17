@@ -2,7 +2,8 @@
 size limits, per-principal quotas, global concurrency caps and the
 WebSocket Origin check.
 
-All limiters are in-process; infra caps the app to a single replica.
+Limiters are in-process (infra caps the app to a single replica), except the
+public demo's daily budgets, which are durable in Cosmos (DemoQuota).
 """
 from __future__ import annotations
 
@@ -251,9 +252,9 @@ def max_voice_session_seconds() -> int:
 # ---------------------------------------------------------------------------
 # Public live-avatar demo (anonymous, narration-only)
 # ---------------------------------------------------------------------------
-# Counters are in-process; infra caps the app to a single replica, so they are
-# global for the deployment. A restart resets the daily counters (accepted:
-# the worst-case daily spend is still bounded by the per-day settings).
+# Concurrency is in-process (infra caps the app to a single replica); the daily
+# session/minute/question budgets are durable in Cosmos (DemoQuota) so they
+# survive restarts and scale-to-zero.
 DEMO_MAX_SPEAKS_HARD_CAP = 40
 
 # Separate from VOICE_SESSIONS so the owner can still use the admin avatar.
@@ -305,6 +306,37 @@ def demo_quota_exempt(ip: Optional[str]) -> bool:
         except ValueError:
             continue
     return False
+
+
+def _env_flag(name: str) -> bool:
+    return (os.environ.get(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def demo_qa_enabled() -> bool:
+    """Raise-hand voice Q&A in the public demo (default off)."""
+    return _env_flag("DEMO_QA_ENABLED")
+
+
+def demo_qa_max_questions() -> int:
+    return _env_int("DEMO_QA_MAX_QUESTIONS", 2)
+
+
+def demo_qa_session_seconds() -> int:
+    return _env_int("DEMO_QA_SESSION_SECONDS", 300, minimum=1)
+
+
+def demo_qa_daily_max() -> int:
+    return _env_int("DEMO_QA_DAILY_MAX", 40)
+
+
+def demo_qa_daily_per_ip() -> int:
+    return _env_int("DEMO_QA_DAILY_PER_IP", 6)
+
+
+def effective_demo_session_seconds() -> int:
+    """Demo session cap: ``DEMO_QA_SESSION_SECONDS`` when demo Q&A is enabled,
+    else ``DEMO_SESSION_SECONDS``."""
+    return demo_qa_session_seconds() if demo_qa_enabled() else demo_session_seconds()
 
 
 def demo_max_speaks(slide_count: int) -> int:
@@ -417,6 +449,29 @@ class DemoQuota:
             return None
 
         self._update(mutate)
+
+    def try_reserve_question(self, ip: str) -> Optional[str]:
+        """Reserve one demo Q&A question in the same daily doc (global
+        ``DEMO_QA_DAILY_MAX`` + per hashed IP ``DEMO_QA_DAILY_PER_IP``).
+        ``None`` on success, else ``global`` | ``ip`` | ``busy`` | ``unavailable``
+        (fails closed)."""
+        day = self._day()
+        key = self._ip_key(ip, day)
+
+        def mutate(doc: dict) -> Optional[str]:
+            if doc.get("questions", 0) >= demo_qa_daily_max():
+                return "global"
+            per_ip = doc.get("questions_per_ip")
+            if not isinstance(per_ip, dict):
+                per_ip = {}
+            if per_ip.get(key, 0) >= demo_qa_daily_per_ip():
+                return "ip"
+            doc["questions"] = doc.get("questions", 0) + 1
+            per_ip[key] = per_ip.get(key, 0) + 1
+            doc["questions_per_ip"] = per_ip
+            return None
+
+        return self._update(mutate)
 
     def remaining_today(self) -> int:
         day = self._day()

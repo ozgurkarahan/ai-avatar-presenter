@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { calls, DECKS, mockApi, type Role } from './support/mock-api';
+import { calls, DECKS, FR_NOTES, mockApi, type Role } from './support/mock-api';
 
 /**
  * Behaviour lock for the UI redesign (non-regression).
@@ -231,11 +231,11 @@ test.describe('Regression — redesign behaviours', () => {
     await page.getByTestId('demo-start').click();
     await page.clock.runFor(50);
     const left = page.getByTestId('demo-time-left');
-    await expect(left).toHaveText('3:00 left');
+    await expect(left).toHaveText('Demo time left 3:00');
     await page.clock.runFor(1000);
-    await expect(left).toHaveText('2:59 left');
+    await expect(left).toHaveText('Demo time left 2:59');
     await page.clock.runFor(60_000);
-    await expect(left).toHaveText('1:59 left');
+    await expect(left).toHaveText('Demo time left 1:59');
   });
 
   test('host disc falls back to a monogram when the avatar image fails', async ({ page }) => {
@@ -248,6 +248,95 @@ test.describe('Regression — redesign behaviours', () => {
     await expect(sofia).toContainText('S');
     const lucas = page.getByRole('img', { name: 'Lucas' }).first();
     await expect(lucas).toHaveAttribute('data-avatar-status', /keyed|original/);
+  });
+});
+
+test.describe('Regression — speaker notes read aloud', () => {
+  const notes = (page: Page) => page.getByTestId('slide-notes');
+
+  test('admin sees the notes the avatar reads, in English by default', async ({ page }) => {
+    const errors = await open(page, 'admin', '/decks/deck-plain/present');
+    await expect(page.getByTestId('slide-notes-label')).toHaveText('Speaker notes — read aloud');
+    await expect(page.getByTestId('slide-notes-text')).toHaveText('Notes 1');
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveCount(0);
+    await expectHealthy(page, errors);
+  });
+
+  test('fr-FR shows the cached French translation on every slide', async ({ page }) => {
+    await open(page, 'admin', '/decks/deck-plain/present');
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('fr-FR');
+    await expect(notes(page).getByText('Speaker notes — read aloud')).toBeVisible();
+    await expect(page.getByTestId('slide-notes-text')).toHaveText(FR_NOTES[0]);
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveCount(0);
+    await page.getByTestId('slide-next').click();
+    await expect(page.getByTestId('slide-notes-text')).toHaveText(FR_NOTES[1]);
+    // Already cached: no translation request.
+    expect(calls.some((c) => c.path.endsWith('/translate-notes'))).toBe(false);
+  });
+
+  test('an uncached language is translated on demand (admin) and narrated', async ({ page }) => {
+    await open(page, 'admin', '/decks/deck-plain/present');
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('es-ES');
+    await expect(page.getByTestId('slide-notes-text')).toHaveText('Notes es-ES 1');
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveCount(0);
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/decks/deck-plain/translate-notes');
+    expect(JSON.parse(post!.body!).target_language).toBe('es-ES');
+  });
+
+  test('original notes are shown with a hint when no translation is available', async ({ page }) => {
+    await mockApi(page, 'admin');
+    await page.route('**/api/decks/*/translate-notes', (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"detail":"Translation service not configured"}' }));
+    await page.goto('/decks/deck-plain/present');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('combobox', { name: 'Language' }).selectOption('de-DE');
+    await expect(page.getByTestId('slide-notes-text')).toHaveText('Notes 1');
+    await expect(page.getByTestId('slide-notes-fallback')).toHaveText('Original language — translation not available yet');
+  });
+
+  test('visitors never receive or see speaker notes', async ({ page }) => {
+    await open(page, 'visitor', '/decks/deck-live/present');
+    await expect(page.getByTestId('slide-counter')).toBeVisible();
+    await expect(notes(page)).toHaveCount(0);
+    expect(calls.some((c) => c.path.endsWith('/translate-notes'))).toBe(false);
+  });
+
+  test('narrationFor keeps the avatar priority (translated → notes → body → title)', async ({ page }) => {
+    await open(page, 'visitor', '/');
+    const results = await page.evaluate(async () => {
+      try {
+        const modPath = '/src/services/narration.ts';
+        const { narrationFor } = await import(/* @vite-ignore */ modPath);
+        const full = { title: 'T', body: 'B', notes: 'N', translated_notes: { 'fr-FR': 'N-fr' } };
+        return [
+          narrationFor(full, 'en-US'),
+          narrationFor(full, 'fr-FR'),
+          narrationFor(full, 'de-DE'),
+          narrationFor(full, 'fr-FR', 'fr-FR'),
+          narrationFor({ ...full, notes: '' , translated_notes: {} }, 'fr-FR'),
+          narrationFor({ title: 'T', body: '', notes: '' }, 'en-US'),
+          narrationFor({ title: '', body: '', notes: '' }, 'fr-FR'),
+          narrationFor({ title: 'T', body: 'B', notes: 'N' }, 'de-DE', 'de-DE'),
+          // French deck narrated in English: the cached en-US translation is read.
+          narrationFor({ title: 'T', notes: 'N-fr', translated_notes: { 'en-US': 'N-en' } }, 'en-US', 'fr-FR'),
+          narrationFor({ title: 'T', notes: 'N-fr' }, 'en-US', 'fr-FR'),
+        ];
+      } catch {
+        return null;
+      }
+    });
+    test.skip(results === null, 'module import needs the Vite dev server');
+    expect(results).toEqual([
+      { text: 'N', source: 'notes', fallbackOriginal: false },
+      { text: 'N-fr', source: 'translated_notes', fallbackOriginal: false },
+      { text: 'N', source: 'notes', fallbackOriginal: true },
+      { text: 'N', source: 'notes', fallbackOriginal: false },
+      { text: 'B', source: 'body', fallbackOriginal: true },
+      { text: 'T', source: 'title', fallbackOriginal: false },
+      { text: '', source: 'none', fallbackOriginal: false },
+      { text: 'N', source: 'notes', fallbackOriginal: false },
+      { text: 'N-en', source: 'translated_notes', fallbackOriginal: false },
+      { text: 'N-fr', source: 'notes', fallbackOriginal: true },
+    ]);
   });
 });
 

@@ -11,7 +11,8 @@ import {
   DeckDetail, getDeck,
   PlaylistDetail, PlaylistProgress,
   getPlaylist, getProgress, postProgress, getOrCreateUserId,
-  DECK_VOICES, avatarForVoice,
+  DECK_VOICES, avatarForVoice, voiceForLanguage,
+  deckNeedsNotesTranslation, mergeDeckTranslations, translateDeckNotes,
 } from '../services/decksApi';
 import { isPhotoAvatar, pickAvatarForGender, useAvatars } from '../services/avatars';
 import { useAuth } from '../services/auth';
@@ -27,6 +28,8 @@ function deckToPresentation(d: DeckDetail): Presentation {
     id: d.id ?? d.deck_id,
     filename: d.filename ?? d.title,
     slide_count: d.slide_count ?? d.slides?.length ?? 0,
+    language: d.language,
+    // Slides keep `translated_notes` (admin payload) so narration follows the selected language.
     slides: d.slides ?? [],
   };
 }
@@ -131,7 +134,8 @@ function PathPlayer() {
     const step = playlist.steps[currentStep];
     if (!step) return;
     let cancelled = false;
-    setDeck(null);
+    // Keep the previous deck on screen while the next one loads so the avatar
+    // session stays connected and only rebinds (context.switch) to the new deck.
     getDeck(step.deck_id)
       .then((d) => {
         if (cancelled) return;
@@ -149,6 +153,18 @@ function PathPlayer() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlist?.id, currentStep, started]);
+
+  // Fetch (and cache server-side) translated speaker notes for the selected language.
+  const translationRequested = React.useRef(new Set<string>());
+  useEffect(() => {
+    if (!deck || !deckNeedsNotesTranslation(deck, language)) return;
+    const key = `${deck.deck_id}|${language}`;
+    if (translationRequested.current.has(key)) return;
+    translationRequested.current.add(key);
+    translateDeckNotes(deck.deck_id, language)
+      .then((r) => setDeck((d) => (d && d.deck_id === r.deck_id ? mergeDeckTranslations(d, r.target_language, r.translated_notes) : d)))
+      .catch((e) => console.warn('Speaker notes translation failed:', e));
+  }, [deck, language]);
 
   const recordProgress = useCallback(async (deckId: string, slideIndex: number) => {
     if (!playlistId) return;
@@ -173,6 +189,16 @@ function PathPlayer() {
     setSelectedAvatar(avatarForVoice(voiceId, avatars, selectedAvatar));
     const v = DECK_VOICES.find((x) => x.id === voiceId);
     if (v?.language) setLanguage(v.language);
+  }
+
+  // A new narration language also needs a voice that speaks it.
+  function onLanguageChange(lang: string) {
+    setLanguage(lang);
+    const voiceId = voiceForLanguage(selectedVoice, lang);
+    if (voiceId !== selectedVoice) {
+      setSelectedVoice(voiceId);
+      setSelectedAvatar(avatarForVoice(voiceId, avatars, selectedAvatar));
+    }
   }
 
   function goToStep(idx: number) {
@@ -314,7 +340,7 @@ function PathPlayer() {
             </Select>
           </Field>
 
-          <LanguageSelector value={language} onChange={setLanguage} variant="light" />
+          <LanguageSelector value={language} onChange={onLanguageChange} variant="light" />
         </div>
       </section>
 
@@ -390,6 +416,7 @@ function PathPlayer() {
               selectedAvatar={selectedAvatar}
               selectedVoice={selectedVoice}
               autoStart={true}
+              deckId={deck?.deck_id ?? deck?.id}
               mode={avatarMode}
             />
           </aside>

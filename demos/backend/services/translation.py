@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AzureOpenAI
 
 from config import AzureConfig
+
+OPENAI_SCOPE = "https://cognitiveservices.azure.com/.default"
 
 LANGUAGE_NAMES = {
     "en-US": "English",
@@ -19,14 +21,24 @@ SYSTEM_PROMPT = (
     "Return only the translated text, nothing else."
 )
 
+_token_provider = None
+
+
+def _aad_token_provider():
+    """Shared Entra ID token provider: the credential caches the token and
+    refreshes it before expiry, so long-lived (cached) clients never send an
+    expired bearer token."""
+    global _token_provider
+    if _token_provider is None:
+        _token_provider = get_bearer_token_provider(DefaultAzureCredential(), OPENAI_SCOPE)
+    return _token_provider
+
 
 def get_openai_client(config: AzureConfig) -> AzureOpenAI:
     if config.use_managed_identity:
-        credential = DefaultAzureCredential()
-        token = credential.get_token("https://cognitiveservices.azure.com/.default")
         return AzureOpenAI(
             azure_endpoint=config.openai_endpoint,
-            azure_ad_token=token.token,
+            azure_ad_token_provider=_aad_token_provider(),
             api_version="2024-08-01-preview",
         )
     return AzureOpenAI(

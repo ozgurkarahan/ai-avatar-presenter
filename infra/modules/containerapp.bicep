@@ -74,6 +74,9 @@ param allowedOrigins string = ''
 @description('JSON array describing custom photo avatars (empty = stock avatars only)')
 param customAvatarsJson string = ''
 
+@description('Hide the stock avatars when at least one custom avatar is configured (true/false)')
+param hideStockAvatars string = 'false'
+
 @description('Allow URL ingestion for podcasts')
 param enableUrlIngest string = 'false'
 
@@ -112,6 +115,21 @@ param demoMaxSpeaks string = '0'
 
 @description('Comma-separated client IPs/CIDRs exempt from the demo daily quotas')
 param demoQuotaExemptIps string = ''
+
+@description('Raise-hand voice Q&A in the public demo (true/false)')
+param demoQaEnabled string = 'false'
+
+@description('Questions per anonymous demo session when demo Q&A is enabled')
+param demoQaMaxQuestions string = '2'
+
+@description('Demo session cap in seconds when demo Q&A is enabled')
+param demoQaSessionSeconds string = '300'
+
+@description('Demo Q&A questions per UTC day (global)')
+param demoQaDailyMax string = '40'
+
+@description('Demo Q&A questions per client IP per UTC day')
+param demoQaDailyPerIp string = '6'
 
 @description('Tags to apply to every resource')
 param tags object = {}
@@ -203,6 +221,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'ALLOWED_OBJECT_IDS', value: authEnabled ? allowedObjectIds : '' }
             { name: 'ALLOWED_ORIGINS', value: allowedOrigins }
             { name: 'CUSTOM_AVATARS_JSON', value: customAvatarsJson }
+            { name: 'HIDE_STOCK_AVATARS', value: hideStockAvatars }
             { name: 'ENABLE_URL_INGEST', value: enableUrlIngest }
             { name: 'MAX_VOICE_SESSIONS', value: maxVoiceSessions }
             { name: 'MAX_VOICE_SESSION_SECONDS', value: maxVoiceSessionSeconds }
@@ -216,6 +235,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'DEMO_DAILY_MINUTES', value: demoDailyMinutes }
             { name: 'DEMO_MAX_SPEAKS', value: demoMaxSpeaks }
             { name: 'DEMO_QUOTA_EXEMPT_IPS', value: demoQuotaExemptIps }
+            { name: 'DEMO_QA_ENABLED', value: demoQaEnabled }
+            { name: 'DEMO_QA_MAX_QUESTIONS', value: demoQaMaxQuestions }
+            { name: 'DEMO_QA_SESSION_SECONDS', value: demoQaSessionSeconds }
+            { name: 'DEMO_QA_DAILY_MAX', value: demoQaDailyMax }
+            { name: 'DEMO_QA_DAILY_PER_IP', value: demoQaDailyPerIp }
           ]
         }
       ]

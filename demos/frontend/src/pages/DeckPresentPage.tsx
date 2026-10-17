@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Eye, Mic, Presentation as PresentationIcon } from 'lucide-react';
 import SlideViewer from '../components/SlideViewer';
@@ -9,6 +9,8 @@ import {
   DeckDetail, getDeck,
   DECK_VOICES,
   avatarForVoice,
+  voiceForLanguage,
+  deckNeedsNotesTranslation, mergeDeckTranslations, translateDeckNotes,
 } from '../services/decksApi';
 import { isPhotoAvatar, pickAvatarForGender, pickDefaultAvatar, useAvatars } from '../services/avatars';
 import { useAuth } from '../services/auth';
@@ -24,6 +26,8 @@ function deckToPresentation(d: DeckDetail): Presentation {
     id: d.id ?? d.deck_id,
     filename: d.filename ?? d.title,
     slide_count: d.slide_count ?? d.slides?.length ?? 0,
+    language: d.language,
+    // Slides keep `translated_notes` (admin payload) so narration follows the selected language.
     slides: d.slides ?? [],
   };
 }
@@ -72,12 +76,34 @@ export default function DeckPresentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deck]);
 
+  // Admin: fetch (and cache server-side) translated speaker notes for the selected language.
+  const translationRequested = useRef(new Set<string>());
+  useEffect(() => {
+    if (!isAdmin || !deck || !deckNeedsNotesTranslation(deck, language)) return;
+    const key = `${deck.deck_id}|${language}`;
+    if (translationRequested.current.has(key)) return;
+    translationRequested.current.add(key);
+    translateDeckNotes(deck.deck_id, language)
+      .then((r) => setDeck((d) => (d && d.deck_id === r.deck_id ? mergeDeckTranslations(d, r.target_language, r.translated_notes) : d)))
+      .catch((e) => console.warn('Speaker notes translation failed:', e));
+  }, [isAdmin, deck, language]);
+
   // Auto-pick gender-appropriate avatar when voice changes
   function onVoiceChange(voiceId: string) {
     setSelectedVoice(voiceId);
     setSelectedAvatar(avatarForVoice(voiceId, avatars, selectedAvatar));
     const v = DECK_VOICES.find((x) => x.id === voiceId);
     if (v?.language) setLanguage(v.language);
+  }
+
+  // A new narration language also needs a voice that speaks it.
+  function onLanguageChange(lang: string) {
+    setLanguage(lang);
+    const voiceId = voiceForLanguage(selectedVoice, lang);
+    if (voiceId !== selectedVoice) {
+      setSelectedVoice(voiceId);
+      setSelectedAvatar(avatarForVoice(voiceId, avatars, selectedAvatar));
+    }
   }
 
   const voicesByLang = useMemo(() => {
@@ -163,7 +189,7 @@ export default function DeckPresentPage() {
                   </Select>
                 </Field>
 
-                <LanguageSelector value={language} onChange={setLanguage} variant="light" />
+                <LanguageSelector value={language} onChange={onLanguageChange} variant="light" />
               </div>
             </section>
           )}
@@ -196,6 +222,8 @@ export default function DeckPresentPage() {
                 mode={avatarMode}
                 access={demoMode ? 'demo' : 'admin'}
                 demoSessionSeconds={demo.session_seconds}
+                demoQa={demo.qa}
+                deckId={demoMode ? undefined : deck?.deck_id}
               />
             </aside>
           </div>

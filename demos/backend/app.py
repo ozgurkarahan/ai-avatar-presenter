@@ -37,8 +37,10 @@ from security import (
     client_ip,
     consume_quota,
     demo_max_speaks,
+    demo_qa_enabled,
+    demo_qa_max_questions,
     demo_quota_exempt,
-    demo_session_seconds,
+    effective_demo_session_seconds,
     is_valid,
     max_voice_session_seconds,
     origin_allowed,
@@ -52,7 +54,8 @@ from services import avatar_registry
 from services.pptx_parser import parse_pptx, PresentationData
 from services.translation import get_openai_client, translate_text, detect_language
 from services.avatar import submit_batch_synthesis, get_batch_synthesis_status
-from services.voice_proxy import handle_demo_proxy, handle_voice_proxy
+from services.voice_proxy import demo_narration_chars, handle_demo_proxy, handle_voice_proxy
+from services.voice_questions import ADMIN_MAX_QUESTIONS, MAX_AUDIO_SECONDS, QaOptions
 from services.qa import index_presentation, answer_question
 from services.storage import PresentationStore
 
@@ -864,7 +867,7 @@ async def voice_websocket(ws: WebSocket):
         logger.info("Voice WebSocket client connected")
         try:
             async with asyncio.timeout(max_voice_session_seconds()):
-                await _run_voice_session(ws)
+                await _run_voice_session(ws, principal)
         except TimeoutError:
             logger.info("Voice WebSocket session reached the time cap")
             try:
@@ -883,10 +886,54 @@ async def voice_websocket(ws: WebSocket):
         VOICE_SESSIONS.release()
 
 
-async def _run_voice_session(ws: WebSocket) -> None:
+def _qa_slides_from_doc(doc: dict) -> Optional[list[dict]]:
+    slides = []
+    for i, s in enumerate(doc.get("slides") or []):
+        if not isinstance(s, dict):
+            continue
+        idx = s.get("index", i)
+        slides.append({
+            "index": idx if isinstance(idx, int) and not isinstance(idx, bool) else i,
+            "title": s.get("title") or "", "body": s.get("body") or "", "notes": s.get("notes") or "",
+        })
+    return slides or None
+
+
+def _load_qa_slides(deck_id: Optional[str] = None, presentation_id: Optional[str] = None) -> Optional[list[dict]]:
+    """Server-side slides (title / body / notes) for voice Q&A: a catalog deck
+    (``deck_id``) or a legacy Live upload (``presentation_id``, in-memory
+    first, then Cosmos). ``None`` when unknown."""
+    try:
+        if deck_id:
+            if not is_valid(deck_id, UUID_RE) or not (store and store.cosmos_available):
+                return None
+            doc = store.get_presentation(deck_id)
+            if not isinstance(doc, dict) or doc.get("source") != "deck":
+                return None
+            return _qa_slides_from_doc(doc)
+        if presentation_id:
+            if not is_valid(presentation_id, UUID_RE):
+                return None
+            p = presentations.get(presentation_id)
+            if p is not None:
+                return [
+                    {"index": s.index, "title": s.title or "", "body": s.body or "", "notes": s.notes or ""}
+                    for s in p.slides
+                ] or None
+            if store and store.cosmos_available:
+                doc = store.get_presentation(presentation_id)
+                if isinstance(doc, dict):
+                    return _qa_slides_from_doc(doc)
+    except Exception:
+        logger.exception("Voice Q&A deck lookup failed")
+    return None
+
+
+async def _run_voice_session(ws: WebSocket, principal: Optional[Principal] = None) -> None:
     # Wait for the initial session.update from the client. Only avatar id,
     # language and voice are honoured (each resolved against an allowlist);
-    # client-supplied instructions / system prompts are ignored.
+    # client-supplied instructions / system prompts are ignored. An optional
+    # deck_id / presentation_id binds the deck used for raise-hand Q&A.
     first_msg = await ws.receive_text()
     if len(first_msg) > 16_384:
         await ws.close(code=1009, reason="Message too large")
@@ -899,6 +946,8 @@ async def _run_voice_session(ws: WebSocket) -> None:
     avatar_id = ""
     language = "en-US"
     voice_name = None
+    deck_id: Optional[str] = None
+    presentation_id: Optional[str] = None
 
     if isinstance(msg, dict) and msg.get("type") == "session.update":
         session = msg.get("session") or {}
@@ -915,13 +964,42 @@ async def _run_voice_session(ws: WebSocket) -> None:
                 candidate = voice.get("name")
                 if isinstance(candidate, str) and candidate.strip():
                     voice_name = candidate.strip()[:100]
+            if isinstance(session.get("deck_id"), str):
+                deck_id = session["deck_id"][:64]
+            elif isinstance(session.get("presentation_id"), str):
+                presentation_id = session["presentation_id"][:64]
 
+    slides = None
+    if deck_id or presentation_id:
+        slides = await asyncio.to_thread(_load_qa_slides, deck_id, presentation_id)
+    user_id = principal.user_id if principal is not None else "local-dev"
+
+    async def reserve_daily() -> Optional[str]:
+        try:
+            DAILY_QUOTA.consume(user_id)
+        except HTTPException:
+            return "quota"
+        return None
+
+    async def deck_loader(new_deck_id: str) -> Optional[list]:
+        return await asyncio.to_thread(_load_qa_slides, new_deck_id, None)
+
+    qa = QaOptions(
+        access="admin",
+        enabled=True,
+        max_questions=ADMIN_MAX_QUESTIONS,
+        slides=slides,
+        deck_id=deck_id if slides else None,
+        deck_loader=deck_loader,
+        reserve_daily=reserve_daily,
+    )
     await handle_voice_proxy(
         client_ws=ws,
         config=config,
         avatar_character=avatar_id if avatar_registry.is_known(avatar_id) else "",
         language=language,
         voice_name=voice_name,
+        qa=qa,
     )
 
 
@@ -943,9 +1021,18 @@ async def admin_client_ip(request: Request):
 
 @app.get("/api/demo/config")
 async def demo_config():
-    """Anonymous: whether the narration-only live avatar demo is available."""
+    """Anonymous: whether the narration-only live avatar demo is available,
+    the effective session cap and the raise-hand Q&A settings."""
     enabled = public_demo_enabled()
-    out: dict = {"enabled": enabled, "session_seconds": demo_session_seconds()}
+    out: dict = {
+        "enabled": enabled,
+        "session_seconds": effective_demo_session_seconds(),
+        "qa": {
+            "enabled": enabled and demo_qa_enabled(),
+            "max_questions": demo_qa_max_questions(),
+            "max_audio_seconds": MAX_AUDIO_SECONDS,
+        },
+    }
     if enabled:
         out["remaining_today"] = await asyncio.to_thread(DEMO_QUOTA.remaining_today)
     return out
@@ -1028,11 +1115,32 @@ async def demo_voice_websocket(ws: WebSocket):
         slides = [s for s in (deck.get("slides") or []) if isinstance(s, dict)]
         language = deck.get("language") if isinstance(deck.get("language"), str) else "en-US"
         avatar_q = ws.query_params.get("avatar")
+        session_cap = effective_demo_session_seconds()
         await ws.accept()
         logger.info("Demo voice session started (deck=%s)", deck_id)
         started = time.monotonic()
+        deadline = started + session_cap
+
+        async def reserve_question() -> Optional[str]:
+            if exempt:
+                return None
+            return await asyncio.to_thread(DEMO_QUOTA.try_reserve_question, ip)
+
+        qa = QaOptions(
+            access="demo",
+            enabled=demo_qa_enabled(),
+            max_questions=demo_qa_max_questions(),
+            slides=slides,
+            deck_id=deck_id,
+            reserve_daily=reserve_question,
+            deadline=deadline,
+            language=language or "en-US",
+        )
         try:
-            async with asyncio.timeout(demo_session_seconds()):
+            await ws.send_json({"type": "demo.started", "session_seconds": session_cap,
+                                "remaining_ms": session_cap * 1000,
+                                "narration_chars": demo_narration_chars(slides)})
+            async with asyncio.timeout(session_cap):
                 await handle_demo_proxy(
                     ws,
                     config,
@@ -1040,6 +1148,8 @@ async def demo_voice_websocket(ws: WebSocket):
                     slides=slides,
                     max_speaks=demo_max_speaks(len(slides)),
                     avatar_id=avatar_q[:64] if avatar_q else None,
+                    deadline=deadline,
+                    qa=qa,
                 )
             try:
                 await ws.close(code=1000)

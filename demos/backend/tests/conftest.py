@@ -45,6 +45,13 @@ _OFFLINE_ENV = {
     "DEMO_DAILY_SESSIONS_PER_IP": "3",
     "DEMO_DAILY_MINUTES": "60",
     "DEMO_MAX_SPEAKS": "",
+    "DEMO_QA_ENABLED": "false",
+    "DEMO_QA_MAX_QUESTIONS": "2",
+    "DEMO_QA_SESSION_SECONDS": "300",
+    "DEMO_QA_DAILY_MAX": "40",
+    "DEMO_QA_DAILY_PER_IP": "6",
+    # A developer .env (loaded with override=True) must not hide stock avatars in tests.
+    "HIDE_STOCK_AVATARS": "",
 }
 os.environ.update(_OFFLINE_ENV)
 
