@@ -132,7 +132,11 @@ export default function HomePage() {
             <ButtonLink to={demoDeck ? '/decks' : '/podcast/library'} size="lg">
               {demoDeck ? 'Browse decks' : 'Listen to a podcast'}
             </ButtonLink>
-            {demoDeck && <span className="home-hero__note">Narration-only · up to {minutes} min · no sign-in</span>}
+            {demoDeck && (
+              <span className="home-hero__note" data-testid="home-demo-note">
+                {demo.qa.enabled ? 'Ask questions by voice' : 'Narration-only'} · up to {minutes} min · no sign-in
+              </span>
+            )}
           </div>
         </div>
 

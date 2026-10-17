@@ -82,6 +82,16 @@ test.describe('Regression — decks & presenter', () => {
     await expect(page).toHaveURL(/\/decks\/deck-live\/present$/);
   });
 
+  test('home demo note reflects whether demo Q&A is on', async ({ page }) => {
+    await open(page, 'visitor', '/');
+    await expect(page.getByTestId('home-demo-note')).toHaveText(/^Narration-only · up to 3 min · no sign-in$/);
+
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await mockApi(page, 'visitor', { demoQa: { enabled: true, max_questions: 3, max_audio_seconds: 15 }, demoSessionSeconds: 300 });
+    await page.reload();
+    await expect(page.getByTestId('home-demo-note')).toHaveText(/^Ask questions by voice · up to 5 min · no sign-in$/);
+  });
+
   test('decks list renders one card per deck and opens the presenter', async ({ page }) => {
     await open(page, 'visitor', '/decks');
     await expect(page.getByTestId('deck-card')).toHaveCount(DECKS.length);
