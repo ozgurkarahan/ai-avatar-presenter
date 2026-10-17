@@ -286,7 +286,7 @@ function SetupPhase(p: SetupProps) {
               value={p.focus}
               onChange={(e) => p.onFocusChange(e.target.value)}
               rows={3}
-              placeholder="e.g. focus on ROI for retrofit customers"
+              placeholder="e.g. focus on when to use open-weight models"
             />
           </Field>
         </section>

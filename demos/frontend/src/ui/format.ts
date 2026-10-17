@@ -25,7 +25,7 @@ export function languageShort(code: string | null | undefined): string {
 }
 
 /**
- * Turns slug-like titles into readable ones: "climate-action" → "Climate action".
+ * Turns slug-like titles into readable ones: "ai-enablement" → "AI enablement".
  * Titles that already contain spaces or capitals are kept as-is.
  */
 export function humanizeTitle(title: string | null | undefined): string {
@@ -38,7 +38,7 @@ export function humanizeTitle(title: string | null | undefined): string {
   return out.charAt(0).toUpperCase() + out.slice(1);
 }
 
-const ACRONYMS = new Set(['ai', 'ia', 'ki', 'api', 'pdf', 'co2', 'esg', 'ux', 'mdr', 'iot']);
+const ACRONYMS = new Set(['ai', 'ia', 'ki', 'api', 'pdf', 'llm', 'slm', 'mcp', 'rag', 'tts', 'stt', 'ux', 'iot']);
 
 /** 98 → "1:38"; 3725 → "1:02:05"; null → "—". */
 export function formatDuration(seconds: number | null | undefined): string {

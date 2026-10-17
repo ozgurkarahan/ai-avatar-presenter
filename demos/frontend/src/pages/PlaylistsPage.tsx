@@ -252,7 +252,7 @@ function CreatePathModal({
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Security Onboarding"
+            placeholder="e.g. AI Enablement Path"
             required
           />
         </Field>
@@ -378,7 +378,7 @@ function RecommendPathModal({
             data-testid="recommend-topic"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            placeholder="e.g., cybersecurity fundamentals, sustainable energy transition…"
+            placeholder="e.g., AI fundamentals, building agents with MCP…"
             rows={2}
             className="playlists-modal__desc"
           />

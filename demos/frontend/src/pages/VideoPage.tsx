@@ -431,7 +431,7 @@ function SetupPhase(p: SetupProps) {
               value={p.focus}
               onChange={(e) => p.onFocusChange(e.target.value)}
               rows={3}
-              placeholder="Describe the angle — e.g. 'emphasise ROI for retrofit projects'"
+              placeholder="Describe the angle — e.g. 'emphasise MCP security for practitioners'"
             />
           </Field>
         </div>
